@@ -5,6 +5,7 @@ import { jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { getAuthenticatedActor } from "@/lib/auth";
 import { DEMO_ALBUM_ID, getDemoAdminMetrics } from "@/lib/demo-data";
 import { computePostWeddingExpiration } from "@/lib/payments";
+import { deleteR2Object } from "@/lib/r2";
 import { getSupabasePrivilegedClient } from "@/lib/supabase/server";
 import {
   type AdminEventMetric,
@@ -22,6 +23,10 @@ const overridePaymentSchema = z.object({
   albumId: z.uuid(),
   isPaid: z.boolean(),
   planTier: z.enum(PLAN_TIERS),
+});
+
+const deleteEventSchema = z.object({
+  albumId: z.uuid(),
 });
 
 const cloneEventFlowSchema = z.object({
@@ -285,6 +290,8 @@ export async function POST(request: NextRequest) {
         privacy_mode: source?.privacy_mode ?? "public",
         theme_config: themeConfig,
         flow_config: flowConfig,
+        is_paid: true,
+        plan_tier: "unlimited",
       })
       .select("*")
       .single();
@@ -312,5 +319,65 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[admin:clone] unexpected error", error);
     return jsonError(500, "INTERNAL_ERROR", "Failed to clone event flow.");
+  }
+}
+
+/**
+ * DELETE /api/admin/events
+ *
+ * Permanently deletes an event/album and cleans up:
+ *  1. Cloudflare R2 storage files for all associated media
+ *  2. Database album row (cascading to media, media_faces, guest_registrations, co_hosts)
+ */
+export async function DELETE(request: NextRequest) {
+  const parsed = await parseJsonBody(request, deleteEventSchema, 8 * 1024);
+  if (!parsed.ok) return parsed.response;
+  const { albumId } = parsed.data;
+
+  const actor = await getAuthenticatedActor();
+  if (actor?.isDemoFallback) {
+    return jsonOk({ deletedAlbumId: albumId });
+  }
+
+  if (!actor) {
+    return jsonError(401, "UNAUTHORIZED", "Please sign in as an administrator.");
+  }
+
+  if (!actor.isSuperAdmin) {
+    return jsonError(403, "FORBIDDEN", "Super-admin privileges required to delete events.");
+  }
+
+  try {
+    const supabase = await getSupabasePrivilegedClient();
+
+    // 1. Fetch file keys of all media in this album to delete them from Cloudflare R2
+    const { data: mediaItems } = await supabase
+      .from("media")
+      .select("file_key")
+      .eq("album_id", albumId);
+
+    if (mediaItems && mediaItems.length > 0) {
+      await Promise.allSettled(
+        mediaItems
+          .filter((m) => Boolean(m.file_key))
+          .map((m) => deleteR2Object(m.file_key)),
+      );
+    }
+
+    // 2. Delete album row from DB (PostgreSQL CASCADE removes media, media_faces, etc.)
+    const { error: delErr } = await supabase
+      .from("albums")
+      .delete()
+      .eq("id", albumId);
+
+    if (delErr) {
+      console.error("[admin:delete] delete album failed", delErr);
+      return jsonError(500, "INTERNAL_ERROR", "Could not delete event.");
+    }
+
+    return jsonOk({ deletedAlbumId: albumId });
+  } catch (error) {
+    console.error("[admin:delete] unexpected error", error);
+    return jsonError(500, "INTERNAL_ERROR", "Failed to delete event.");
   }
 }

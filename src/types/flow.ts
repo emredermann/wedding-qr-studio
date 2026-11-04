@@ -253,9 +253,40 @@ export function normalizeThemeConfig(raw: unknown): EventThemeConfig {
   };
 }
 
+function parseHexRgb(hex: string): [number, number, number] {
+  const cleaned = hex.replace("#", "").trim();
+  if (cleaned.length === 3) {
+    return [
+      Number.parseInt(cleaned[0] + cleaned[0], 16) || 0,
+      Number.parseInt(cleaned[1] + cleaned[1], 16) || 0,
+      Number.parseInt(cleaned[2] + cleaned[2], 16) || 0,
+    ];
+  }
+  return [
+    Number.parseInt(cleaned.slice(0, 2), 16) || 0,
+    Number.parseInt(cleaned.slice(2, 4), 16) || 0,
+    Number.parseInt(cleaned.slice(4, 6), 16) || 0,
+  ];
+}
+
+function getRelativeLuminance(hex: string): number {
+  const [r, g, b] = parseHexRgb(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function getContrastRatio(hexA: string, hexB: string): number {
+  const l1 = getRelativeLuminance(hexA);
+  const l2 = getRelativeLuminance(hexB);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
 /**
- * Generates deterministic CSS custom properties for `theme_config` so the
- * server shell and client components render with zero FOUC or layout shift (CLS).
+ * Generates deterministic, contrast-verified CSS custom properties for
+ * `theme_config` so the server shell and client components render with zero
+ * FOUC, zero layout shift (CLS), and guaranteed dark/light readability.
  */
 export function buildThemeCssVariables(theme: EventThemeConfig): Record<string, string> {
   const fontStack =
@@ -272,12 +303,27 @@ export function buildThemeCssVariables(theme: EventThemeConfig): Record<string, 
         ? "0px"
         : "0.875rem";
 
+  const bgLuminance = getRelativeLuminance(theme.backgroundColor);
+  const isDarkBg = bgLuminance < 0.22;
+  const safeText =
+    getContrastRatio(theme.textColor, theme.backgroundColor) >= 4.5
+      ? theme.textColor
+      : isDarkBg
+        ? "#faf8f5"
+        : "#1c1917";
+
+  const primaryLuminance = getRelativeLuminance(theme.primaryColor);
+  const primaryFg = primaryLuminance > 0.42 ? "#18181b" : "#ffffff";
+
   return {
     "--event-primary": theme.primaryColor,
+    "--event-primary-fg": primaryFg,
     "--event-primary-soft": `${theme.primaryColor}1f`,
     "--event-primary-border": `${theme.primaryColor}38`,
     "--event-bg": theme.backgroundColor,
-    "--event-text": theme.textColor,
+    "--event-text": safeText,
+    "--event-surface": isDarkBg ? "rgba(28, 25, 23, 0.9)" : "rgba(255, 255, 255, 0.92)",
+    "--event-surface-text": isDarkBg ? "#faf8f5" : "#1c1917",
     "--event-font": fontStack,
     "--event-radius": radius,
   };

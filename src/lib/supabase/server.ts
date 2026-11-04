@@ -66,14 +66,10 @@ export function getSupabaseAdminClient(): TypedSupabaseClient {
 }
 
 /**
- * Returns `getSupabaseAdminClient()` when `SUPABASE_SERVICE_ROLE_KEY` is set,
- * or the cookie-authenticated `createSupabaseServerClient()` so signed-in
- * couples and super-admins operate under their own JWT session via RLS.
+ * Returns `getSupabaseAdminClient()`, which operates with elevated privileges:
+ * either directly via `SUPABASE_SERVICE_ROLE_KEY` or through the verified
+ * `x-wqr-server-key` header (`SUPABASE_SERVER_RPC_SECRET`) matching `public.is_trusted_server()`.
  */
 export async function getSupabasePrivilegedClient(): Promise<TypedSupabaseClient> {
-  const env = getSupabaseServerEnv();
-  if (env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_SERVICE_ROLE_KEY.length >= 20) {
-    return getSupabaseAdminClient();
-  }
-  return createSupabaseServerClient();
+  return getSupabaseAdminClient();
 }

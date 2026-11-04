@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { getAuthenticatedActor, verifyAlbumManagerAccess } from "@/lib/auth";
-import { DEMO_ALBUM_ID, DEMO_FULL_ALBUM, DEMO_MEDIA_ITEMS } from "@/lib/demo-data";
 import { deleteR2Object } from "@/lib/r2";
 import { getSupabasePrivilegedClient } from "@/lib/supabase/server";
 import {
@@ -71,23 +70,6 @@ export async function GET(
 ) {
   const { albumId } = await params;
 
-  if (albumId === DEMO_ALBUM_ID) {
-    return jsonOk({
-      album: DEMO_FULL_ALBUM,
-      media: DEMO_MEDIA_ITEMS,
-      coHosts: [
-        {
-          id: "00000000-0000-4000-8000-000000000301",
-          album_id: DEMO_ALBUM_ID,
-          email: "weddingplanner@villa-aurelia.it",
-          created_at: "2026-05-03T09:00:00.000Z",
-        },
-      ] satisfies CoHost[],
-      guestRegistrations: [] satisfies GuestRegistration[],
-      isOwner: true,
-    });
-  }
-
   const actor = await getAuthenticatedActor();
   if (!actor) {
     return jsonError(401, "UNAUTHORIZED", "Please sign in to manage this album.");
@@ -152,26 +134,6 @@ export async function PATCH(
   const parsed = await parseJsonBody(request, patchAlbumSchema, 64 * 1024);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
-
-  if (albumId === DEMO_ALBUM_ID) {
-    const updatedDemo: Album = {
-      ...DEMO_FULL_ALBUM,
-      title: body.title ?? DEMO_FULL_ALBUM.title,
-      slug: body.slug ?? DEMO_FULL_ALBUM.slug,
-      event_date: body.eventDate !== undefined ? body.eventDate : DEMO_FULL_ALBUM.event_date,
-      privacy_mode: body.privacyMode ?? DEMO_FULL_ALBUM.privacy_mode,
-      reveal_at: body.revealAt !== undefined ? body.revealAt : DEMO_FULL_ALBUM.reveal_at,
-      theme_config:
-        body.themeConfig !== undefined
-          ? normalizeThemeConfig(body.themeConfig)
-          : DEMO_FULL_ALBUM.theme_config,
-      flow_config:
-        body.flowConfig !== undefined
-          ? normalizeFlowConfig(body.flowConfig)
-          : DEMO_FULL_ALBUM.flow_config,
-    };
-    return jsonOk({ album: updatedDemo, updated: true });
-  }
 
   const actor = await getAuthenticatedActor();
   if (!actor) {
@@ -309,10 +271,6 @@ export async function DELETE(
   const parsed = await parseJsonBody(request, deleteMediaBatchSchema, 32 * 1024);
   if (!parsed.ok) return parsed.response;
   const { mediaIds } = parsed.data;
-
-  if (albumId === DEMO_ALBUM_ID) {
-    return jsonOk({ deletedIds: mediaIds });
-  }
 
   const actor = await getAuthenticatedActor();
   if (!actor) {

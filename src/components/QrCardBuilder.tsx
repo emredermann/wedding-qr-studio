@@ -2,21 +2,26 @@
 
 import {
   Check,
+  ChevronDown,
   Copy,
   Download,
   ExternalLink,
   FileCode,
   Heart,
   Layers,
+  Loader2,
   Palette,
   Printer,
   QrCode,
   RefreshCw,
+  Sliders,
   Sparkles,
 } from "lucide-react";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { FieldError, ToastRegion, useToastQueue } from "@/components/ui/Feedback";
+import { validateEventTitleField, validateOptionalUrlField } from "@/lib/validation/forms";
 import type { EventThemeConfig } from "@/types/flow";
 
 export type QrCardThemeId =
@@ -175,10 +180,13 @@ export function QrCardBuilder({
   defaultEventDate,
   eventThemeConfig,
 }: QrCardBuilderProps) {
+  const { toasts, pushToast, dismissToast } = useToastQueue();
+
   const [selectedThemeId, setSelectedThemeId] = useState<QrCardThemeId>(
     eventThemeConfig ? "event_custom" : "classic_editorial",
   );
   const [coupleNames, setCoupleNames] = useState<string>(defaultCoupleNames || "Clara & Julian");
+  const [coupleNamesError, setCoupleNamesError] = useState<string | null>(null);
   const [dateLabel, setDateLabel] = useState<string>(
     defaultEventDate
       ? new Date(defaultEventDate).toLocaleDateString(undefined, {
@@ -202,10 +210,12 @@ export function QrCardBuilder({
       ? window.location.origin
       : "http://localhost:3000",
   );
+  const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   const [copiedImage, setCopiedImage] = useState<boolean>(false);
   const [batchStartTable, setBatchStartTable] = useState<number>(1);
   const [batchEndTable, setBatchEndTable] = useState<number>(10);
+  const [batchError, setBatchError] = useState<string | null>(null);
   const [batchGenerating, setBatchGenerating] = useState<boolean>(false);
 
   const qrSourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -413,7 +423,6 @@ export function QrCardBuilder({
         ctx.strokeRect(110, 110, CARD_WIDTH_PX - 220, CARD_HEIGHT_PX - 220);
         drawBotanicalCorners(ctx, activeTheme.accent);
       } else {
-        // Classic Editorial & Midnight Luxury double hairline frame
         ctx.strokeStyle = activeTheme.border;
         ctx.lineWidth = 5;
         ctx.strokeRect(80, 80, CARD_WIDTH_PX - 160, CARD_HEIGHT_PX - 160);
@@ -428,12 +437,16 @@ export function QrCardBuilder({
       // 3. Eyebrow header
       ctx.fillStyle = activeTheme.accent;
       ctx.font = "600 28px system-ui, -apple-system, sans-serif";
-      ctx.fillText((headerEyebrow || "CAPTURE THE LOVE").toUpperCase().split("").join(" "), centerX, 255);
+      ctx.fillText(
+        (headerEyebrow || "CAPTURE THE LOVE").toUpperCase().split("").join(" "),
+        centerX,
+        255,
+      );
 
       // 4. Couple Names
       ctx.fillStyle = activeTheme.textPrimary;
       ctx.font = activeTheme.titleFont;
-      wrapCenteredText(ctx, coupleNames || "Wedding Studio", centerX, 395, 1180, 100);
+      wrapCenteredText(ctx, coupleNames || "Lumina", centerX, 395, 1180, 100);
 
       // 5. Event Date & Optional Table Pill
       ctx.fillStyle = activeTheme.textSecondary;
@@ -557,8 +570,9 @@ export function QrCardBuilder({
     canvas.toBlob((blob) => {
       if (!blob) return;
       triggerBlobDownload(blob, `${albumSlug}${suffix}-5x7-card-300dpi.png`);
+      pushToast("Downloaded 5×7\" 300-DPI table card", "success");
     }, "image/png");
-  }, [albumSlug, renderCardToCanvas, tableLabel]);
+  }, [albumSlug, pushToast, renderCardToCanvas, tableLabel]);
 
   const handleDownloadStandaloneQrPng = useCallback(() => {
     const source = qrSourceCanvasRef.current;
@@ -583,8 +597,9 @@ export function QrCardBuilder({
     exportCanvas.toBlob((blob) => {
       if (!blob) return;
       triggerBlobDownload(blob, `${albumSlug}${suffix}-qr-1024px.png`);
+      pushToast("Downloaded 1024px standalone QR code", "success");
     }, "image/png");
-  }, [albumSlug, drawCenterBadgeOnQr, tableLabel]);
+  }, [albumSlug, drawCenterBadgeOnQr, pushToast, tableLabel]);
 
   const handleDownloadStandaloneQrSvg = useCallback(() => {
     const svgEl = qrSvgContainerRef.current?.querySelector("svg");
@@ -603,34 +618,40 @@ export function QrCardBuilder({
       ? `-table-${tableLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
       : "";
     triggerBlobDownload(blob, `${albumSlug}${suffix}-qr-vector.svg`);
-  }, [albumSlug, tableLabel]);
+    pushToast("Downloaded vector SVG QR code", "success");
+  }, [albumSlug, pushToast, tableLabel]);
 
   const handleCopyGuestUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(guestEventUrl);
       setCopiedUrl(true);
+      pushToast("Link copied to clipboard", "success");
       window.setTimeout(() => setCopiedUrl(false), 2000);
     } catch {
-      // Fallback if clipboard permission denied
+      pushToast("Could not copy link automatically.", "error");
     }
-  }, [guestEventUrl]);
+  }, [guestEventUrl, pushToast]);
 
   const handleCopyCardImage = useCallback(async () => {
     renderCardToCanvas();
     const canvas = previewCanvasRef.current;
-    if (!canvas || typeof ClipboardItem === "undefined") return;
+    if (!canvas || typeof ClipboardItem === "undefined") {
+      pushToast("Clipboard image copy is not supported in this browser.", "error");
+      return;
+    }
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
       try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
         setCopiedImage(true);
+        pushToast("Card image copied to clipboard", "success");
         window.setTimeout(() => setCopiedImage(false), 2000);
       } catch {
-        // Fallback if clipboard write not supported
+        pushToast("Could not copy image to clipboard.", "error");
       }
     }, "image/png");
-  }, [renderCardToCanvas]);
+  }, [pushToast, renderCardToCanvas]);
 
   const handlePrintCard = useCallback(() => {
     renderCardToCanvas();
@@ -639,7 +660,10 @@ export function QrCardBuilder({
     const dataUrl = canvas.toDataURL("image/png");
 
     const printWin = window.open("", "_blank", "width=800,height=1000");
-    if (!printWin) return;
+    if (!printWin) {
+      pushToast("Allow pop-ups to open the 5×7\" print sheet.", "info");
+      return;
+    }
 
     printWin.document.write(`<!DOCTYPE html>
 <html>
@@ -656,11 +680,25 @@ export function QrCardBuilder({
   </body>
 </html>`);
     printWin.document.close();
-  }, [coupleNames, renderCardToCanvas]);
+  }, [coupleNames, pushToast, renderCardToCanvas]);
 
   const handleBatchDownloadTableCards = useCallback(async () => {
-    const start = Math.max(1, Math.min(200, Math.floor(batchStartTable)));
-    const end = Math.max(start, Math.min(start + 24, Math.floor(batchEndTable)));
+    const start = Math.floor(batchStartTable);
+    const end = Math.floor(batchEndTable);
+    if (Number.isNaN(start) || Number.isNaN(end) || start < 1 || end > 200) {
+      setBatchError("Table numbers must be between 1 and 200.");
+      return;
+    }
+    if (start > end) {
+      setBatchError("Start table number cannot exceed end table number.");
+      return;
+    }
+    if (end - start + 1 > 25) {
+      setBatchError("Please generate at most 25 table cards per batch.");
+      return;
+    }
+
+    setBatchError(null);
     setBatchGenerating(true);
 
     try {
@@ -682,13 +720,16 @@ export function QrCardBuilder({
         await new Promise((r) => window.setTimeout(r, 180));
       }
       setTableLabel(originalTable);
+      pushToast(`Generated ${end - start + 1} print-ready table card(s)`, "success");
     } finally {
       setBatchGenerating(false);
     }
-  }, [albumSlug, batchEndTable, batchStartTable, renderCardToCanvas, tableLabel]);
+  }, [albumSlug, batchEndTable, batchStartTable, pushToast, renderCardToCanvas, tableLabel]);
 
   return (
     <div className="grid gap-8 lg:grid-cols-12">
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+
       {/* Offscreen high-res QRCodeCanvas & QRCodeSVG sources (kept mounted & measurable) */}
       <div
         className="pointer-events-none fixed -top-[9999px] -left-[9999px] opacity-0"
@@ -716,10 +757,10 @@ export function QrCardBuilder({
       </div>
 
       {/* Left Controls */}
-      <div className="space-y-6 rounded-3xl border border-stone-200 bg-white p-6 shadow-xs lg:col-span-7">
+      <div className="space-y-6 rounded-3xl border border-stone-200 bg-white p-5 shadow-xs sm:p-6 lg:col-span-7">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <QrCode className="h-5 w-5" />
             </div>
             <div>
@@ -736,7 +777,7 @@ export function QrCardBuilder({
             href={guestEventUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-full border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+            className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-stone-300 bg-stone-50 px-4 py-2 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
           >
             <ExternalLink className="h-3.5 w-3.5 text-amber-700" />
             Test QR Target Link
@@ -744,81 +785,125 @@ export function QrCardBuilder({
         </div>
 
         {/* 1. Target QR URL & Table Number */}
-        <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-3">
+        <div className="space-y-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-600">
               1. QR Target Link &amp; Table Assignment
-            </label>
-            <span className="font-mono text-[11px] text-amber-800">{guestEventUrl}</span>
+            </span>
+            <span className="max-w-full truncate font-mono text-[11px] text-amber-800">
+              {guestEventUrl}
+            </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-12">
-            <div className="sm:col-span-7">
-              <label className="block text-[11px] font-medium text-stone-600">
+          <div>
+            <label
+              htmlFor="qr-table-label"
+              className="block text-[11px] font-medium text-stone-600"
+            >
+              Masa Numarası / Etiket (Opsiyonel)
+            </label>
+            <div className="mt-1 flex items-center gap-1.5">
+              <input
+                id="qr-table-label"
+                type="text"
+                value={tableLabel}
+                onChange={(e) => setTableLabel(e.target.value)}
+                placeholder="Örn: 5, 12 veya VIP Masa"
+                maxLength={24}
+                className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+              <button
+                type="button"
+                onClick={() => void handleCopyGuestUrl()}
+                className="inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-100"
+              >
+                {copiedUrl ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    Kopyalandı
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Linki Kopyala
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Gelişmiş Seçenekler: Canlı Alan Adı / Origin URL */}
+          <details className="group rounded-xl border border-stone-200 bg-white p-3.5 text-xs transition">
+            <summary className="flex cursor-pointer items-center justify-between font-medium text-stone-700 select-none hover:text-stone-900">
+              <span className="flex items-center gap-2 text-xs font-semibold text-stone-700">
+                <Sliders className="h-3.5 w-3.5 text-amber-700" />
+                Gelişmiş Seçenekler (Canlı Alan Adı / Origin URL)
+              </span>
+              <ChevronDown className="h-4 w-4 text-stone-400 transition-transform duration-200 group-open:rotate-180" />
+            </summary>
+
+            <div className="mt-3.5 space-y-2 border-t border-stone-100 pt-3">
+              <label
+                htmlFor="qr-base-url"
+                className="block text-[11px] font-medium text-stone-600"
+              >
                 Base Domain / Origin URL
               </label>
-              <div className="mt-1 flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5">
                 <input
+                  id="qr-base-url"
                   type="text"
                   value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
+                  aria-invalid={Boolean(baseUrlError)}
+                  aria-describedby={baseUrlError ? "qr-base-url-error" : undefined}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBaseUrl(val);
+                    const candidate = /^https?:\/\//i.test(val.trim())
+                      ? val.trim()
+                      : `https://${val.trim()}`;
+                    setBaseUrlError(val.trim() ? validateOptionalUrlField(candidate) : null);
+                  }}
                   placeholder="http://localhost:3000"
-                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 font-mono text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="min-h-12 w-full rounded-xl border border-stone-300 bg-stone-50/50 px-3 py-2 font-mono text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    if (typeof window !== "undefined") setBaseUrl(window.location.origin);
+                    if (typeof window !== "undefined") {
+                      setBaseUrl(window.location.origin);
+                      setBaseUrlError(null);
+                      pushToast("Mevcut tarayıcı adresine sıfırlandı", "info");
+                    }
                   }}
-                  title="Reset to current browser origin"
-                  className="rounded-xl border border-stone-300 bg-white p-2 text-stone-600 hover:bg-stone-100"
+                  aria-label="Mevcut tarayıcı adresine sıfırla"
+                  title="Mevcut tarayıcı adresine sıfırla"
+                  className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-stone-300 bg-white text-stone-600 hover:bg-stone-100"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+              <FieldError id="qr-base-url-error" message={baseUrlError} />
 
-            <div className="sm:col-span-5">
-              <label className="block text-[11px] font-medium text-stone-600">
-                Table Number / Label (Optional)
-              </label>
-              <div className="mt-1 flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={tableLabel}
-                  onChange={(e) => setTableLabel(e.target.value)}
-                  placeholder="e.g., 5 or VIP"
-                  maxLength={24}
-                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleCopyGuestUrl()}
-                  className="flex shrink-0 items-center gap-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100"
-                >
-                  {copiedUrl ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-emerald-600" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      Copy URL
-                    </>
-                  )}
-                </button>
+              <div className="rounded-lg bg-amber-50/60 p-2.5 text-[11px] leading-relaxed text-stone-600">
+                <p className="font-medium text-amber-900">Bu alan nedir ve ne zaman gereklidir?</p>
+                <p className="mt-1">
+                  QR kodun içine doğrudan kodlanan web bağlantısının ana adresidir. Sistem varsayılan olarak şu anki tarayıcı adresinizi otomatik alır.
+                </p>
+                <p className="mt-1">
+                  <strong>Matbaa / Fiziksel Baskı Öncesi:</strong> Bilgisayarınızda yerel test yaparken adres <code className="rounded bg-amber-100/60 px-1 font-mono text-amber-900">localhost:3000</code> olabilir. Masalara koyulacak fiziksel kartları yazdırmadan önce, davetlilerin telefonlarıyla internetten sorunsuz açabilmesi için gerçek canlı web adresinizi (örn. <code className="rounded bg-amber-100/60 px-1 font-mono text-amber-900">https://lumina.app</code> veya özel düğün alan adınızı) buraya girebilirsiniz. Normal testlerde değiştirmenize gerek yoktur.
+                </p>
               </div>
             </div>
-          </div>
+          </details>
         </div>
 
         {/* 2. Theme Selector */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-stone-500">
             <Palette className="h-3.5 w-3.5" />
             2. Select Card Design Theme
-          </label>
+          </span>
           <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
             {allThemes.map((theme) => {
               const selected = theme.id === selectedThemeId;
@@ -827,7 +912,7 @@ export function QrCardBuilder({
                   key={theme.id}
                   type="button"
                   onClick={() => setSelectedThemeId(theme.id)}
-                  className={`rounded-2xl border p-3.5 text-left transition ${
+                  className={`min-h-12 rounded-2xl border p-3.5 text-left transition ${
                     selected
                       ? "border-amber-700 bg-amber-50/70 ring-2 ring-amber-700/20"
                       : "border-stone-200 bg-stone-50/60 hover:border-stone-300"
@@ -858,25 +943,35 @@ export function QrCardBuilder({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-stone-700">Eyebrow Header</label>
+              <label
+                htmlFor="qr-eyebrow-input"
+                className="block text-xs font-medium text-stone-700"
+              >
+                Eyebrow Header
+              </label>
               <input
+                id="qr-eyebrow-input"
                 type="text"
                 value={headerEyebrow}
                 onChange={(e) => setHeaderEyebrow(e.target.value)}
                 maxLength={40}
-                className="mt-1 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                className="mt-1 min-h-12 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-700">
+              <label
+                htmlFor="qr-badge-mode-select"
+                className="block text-xs font-medium text-stone-700"
+              >
                 QR Center Crest (Level-H Safe)
               </label>
               <div className="mt-1 flex items-center gap-2">
                 <select
+                  id="qr-badge-mode-select"
                   value={centerBadgeMode}
                   onChange={(e) => setCenterBadgeMode(e.target.value as QrCenterBadgeMode)}
-                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
                 >
                   <option value="monogram">Couple Monogram ({resolvedMonogram})</option>
                   <option value="heart">Heart Crest (♥)</option>
@@ -885,12 +980,13 @@ export function QrCardBuilder({
                 {centerBadgeMode === "monogram" ? (
                   <input
                     type="text"
+                    aria-label="Custom monogram"
                     value={customMonogram}
                     onChange={(e) => setCustomMonogram(e.target.value)}
                     placeholder={extractMonogram(coupleNames)}
                     maxLength={4}
                     title="Custom Monogram"
-                    className="w-20 rounded-xl border border-stone-300 px-2.5 py-2 text-center font-serif text-sm font-bold text-stone-900"
+                    className="min-h-12 w-20 rounded-xl border border-stone-300 px-2.5 py-2 text-center font-serif text-sm font-bold text-stone-900"
                   />
                 ) : null}
               </div>
@@ -899,38 +995,60 @@ export function QrCardBuilder({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-stone-700">Couple Names</label>
+              <label
+                htmlFor="qr-couple-names-input"
+                className="block text-xs font-medium text-stone-700"
+              >
+                Couple Names
+              </label>
               <input
+                id="qr-couple-names-input"
                 type="text"
                 value={coupleNames}
-                onChange={(e) => setCoupleNames(e.target.value)}
+                aria-invalid={Boolean(coupleNamesError)}
+                aria-describedby={coupleNamesError ? "qr-couple-names-error" : undefined}
+                onChange={(e) => {
+                  setCoupleNames(e.target.value);
+                  setCoupleNamesError(validateEventTitleField(e.target.value));
+                }}
                 maxLength={60}
-                className="mt-1 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                className="mt-1 min-h-12 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
               />
+              <FieldError id="qr-couple-names-error" message={coupleNamesError} />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-700">Wedding Date Label</label>
+              <label
+                htmlFor="qr-date-label-input"
+                className="block text-xs font-medium text-stone-700"
+              >
+                Wedding Date Label
+              </label>
               <input
+                id="qr-date-label-input"
                 type="text"
                 value={dateLabel}
                 onChange={(e) => setDateLabel(e.target.value)}
                 maxLength={40}
-                className="mt-1 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                className="mt-1 min-h-12 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-stone-700">
+            <label
+              htmlFor="qr-subtitle-input"
+              className="block text-xs font-medium text-stone-700"
+            >
               Call-to-Action Subtitle
             </label>
             <textarea
+              id="qr-subtitle-input"
               rows={2}
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               maxLength={160}
-              className="mt-1 w-full rounded-xl border border-stone-300 px-3.5 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              className="mt-1 w-full rounded-xl border border-stone-300 px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
             />
           </div>
         </div>
@@ -941,7 +1059,7 @@ export function QrCardBuilder({
             <button
               type="button"
               onClick={handleDownloadHighDpiPng}
-              className="flex items-center justify-center gap-2 rounded-full bg-amber-700 px-5 py-3 text-xs font-semibold text-white shadow-md transition hover:bg-amber-800"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-700 px-5 py-3 text-xs font-semibold text-white shadow-md transition hover:bg-amber-800"
             >
               <Download className="h-4 w-4" />
               Download 5×7&quot; Table Card (300-DPI PNG)
@@ -950,7 +1068,7 @@ export function QrCardBuilder({
             <button
               type="button"
               onClick={handlePrintCard}
-              className="flex items-center justify-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-stone-800"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-stone-800"
             >
               <Printer className="h-4 w-4 text-amber-400" />
               Print 5×7&quot; Card / Save as PDF
@@ -961,7 +1079,7 @@ export function QrCardBuilder({
             <button
               type="button"
               onClick={handleDownloadStandaloneQrPng}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
             >
               <QrCode className="h-3.5 w-3.5 text-amber-700" />
               QR Only (PNG 1024px)
@@ -970,7 +1088,7 @@ export function QrCardBuilder({
             <button
               type="button"
               onClick={handleDownloadStandaloneQrSvg}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
             >
               <FileCode className="h-3.5 w-3.5 text-amber-700" />
               Vector QR (SVG)
@@ -979,7 +1097,7 @@ export function QrCardBuilder({
             <button
               type="button"
               onClick={() => void handleCopyCardImage()}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
             >
               {copiedImage ? (
                 <>
@@ -1015,45 +1133,57 @@ export function QrCardBuilder({
               <span className="text-xs text-stone-600">Tables</span>
               <input
                 type="number"
+                aria-label="Batch start table number"
                 min={1}
                 max={200}
                 value={batchStartTable}
-                onChange={(e) => setBatchStartTable(Number(e.target.value) || 1)}
-                className="w-16 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold"
+                onChange={(e) => {
+                  setBatchStartTable(Number(e.target.value) || 1);
+                  setBatchError(null);
+                }}
+                className="min-h-12 w-16 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold"
               />
               <span className="text-xs text-stone-500">to</span>
               <input
                 type="number"
+                aria-label="Batch end table number"
                 min={1}
                 max={200}
                 value={batchEndTable}
-                onChange={(e) => setBatchEndTable(Number(e.target.value) || 10)}
-                className="w-16 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold"
+                onChange={(e) => {
+                  setBatchEndTable(Number(e.target.value) || 10);
+                  setBatchError(null);
+                }}
+                className="min-h-12 w-16 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-center text-xs font-semibold"
               />
               <button
                 type="button"
                 disabled={batchGenerating}
                 onClick={() => void handleBatchDownloadTableCards()}
-                className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-800 disabled:opacity-50"
+                className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-stone-800 disabled:opacity-50"
               >
+                {batchGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 {batchGenerating
                   ? "Generating Cards…"
                   : `Download Tables ${batchStartTable}–${batchEndTable}`}
               </button>
             </div>
           </div>
+          <FieldError id="batch-table-error" message={batchError} />
         </div>
       </div>
 
       {/* Right Live Preview Panel */}
-      <div className="flex flex-col items-center justify-between rounded-3xl border border-stone-200 bg-stone-100 p-6 lg:col-span-5">
+      <div className="flex flex-col items-center justify-between rounded-3xl border border-stone-200 bg-stone-100 p-5 sm:p-6 lg:col-span-5">
         {/* Preview Mode Toggle */}
         <div className="mb-4 flex items-center gap-1 rounded-full border border-stone-200 bg-white p-1 text-xs font-semibold shadow-2xs">
           <button
             type="button"
             onClick={() => setPreviewMode("card")}
-            className={`rounded-full px-4 py-1.5 transition ${
-              previewMode === "card" ? "bg-stone-900 text-white" : "text-stone-600 hover:text-stone-900"
+            className={`inline-flex min-h-11 items-center rounded-full px-4 py-1.5 transition ${
+              previewMode === "card"
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             5×7&quot; Table Card
@@ -1061,7 +1191,7 @@ export function QrCardBuilder({
           <button
             type="button"
             onClick={() => setPreviewMode("qr_only")}
-            className={`rounded-full px-4 py-1.5 transition ${
+            className={`inline-flex min-h-11 items-center rounded-full px-4 py-1.5 transition ${
               previewMode === "qr_only"
                 ? "bg-stone-900 text-white"
                 : "text-stone-600 hover:text-stone-900"
@@ -1113,8 +1243,8 @@ export function QrCardBuilder({
           ) : null}
         </div>
 
-        <div className="mt-4 text-center">
-          <p className="text-xs font-medium text-stone-600">
+        <div className="mt-4 w-full text-center">
+          <p className="truncate text-xs font-medium text-stone-600">
             Scans directly to{" "}
             <a
               href={guestEventUrl}

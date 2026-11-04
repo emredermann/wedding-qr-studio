@@ -2,12 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import {
-  DEMO_ALBUM_ID,
-  DEMO_ALBUM_SLUG,
-  DEMO_MEDIA_ITEMS,
-  DEMO_PUBLIC_ALBUM,
-} from "@/lib/demo-data";
+import { DEMO_ALBUM_SLUG, DEMO_PUBLIC_ALBUM } from "@/lib/demo-data";
 import {
   attachGuestSessionCookie,
   getVerifiedGuestSession,
@@ -78,22 +73,9 @@ export async function GET(
   const verifiedSession = getVerifiedGuestSession(request);
   const activeSession = verifiedSession ?? resolveOrMintGuestSession(request);
 
-  if (slug === DEMO_ALBUM_SLUG) {
-    const payload: GuestEventPayload = {
-      album: DEMO_PUBLIC_ALBUM,
-      isGalleryLocked: false,
-      lockReason: null,
-      myUploads: verifiedSession
-        ? DEMO_MEDIA_ITEMS.filter((m) => m.guest_session_id === verifiedSession.sessionId)
-        : [],
-      guestSessionId: activeSession.sessionId,
-    };
-    return attachGuestSessionCookie(jsonOk(payload), activeSession);
-  }
-
   try {
     const supabase = getSupabaseAdminClient();
-    const { data: row, error: albumError } = await supabase
+    const { data: fetchedAlbum, error: albumError } = await supabase
       .from("albums")
       .select(
         "id, slug, title, event_date, privacy_mode, reveal_at, expires_at, theme_config, flow_config",
@@ -105,25 +87,26 @@ export async function GET(
       console.error("[events:get] album lookup failed", albumError);
       return jsonError(500, "INTERNAL_ERROR", "Could not load event.");
     }
-    if (!row) {
+    const albumRow = fetchedAlbum ?? (slug === DEMO_ALBUM_SLUG ? DEMO_PUBLIC_ALBUM : null);
+    if (!albumRow) {
       return jsonError(404, "ALBUM_NOT_FOUND", "Event not found.");
     }
 
     const now = Date.now();
-    if (Date.parse(row.expires_at) <= now) {
+    if (Date.parse(albumRow.expires_at) <= now) {
       return jsonError(410, "ALBUM_EXPIRED", "This event album has expired.");
     }
 
     const album: PublicAlbum = {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      event_date: row.event_date,
-      privacy_mode: row.privacy_mode,
-      reveal_at: row.reveal_at,
-      expires_at: row.expires_at,
-      theme_config: normalizeThemeConfig(row.theme_config),
-      flow_config: normalizeFlowConfig(row.flow_config),
+      id: albumRow.id,
+      slug: albumRow.slug,
+      title: albumRow.title,
+      event_date: albumRow.event_date,
+      privacy_mode: albumRow.privacy_mode,
+      reveal_at: albumRow.reveal_at,
+      expires_at: albumRow.expires_at,
+      theme_config: normalizeThemeConfig(albumRow.theme_config),
+      flow_config: normalizeFlowConfig(albumRow.flow_config),
     };
 
     const isUnrevealed = album.reveal_at !== null && Date.parse(album.reveal_at) > now;
@@ -131,16 +114,26 @@ export async function GET(
     const isGalleryLocked = isPrivate || isUnrevealed;
     const lockReason = isPrivate ? "private" : isUnrevealed ? "disposable_camera" : null;
 
-    // Only return `myUploads` for a cryptographically verified guest session cookie
+    // Only return `myUploads` and registration for a cryptographically verified guest session cookie
     let myUploads: Media[] = [];
+    let registration: GuestEventPayload["registration"] = null;
+
     if (verifiedSession) {
-      const { data: ownData, error: ownError } = await supabase
-        .from("media")
-        .select(MEDIA_COLUMNS)
-        .eq("album_id", album.id)
-        .eq("guest_session_id", verifiedSession.sessionId)
-        .order("created_at", { ascending: false })
-        .limit(100);
+      const [{ data: ownData, error: ownError }, { data: regData }] = await Promise.all([
+        supabase
+          .from("media")
+          .select(MEDIA_COLUMNS)
+          .eq("album_id", album.id)
+          .eq("guest_session_id", verifiedSession.sessionId)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("guest_registrations")
+          .select("guest_name, contact, table_number")
+          .eq("album_id", album.id)
+          .eq("guest_session_id", verifiedSession.sessionId)
+          .maybeSingle(),
+      ]);
 
       if (!ownError && ownData) {
         myUploads = await Promise.all(
@@ -150,6 +143,14 @@ export async function GET(
           })),
         );
       }
+
+      if (regData) {
+        registration = {
+          guestName: regData.guest_name,
+          contact: regData.contact,
+          tableNumber: regData.table_number,
+        };
+      }
     }
 
     const payload: GuestEventPayload = {
@@ -158,6 +159,7 @@ export async function GET(
       lockReason,
       myUploads,
       guestSessionId: activeSession.sessionId,
+      registration,
     };
 
     return attachGuestSessionCookie(jsonOk(payload), activeSession);
@@ -212,11 +214,7 @@ export async function POST(
 
   if (slug === DEMO_ALBUM_SLUG) {
     return attachGuestSessionCookie(
-      jsonOk({
-        registered: true,
-        albumId: DEMO_ALBUM_ID,
-        guestSessionId: guestSession.sessionId,
-      }),
+      jsonOk({ registered: true, albumId: DEMO_PUBLIC_ALBUM.id, guestSessionId: guestSession.sessionId }),
       guestSession,
     );
   }
@@ -310,7 +308,7 @@ export async function DELETE(
   }
 
   if (slug === DEMO_ALBUM_SLUG) {
-    return jsonOk({ deleted: true, mediaId });
+    return jsonOk({ deletedMediaId: mediaId });
   }
 
   try {

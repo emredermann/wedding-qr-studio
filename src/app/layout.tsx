@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,8 +13,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wedding QR Studio",
-  description: "Collect every photo, video and voice message from your wedding guests with a single QR code.",
+  title: {
+    default: "Lumina — Bespoke Wedding & Biometric Memory Vault",
+    template: "%s · Lumina",
+  },
+  applicationName: "Lumina",
+  description:
+    "Lumina: Private biometric wedding gallery, 300-DPI editorial QR table cards, uncompressed 4K uploads, and voice guestbook toasts.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#141210",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>
     </html>
   );
 }

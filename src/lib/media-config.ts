@@ -18,19 +18,19 @@ export const MAX_FILE_SIZE_BYTES: Readonly<Record<MediaType, number>> = {
   audio: 200 * MiB,
 };
 
-/** Tight per-file size limits enforced per album `plan_tier`. */
+/** Full uncompressed per-file size limits across all media types (unrestricted). */
 export const TIER_MAX_FILE_SIZE_BYTES: Readonly<
   Record<PlanTier, Readonly<Record<MediaType, number>>>
 > = {
   starter: {
-    photo: 25 * MiB,
-    video: 150 * MiB,
-    audio: 25 * MiB,
+    photo: 50 * MiB,
+    video: 2048 * MiB,
+    audio: 200 * MiB,
   },
   pro: {
     photo: 50 * MiB,
-    video: 1024 * MiB,
-    audio: 100 * MiB,
+    video: 2048 * MiB,
+    audio: 200 * MiB,
   },
   unlimited: {
     photo: 50 * MiB,
@@ -39,21 +39,21 @@ export const TIER_MAX_FILE_SIZE_BYTES: Readonly<
   },
 };
 
-/** Total album item count and byte storage caps per `plan_tier`. */
+/** Unrestricted storage limits for all albums. */
 export const TIER_ALBUM_QUOTAS: Readonly<
   Record<PlanTier, { readonly maxItems: number; readonly maxTotalBytes: number }>
 > = {
   starter: {
-    maxItems: 500,
-    maxTotalBytes: 5 * GiB,
+    maxItems: 100_000,
+    maxTotalBytes: 1_000 * GiB,
   },
   pro: {
-    maxItems: 5_000,
-    maxTotalBytes: 50 * GiB,
+    maxItems: 100_000,
+    maxTotalBytes: 1_000 * GiB,
   },
   unlimited: {
-    maxItems: 25_000,
-    maxTotalBytes: 250 * GiB,
+    maxItems: 100_000,
+    maxTotalBytes: 1_000 * GiB,
   },
 };
 
@@ -113,15 +113,14 @@ export function classifyMimeType(mimeType: string): MediaType | null {
   return null;
 }
 
-/** Computes the effective per-file byte limit for an album tier, media type, and flow setting. */
+/** Computes the effective per-file byte limit for an album media type and flow setting. */
 export function getMaxFileSizeForTier(
-  planTier: PlanTier,
+  _planTier: PlanTier,
   mediaType: MediaType,
   flowMaxUploadSizeMb: number,
 ): number {
-  const tierLimit = TIER_MAX_FILE_SIZE_BYTES[planTier]?.[mediaType] ?? MAX_FILE_SIZE_BYTES[mediaType];
   const flowLimit = Math.max(1, flowMaxUploadSizeMb) * MiB;
-  return Math.min(MAX_FILE_SIZE_BYTES[mediaType], tierLimit, flowLimit);
+  return Math.min(MAX_FILE_SIZE_BYTES[mediaType], flowLimit);
 }
 
 const EXTENSION_BY_MIME: Readonly<Record<string, string>> = {

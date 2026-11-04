@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env.public";
 import type { Database } from "@/types/database";
 
-/** Route prefixes that require an authenticated couple or admin account. */
-const PROTECTED_PREFIXES = ["/dashboard", "/admin"] as const;
+/** Route prefixes that strictly require an authenticated admin account. */
+const PROTECTED_PREFIXES = ["/admin"] as const;
 const PUBLIC_DEMO_DASHBOARD_PATH = "/dashboard/00000000-0000-4000-8000-000000000001";
 
 function isProtectedPath(pathname: string): boolean {

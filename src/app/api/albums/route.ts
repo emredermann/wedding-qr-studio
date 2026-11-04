@@ -202,6 +202,8 @@ export async function POST(request: NextRequest) {
         reveal_at: revealAt,
         theme_config: themeConfig,
         flow_config: flowConfig,
+        is_paid: true,
+        plan_tier: "unlimited",
       })
       .select("*")
       .single();
@@ -211,12 +213,20 @@ export async function POST(request: NextRequest) {
         return jsonError(409, "SLUG_TAKEN", `The URL slug "${slug}" is already taken.`);
       }
       console.error("[albums:create] insert failed", insertError);
-      return jsonError(500, "INTERNAL_ERROR", "Could not create album.");
+      return jsonError(
+        500,
+        "INTERNAL_ERROR",
+        insertError.message ? `Could not create album: ${insertError.message}` : "Could not create album.",
+      );
     }
 
     return jsonOk({ album: hydrateAlbumRow(created) }, 201);
   } catch (error) {
     console.error("[albums:create] unexpected error", error);
-    return jsonError(500, "INTERNAL_ERROR", "Failed to create album.");
+    return jsonError(
+      500,
+      "INTERNAL_ERROR",
+      error instanceof Error ? `Failed to create album: ${error.message}` : "Failed to create album.",
+    );
   }
 }

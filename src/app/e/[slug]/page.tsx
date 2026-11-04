@@ -4,6 +4,8 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Film,
   Heart,
@@ -11,6 +13,8 @@ import {
   Loader2,
   Lock,
   Mic,
+  Pause,
+  Play,
   RefreshCw,
   RotateCcw,
   ScanFace,
@@ -31,7 +35,13 @@ import {
   FaceScannerModal,
   GUEST_FACE_EMBEDDING_STORAGE_KEY,
 } from "@/components/FaceScannerModal";
-import { DEMO_ALBUM_ID } from "@/lib/demo-data";
+import {
+  FieldError,
+  ToastRegion,
+  useModalAccessibility,
+  useToastQueue,
+} from "@/components/ui/Feedback";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   computeClientDifferenceHash,
   extractAllFacesFromFile,
@@ -40,12 +50,17 @@ import {
   classifyMimeType,
   detectMimeFromMagicBytes,
   formatBytes,
-   hexToBytes,
+  hexToBytes,
   inferMimeTypeFromFileName,
   MAX_CONCURRENT_UPLOADS,
   normaliseMimeType,
   readFileMagicBytesHex,
 } from "@/lib/media-config";
+import {
+  validateGuestContactField,
+  validateGuestNameField,
+  validateTableNumberField,
+} from "@/lib/validation/forms";
 import type {
   CompleteUploadResponse,
   GuestEventPayload,
@@ -71,6 +86,7 @@ import {
 } from "@/types/flow";
 
 const GUEST_NAME_STORAGE_KEY = "guest_display_name";
+const GUEST_CONTACT_STORAGE_KEY = "guest_contact_email";
 const FLOW_STATE_STORAGE_PREFIX = "wqr_flow_state_v2_";
 
 type UploadStatus = "queued" | "uploading" | "indexing_faces" | "completed" | "error";
@@ -144,7 +160,6 @@ function readValidatedFlowState(albumId: string): Set<FlowStepType> {
   try {
     const raw = window.localStorage.getItem(`${FLOW_STATE_STORAGE_PREFIX}${albumId}`);
     if (!raw) {
-      // Check legacy boolean key
       if (window.localStorage.getItem(`completed_flow_${albumId}`) === "true") {
         return new Set<FlowStepType>([
           "welcome_splash",
@@ -214,8 +229,8 @@ function formatCountdown(targetIso: string, nowMs: number): string {
 }
 
 /**
- * Uploads a `File` or `Blob` directly to Cloudflare R2 using `XMLHttpRequest`
- * so we receive granular byte-level upload progress without proxying through Next.js.
+ * Uploads a `File` or `Blob` directly to Cloudflare R2 (or local signed storage)
+ * using `XMLHttpRequest` so we receive granular byte-level upload progress.
  */
 function putFileToR2WithProgress(
   uploadUrl: string,
@@ -240,12 +255,14 @@ function putFileToR2WithProgress(
         onProgress(100);
         resolve();
       } else {
-        reject(new Error(`Cloudflare R2 upload failed with status ${xhr.status}.`));
+        reject(new Error(`Storage upload failed with status ${xhr.status}.`));
       }
     };
 
     xhr.onerror = () =>
-      reject(new Error("Network reception interrupted while uploading. Tap Retry when back online."));
+      reject(
+        new Error("Network reception interrupted while uploading. Tap Retry when back online."),
+      );
     xhr.onabort = () => reject(new Error("Upload was cancelled."));
     xhr.send(file);
   });
@@ -273,6 +290,7 @@ export default function GuestEventPage() {
 function GuestEventPageContent() {
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" ? params.slug : "";
+  const { toasts, pushToast, dismissToast } = useToastQueue();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -290,14 +308,42 @@ function GuestEventPageContent() {
   const [guestName, setGuestName] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     try {
-      return window.localStorage.getItem(GUEST_NAME_STORAGE_KEY) ?? "";
+      const urlName = new URLSearchParams(window.location.search).get("name")?.trim();
+      if (urlName) return urlName;
+      return window.localStorage.getItem(GUEST_NAME_STORAGE_KEY)?.trim() ?? "";
     } catch {
       return "";
     }
   });
-  const [guestContact, setGuestContact] = useState<string>("");
-  const [contactConsent, setContactConsent] = useState<boolean>(false);
+
+  const [guestContact, setGuestContact] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlContact = (params.get("email") || params.get("contact") || params.get("phone"))?.trim();
+      if (urlContact) return urlContact;
+      return window.localStorage.getItem(GUEST_CONTACT_STORAGE_KEY)?.trim() ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [contactConsent, setContactConsent] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const hasUrlContact = Boolean(params.get("email") || params.get("contact") || params.get("phone"));
+      const hasStoredContact = Boolean(window.localStorage.getItem(GUEST_CONTACT_STORAGE_KEY));
+      return hasUrlContact || hasStoredContact;
+    } catch {
+      return false;
+    }
+  });
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [guestNameFieldError, setGuestNameFieldError] = useState<string | null>(null);
+  const [guestContactFieldError, setGuestContactFieldError] = useState<string | null>(null);
+  const [guestTableFieldError, setGuestTableFieldError] = useState<string | null>(null);
+
   const [guestTable, setGuestTable] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -314,6 +360,12 @@ function GuestEventPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<"all" | MediaCategory>("all");
   const [selectedUploadCategory, setSelectedUploadCategory] = useState<MediaCategory>("general");
   const [lightboxMedia, setLightboxMedia] = useState<Media | null>(null);
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
+
+  // Live Slideshow Modal state
+  const [isSlideshowOpen, setIsSlideshowOpen] = useState<boolean>(false);
+  const [slideshowIndex, setSlideshowIndex] = useState<number>(0);
+  const [slideshowPlaying, setSlideshowPlaying] = useState<boolean>(true);
 
   // Biometric face matching — strictly ephemeral in-memory state (never persisted to localStorage)
   const [isFaceScannerOpen, setIsFaceScannerOpen] = useState<boolean>(false);
@@ -326,9 +378,8 @@ function GuestEventPageContent() {
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const queueRef = useRef<UploadQueueItem[]>([]);
   const activeWorkersRef = useRef<number>(0);
-  const demoBlobUrlsRef = useRef<Set<string>>(new Set());
 
-  // Voice Toasts (MediaRecorder API)
+  // Voice Toasts (MediaRecorder API + File fallback)
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
@@ -339,6 +390,11 @@ function GuestEventPageContent() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
+
+  // Modal accessibility refs
+  const voiceModalRef = useRef<HTMLDivElement | null>(null);
+  const lightboxModalRef = useRef<HTMLDivElement | null>(null);
+  const slideshowModalRef = useRef<HTMLDivElement | null>(null);
 
   // Purge any legacy localStorage biometric vector on mount
   useEffect(() => {
@@ -351,17 +407,12 @@ function GuestEventPageContent() {
 
   // Revoke all temporary ObjectURLs on unmount to prevent mobile Safari/Chrome memory leaks
   useEffect(() => {
-    const demoUrls = demoBlobUrlsRef.current;
     return () => {
       for (const item of queueRef.current) {
         if (item.previewUrl) {
           URL.revokeObjectURL(item.previewUrl);
         }
       }
-      for (const url of demoUrls) {
-        URL.revokeObjectURL(url);
-      }
-      demoUrls.clear();
     };
   }, []);
 
@@ -370,6 +421,36 @@ function GuestEventPageContent() {
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
+  }, []);
+
+  // Pre-fill guest info if the user has an active session in Supabase Auth
+  useEffect(() => {
+    let active = true;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      void supabase.auth.getUser().then(({ data }) => {
+        if (!active || !data?.user) return;
+        const user = data.user;
+        const authEmail = user.email?.trim() || "";
+        const authName =
+          (user.user_metadata?.full_name as string | undefined)?.trim() ||
+          (user.user_metadata?.name as string | undefined)?.trim() ||
+          "";
+
+        if (authEmail) {
+          setGuestContact((prev) => prev.trim() || authEmail);
+          setContactConsent(true);
+        }
+        if (authName) {
+          setGuestName((prev) => prev.trim() || authName);
+        }
+      });
+    } catch {
+      // Ignore if client is unconfigured
+    }
+    return () => {
+      active = false;
+    };
   }, []);
 
   const fetchEventData = useCallback(async () => {
@@ -395,6 +476,24 @@ function GuestEventPageContent() {
       setLockReason(data.lockReason);
       setMyUploads(data.myUploads);
       setGuestSessionId(data.guestSessionId);
+
+      // Pre-fill guestbook sign-in information from verified registration or demo
+      if (data.registration) {
+        if (data.registration.guestName) {
+          setGuestName((prev) => prev.trim() || data.registration!.guestName!);
+        }
+        if (data.registration.contact) {
+          setGuestContact((prev) => prev.trim() || data.registration!.contact!);
+          setContactConsent(true);
+        }
+        if (data.registration.tableNumber) {
+          setGuestTable((prev) => prev.trim() || data.registration!.tableNumber!);
+        }
+      } else if (data.album.slug === "demo-wedding") {
+        setGuestName((prev) => prev.trim() || "Elena Rossi");
+        setGuestContact((prev) => prev.trim() || "elena.rossi@example.com");
+        setContactConsent(true);
+      }
 
       // Default to "my_uploads" if face recognition is disabled or gallery is locked
       if (!data.album.flow_config.features.enableFaceRecognition || data.isGalleryLocked) {
@@ -478,13 +577,21 @@ function GuestEventPageContent() {
           );
         }
         setFaceMatches(data.matches);
+        pushToast(
+          data.matches.length > 0
+            ? `Unlocked ${data.matches.length} photo(s) featuring your face`
+            : "Biometric scan complete — no matching photos uploaded yet",
+          data.matches.length > 0 ? "success" : "info",
+        );
       } catch (err) {
-        setFaceMatchError(err instanceof Error ? err.message : "Face search failed.");
+        const msg = err instanceof Error ? err.message : "Face search failed.";
+        setFaceMatchError(msg);
+        pushToast(msg, "error");
       } finally {
         setIsMatchingFaces(false);
       }
     },
-    [],
+    [pushToast],
   );
 
   useEffect(() => {
@@ -511,7 +618,6 @@ function GuestEventPageContent() {
               embeddings,
             }),
           });
-          // If the guest already scanned their selfie, re-run face match so their newly uploaded selfie/group photo appears!
           if (faceEmbedding) {
             void runFaceSearch(faceEmbedding, currentAlbumId);
           }
@@ -530,13 +636,16 @@ function GuestEventPageContent() {
     setUploadQueue([...queueRef.current]);
   }, []);
 
-  const revokeQueueItemPreview = useCallback((id: string) => {
-    const target = queueRef.current.find((i) => i.id === id);
-    if (target?.previewUrl) {
-      URL.revokeObjectURL(target.previewUrl);
-      updateQueueItem(id, { previewUrl: null });
-    }
-  }, [updateQueueItem]);
+  const revokeQueueItemPreview = useCallback(
+    (id: string) => {
+      const target = queueRef.current.find((i) => i.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+        updateQueueItem(id, { previewUrl: null });
+      }
+    },
+    [updateQueueItem],
+  );
 
   const processSingleUpload = useCallback(
     async (item: UploadQueueItem) => {
@@ -570,47 +679,8 @@ function GuestEventPageContent() {
         }
 
         const effectiveMime = detectedMagic.mimeType;
-        const mediaType = detectedMagic.mediaType;
 
-        // Demo mode simulation for `/e/demo-wedding`
-        if (album.id === DEMO_ALBUM_ID) {
-          await new Promise((r) => window.setTimeout(r, 400));
-          updateQueueItem(item.id, { progress: 65 });
-          const clientPhash =
-            mediaType === "photo" ? await computeClientDifferenceHash(item.file) : null;
-          const demoUrl = URL.createObjectURL(item.file);
-          demoBlobUrlsRef.current.add(demoUrl);
-
-          const demoItem: Media = {
-            id: crypto.randomUUID(),
-            album_id: album.id,
-            file_key: `albums/${album.id}/${crypto.randomUUID()}.jpg`,
-            file_url: demoUrl,
-            media_type: mediaType,
-            mime_type: effectiveMime,
-            size_bytes: item.file.size,
-            guest_name: guestName || "Wedding Guest",
-            guest_session_id: guestSessionId || "demo-session",
-            category: selectedUploadCategory,
-            phash: clientPhash,
-            is_hidden: album.flow_config.features.requireModerationBeforePublic,
-            created_at: new Date().toISOString(),
-          };
-          if (mediaType === "photo" && album.flow_config.features.enableFaceRecognition) {
-            updateQueueItem(item.id, { status: "indexing_faces", progress: 92 });
-            try {
-              await extractAllFacesFromFile(item.file);
-            } catch {
-              // Ignore in demo
-            }
-          }
-          revokeQueueItemPreview(item.id);
-          updateQueueItem(item.id, { status: "completed", progress: 100, mediaId: demoItem.id });
-          setMyUploads((prev) => [demoItem, ...prev]);
-          return;
-        }
-
-        // 2. Request Presigned R2 PUT URL (< 300s TTL, magic-byte & tier validated)
+        // 2. Request Presigned R2 PUT URL (< 300s TTL, magic-byte & size validated)
         const presignRes = await fetch("/api/upload/presign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -689,6 +759,14 @@ function GuestEventPageContent() {
         });
 
         setMyUploads((prev) => [createdMedia, ...prev]);
+        pushToast(
+          createdMedia.media_type === "audio"
+            ? "Voice toast uploaded successfully"
+            : createdMedia.media_type === "video"
+              ? "Video uploaded to wedding vault"
+              : "Photo uploaded to wedding vault",
+          "success",
+        );
 
         // 6. Asynchronous background WebGL face extraction (never blocks upload workers!)
         if (
@@ -698,11 +776,13 @@ function GuestEventPageContent() {
           void indexPhotoFacesInBackground(item.file, createdMedia, album.id);
         }
       } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed.";
         updateQueueItem(item.id, {
           status: "error",
           retryCount: item.retryCount + 1,
-          errorMessage: err instanceof Error ? err.message : "Upload failed.",
+          errorMessage: msg,
         });
+        pushToast(msg, "error");
       }
     },
     [
@@ -710,6 +790,7 @@ function GuestEventPageContent() {
       guestName,
       guestSessionId,
       indexPhotoFacesInBackground,
+      pushToast,
       revokeQueueItemPreview,
       selectedUploadCategory,
       updateQueueItem,
@@ -842,6 +923,30 @@ function GuestEventPageContent() {
       if (!album) return;
       setRegistrationError(null);
 
+      const regSettings =
+        currentStep && currentStep.type === "guest_registration"
+          ? (currentStep as GuestRegistrationStep).settings
+          : null;
+      const isMandatory = regSettings?.mandatory ?? false;
+
+      const nameErr = regSettings?.askName
+        ? validateGuestNameField(guestName, isMandatory)
+        : null;
+      const contactErr = regSettings?.askContact
+        ? validateGuestContactField(guestContact, isMandatory)
+        : null;
+      const tableErr = regSettings?.askTableNumber
+        ? validateTableNumberField(guestTable)
+        : null;
+
+      setGuestNameFieldError(nameErr);
+      setGuestContactFieldError(contactErr);
+      setGuestTableFieldError(tableErr);
+
+      if (nameErr || contactErr || tableErr) {
+        return;
+      }
+
       const trimmedContact = guestContact.trim();
       if (trimmedContact && !contactConsent) {
         setRegistrationError(
@@ -854,6 +959,9 @@ function GuestEventPageContent() {
       try {
         if (guestName.trim()) {
           window.localStorage.setItem(GUEST_NAME_STORAGE_KEY, guestName.trim());
+        }
+        if (trimmedContact) {
+          window.localStorage.setItem(GUEST_CONTACT_STORAGE_KEY, trimmedContact);
         }
         const res = await fetch(`/api/events/${encodeURIComponent(album.slug)}`, {
           method: "POST",
@@ -871,11 +979,12 @@ function GuestEventPageContent() {
           const errData = (await res.json()) as { error?: { message?: string } };
           throw new Error(errData.error?.message || "Could not save guest registration.");
         }
+        pushToast("Guestbook sign-in saved", "success");
         advanceOnboardingStep();
       } catch (err) {
-        setRegistrationError(
-          err instanceof Error ? err.message : "Could not save registration.",
-        );
+        const msg = err instanceof Error ? err.message : "Could not save registration.";
+        setRegistrationError(msg);
+        pushToast(msg, "error");
       } finally {
         setIsRegistering(false);
       }
@@ -884,10 +993,12 @@ function GuestEventPageContent() {
       advanceOnboardingStep,
       album,
       contactConsent,
+      currentStep,
       guestContact,
       guestName,
       guestSessionId,
       guestTable,
+      pushToast,
     ],
   );
 
@@ -895,6 +1006,7 @@ function GuestEventPageContent() {
   const handleDeleteOwnUpload = useCallback(
     async (mediaId: string) => {
       if (!album) return;
+      setDeletingMediaId(mediaId);
       try {
         const res = await fetch(`/api/events/${encodeURIComponent(album.slug)}`, {
           method: "DELETE",
@@ -902,23 +1014,23 @@ function GuestEventPageContent() {
           credentials: "same-origin",
           body: JSON.stringify({ mediaId, guestSessionId: guestSessionId || undefined }),
         });
-        if (res.ok) {
-          setMyUploads((prev) => {
-            const removed = prev.find((m) => m.id === mediaId);
-            if (removed && demoBlobUrlsRef.current.has(removed.file_url)) {
-              URL.revokeObjectURL(removed.file_url);
-              demoBlobUrlsRef.current.delete(removed.file_url);
-            }
-            return prev.filter((m) => m.id !== mediaId);
-          });
-          setFaceMatches((prev) => prev.filter((m) => m.media_id !== mediaId));
-          if (lightboxMedia?.id === mediaId) setLightboxMedia(null);
+        if (!res.ok) {
+          throw new Error("Could not remove upload.");
         }
+        setMyUploads((prev) => prev.filter((m) => m.id !== mediaId));
+        setFaceMatches((prev) => prev.filter((m) => m.media_id !== mediaId));
+        if (lightboxMedia?.id === mediaId) setLightboxMedia(null);
+        pushToast("Upload removed from wedding vault", "info");
       } catch (err) {
-        console.error("Failed to delete upload:", err);
+        pushToast(
+          err instanceof Error ? err.message : "Failed to delete upload.",
+          "error",
+        );
+      } finally {
+        setDeletingMediaId(null);
       }
     },
-    [album, guestSessionId, lightboxMedia],
+    [album, guestSessionId, lightboxMedia, pushToast],
   );
 
   // Voice Toast Recorder (MediaRecorder API)
@@ -942,12 +1054,40 @@ function GuestEventPageContent() {
     setIsRecordingVoice(false);
   }, []);
 
+  const closeVoiceModal = useCallback(() => {
+    if (isUploadingVoice) return;
+    stopVoiceRecording();
+    cleanupRecordedVoicePreview();
+    setVoiceError(null);
+    setIsVoiceModalOpen(false);
+  }, [cleanupRecordedVoicePreview, isUploadingVoice, stopVoiceRecording]);
+
+  useModalAccessibility({
+    isOpen: isVoiceModalOpen,
+    onClose: closeVoiceModal,
+    containerRef: voiceModalRef,
+  });
+
+  useModalAccessibility({
+    isOpen: Boolean(lightboxMedia),
+    onClose: () => setLightboxMedia(null),
+    containerRef: lightboxModalRef,
+  });
+
+  useModalAccessibility({
+    isOpen: isSlideshowOpen,
+    onClose: () => setIsSlideshowOpen(false),
+    containerRef: slideshowModalRef,
+  });
+
   const startVoiceRecording = useCallback(async () => {
     setVoiceError(null);
     cleanupRecordedVoicePreview();
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setVoiceError("Audio recording is not supported in this browser.");
+      setVoiceError(
+        "Live microphone recording is unavailable in this browser. You can upload an audio memo file below instead.",
+      );
       return;
     }
 
@@ -1015,6 +1155,7 @@ function GuestEventPageContent() {
       enqueueFiles([file]);
       cleanupRecordedVoicePreview();
       setIsVoiceModalOpen(false);
+      setActiveTab("my_uploads");
     } catch (err) {
       setVoiceError(err instanceof Error ? err.message : "Failed to queue voice toast.");
     } finally {
@@ -1048,6 +1189,19 @@ function GuestEventPageContent() {
     if (selectedCategory === "all") return source;
     return source.filter((item) => item.category === selectedCategory);
   }, [activeTab, album?.id, faceMatches, myUploads, selectedCategory]);
+
+  const photoSlides = useMemo(
+    () => displayedMedia.filter((m) => m.media_type === "photo"),
+    [displayedMedia],
+  );
+
+  useEffect(() => {
+    if (!isSlideshowOpen || !slideshowPlaying || photoSlides.length <= 1) return;
+    const id = window.setInterval(() => {
+      setSlideshowIndex((prev) => (prev + 1) % photoSlides.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [isSlideshowOpen, photoSlides.length, slideshowPlaying]);
 
   if (loading) {
     const fallbackVars = buildThemeCssVariables(DEFAULT_THEME_CONFIG) as React.CSSProperties;
@@ -1087,14 +1241,16 @@ function GuestEventPageContent() {
     return (
       <div
         style={themeStyle}
-        className={`wqr-ambient-surface flex min-h-screen flex-col justify-between px-6 py-10 ${fontClass}`}
+        className={`wqr-ambient-surface wqr-safe-top wqr-safe-pb-bar flex min-h-screen flex-col justify-between px-4 py-8 sm:px-6 sm:py-10 ${fontClass}`}
       >
+        <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+
         {/* Top bar with progress indicators */}
-        <header className="mx-auto flex w-full max-w-md items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-widest opacity-70">
+        <header className="mx-auto flex w-full max-w-md items-center justify-between gap-2">
+          <span className="truncate text-xs font-medium uppercase tracking-widest opacity-70">
             {album.title}
           </span>
-          <div className="flex items-center gap-1.5" aria-label="Onboarding progress">
+          <div className="flex shrink-0 items-center gap-1.5" aria-label="Onboarding progress">
             {enabledSteps.map((s, idx) => (
               <span
                 key={s.id}
@@ -1124,7 +1280,7 @@ function GuestEventPageContent() {
             ) : null}
 
             {theme.coverMediaUrl ? (
-              <div className="mb-8 aspect-[4/5] w-full overflow-hidden rounded-3xl shadow-xl">
+              <div className="mb-8 aspect-[4/5] w-full overflow-hidden rounded-3xl bg-stone-200/50 shadow-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={theme.coverMediaUrl}
@@ -1150,7 +1306,7 @@ function GuestEventPageContent() {
                   })
                 : "Wedding Celebration"}
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="mt-3 break-words text-3xl font-semibold tracking-tight sm:text-4xl">
               {(currentStep as WelcomeSplashStep).settings.headline || album.title}
             </h1>
             <p className="mt-4 text-sm leading-relaxed opacity-80">
@@ -1160,8 +1316,11 @@ function GuestEventPageContent() {
             <button
               type="button"
               onClick={advanceOnboardingStep}
-              style={{ backgroundColor: theme.primaryColor }}
-              className={`mt-8 flex min-h-12 w-full items-center justify-center px-8 py-4 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 ${btnRadius}`}
+              style={{
+                backgroundColor: theme.primaryColor,
+                color: "var(--event-primary-fg)",
+              }}
+              className={`mt-8 flex min-h-12 w-full items-center justify-center px-8 py-4 text-sm font-semibold shadow-lg transition hover:opacity-95 ${btnRadius}`}
             >
               {(currentStep as WelcomeSplashStep).settings.ctaText}
             </button>
@@ -1171,7 +1330,7 @@ function GuestEventPageContent() {
         {/* Step 2: Guest Registration */}
         {currentStep.type === "guest_registration" ? (
           <main key="step-register" className="wqr-step-enter mx-auto my-auto w-full max-w-md">
-            <div className="rounded-3xl border border-stone-200/70 bg-white/85 p-7 shadow-xl backdrop-blur-md">
+            <div className="rounded-3xl border border-stone-200/70 bg-white/95 p-6 shadow-xl backdrop-blur-md sm:p-7">
               <div className="flex items-center gap-2.5">
                 <UserCheck style={{ color: theme.primaryColor }} className="h-5 w-5" />
                 <h1 className="text-xl font-semibold text-stone-900">
@@ -1184,35 +1343,82 @@ function GuestEventPageContent() {
 
               <form
                 onSubmit={(e) => void handleGuestRegistrationSubmit(e)}
+                noValidate
                 className="mt-6 space-y-4 text-stone-900"
               >
                 {(currentStep as GuestRegistrationStep).settings.askName ? (
                   <div>
-                    <label className="block text-xs font-medium text-stone-700">Your Name</label>
+                    <label
+                      htmlFor="guest-reg-name"
+                      className="block text-xs font-medium text-stone-700"
+                    >
+                      Your Name
+                    </label>
                     <input
+                      id="guest-reg-name"
                       type="text"
                       required={(currentStep as GuestRegistrationStep).settings.mandatory}
                       value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
+                      aria-invalid={Boolean(guestNameFieldError)}
+                      aria-describedby={guestNameFieldError ? "guest-reg-name-error" : undefined}
+                      onChange={(e) => {
+                        setGuestName(e.target.value);
+                        if (guestNameFieldError) {
+                          setGuestNameFieldError(
+                            validateGuestNameField(
+                              e.target.value,
+                              (currentStep as GuestRegistrationStep).settings.mandatory,
+                            ),
+                          );
+                        }
+                      }}
                       placeholder="e.g. Elena Rossi"
-                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2"
+                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
                     />
+                    <FieldError id="guest-reg-name-error" message={guestNameFieldError} />
                   </div>
                 ) : null}
 
                 {(currentStep as GuestRegistrationStep).settings.askContact ? (
                   <div>
-                    <label className="block text-xs font-medium text-stone-700">
+                    <label
+                      htmlFor="guest-reg-contact"
+                      className="block text-xs font-medium text-stone-700"
+                    >
                       {(currentStep as GuestRegistrationStep).settings.contactLabel}
                     </label>
                     <input
+                      id="guest-reg-contact"
                       type="text"
                       required={(currentStep as GuestRegistrationStep).settings.mandatory}
                       value={guestContact}
-                      onChange={(e) => setGuestContact(e.target.value)}
+                      aria-invalid={Boolean(guestContactFieldError)}
+                      aria-describedby={
+                        guestContactFieldError ? "guest-reg-contact-error" : undefined
+                      }
+                      onChange={(e) => {
+                        setGuestContact(e.target.value);
+                        if (guestContactFieldError) {
+                          setGuestContactFieldError(
+                            validateGuestContactField(
+                              e.target.value,
+                              (currentStep as GuestRegistrationStep).settings.mandatory,
+                            ),
+                          );
+                        }
+                      }}
+                      onBlur={() =>
+                        setGuestContactFieldError(
+                          validateGuestContactField(
+                            guestContact,
+                            (currentStep as GuestRegistrationStep).settings.mandatory,
+                          ),
+                        )
+                      }
                       placeholder="+1 555 234 5678 or you@email.com"
-                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2"
+                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
                     />
+                    <FieldError id="guest-reg-contact-error" message={guestContactFieldError} />
                     {guestContact.trim().length > 0 ? (
                       <label className="mt-2.5 flex min-h-12 cursor-pointer items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50 p-3 text-[11px] leading-relaxed text-stone-600">
                         <input
@@ -1232,21 +1438,31 @@ function GuestEventPageContent() {
 
                 {(currentStep as GuestRegistrationStep).settings.askTableNumber ? (
                   <div>
-                    <label className="block text-xs font-medium text-stone-700">
+                    <label
+                      htmlFor="guest-reg-table"
+                      className="block text-xs font-medium text-stone-700"
+                    >
                       Table Number (Optional)
                     </label>
                     <input
+                      id="guest-reg-table"
                       type="text"
                       value={guestTable}
-                      onChange={(e) => setGuestTable(e.target.value)}
+                      aria-invalid={Boolean(guestTableFieldError)}
+                      aria-describedby={guestTableFieldError ? "guest-reg-table-error" : undefined}
+                      onChange={(e) => {
+                        setGuestTable(e.target.value);
+                        setGuestTableFieldError(validateTableNumberField(e.target.value));
+                      }}
                       placeholder="Table 7"
-                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2"
+                      className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
                     />
+                    <FieldError id="guest-reg-table-error" message={guestTableFieldError} />
                   </div>
                 ) : null}
 
                 {registrationError ? (
-                  <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">
                     {registrationError}
                   </p>
                 ) : null}
@@ -1254,8 +1470,11 @@ function GuestEventPageContent() {
                 <button
                   type="submit"
                   disabled={isRegistering}
-                  style={{ backgroundColor: theme.primaryColor }}
-                  className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50 ${btnRadius}`}
+                  style={{
+                    backgroundColor: theme.primaryColor,
+                    color: "var(--event-primary-fg)",
+                  }}
+                  className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold shadow-md transition hover:opacity-95 disabled:opacity-50 ${btnRadius}`}
                 >
                   {isRegistering ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {(currentStep as GuestRegistrationStep).settings.submitText}
@@ -1281,7 +1500,7 @@ function GuestEventPageContent() {
             key="step-biometric"
             className="wqr-step-enter mx-auto my-auto w-full max-w-md text-center"
           >
-            <div className="rounded-3xl border border-stone-200/70 bg-white/90 p-8 text-stone-900 shadow-xl backdrop-blur-md">
+            <div className="rounded-3xl border border-stone-200/70 bg-white/95 p-7 text-stone-900 shadow-xl backdrop-blur-md sm:p-8">
               <div
                 style={{ backgroundColor: `${theme.primaryColor}18` }}
                 className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
@@ -1307,8 +1526,11 @@ function GuestEventPageContent() {
               <button
                 type="button"
                 onClick={() => setIsFaceScannerOpen(true)}
-                style={{ backgroundColor: theme.primaryColor }}
-                className={`mt-6 flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 ${btnRadius}`}
+                style={{
+                  backgroundColor: theme.primaryColor,
+                  color: "var(--event-primary-fg)",
+                }}
+                className={`mt-6 flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold shadow-lg transition hover:opacity-95 ${btnRadius}`}
               >
                 <Camera className="h-4 w-4" />
                 {(currentStep as BiometricOptInStep).settings.ctaScanText}
@@ -1337,7 +1559,7 @@ function GuestEventPageContent() {
         ) : null}
 
         <footer className="mx-auto text-center text-[11px] opacity-55">
-          Powered by Wedding QR Studio · Private Biometric Sharing
+          Powered by Lumina · Private Biometric Sharing
         </footer>
       </div>
     );
@@ -1356,13 +1578,23 @@ function GuestEventPageContent() {
     .filter(Boolean)
     .join(",");
 
+  const activeSlide = photoSlides[slideshowIndex] ?? photoSlides[0] ?? null;
+
   return (
-    <div style={themeStyle} className={`wqr-ambient-surface min-h-screen pb-24 ${fontClass}`}>
+    <div
+      style={themeStyle}
+      className={`wqr-ambient-surface wqr-safe-pb-bar min-h-screen pb-24 ${fontClass}`}
+    >
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+
       {/* Offline Reception Banner */}
       {!isOnline ? (
-        <div className="bg-amber-900 px-4 py-2.5 text-center text-xs font-medium text-amber-50">
+        <div
+          role="status"
+          className="bg-amber-900 px-4 py-2.5 text-center text-xs font-medium text-amber-50"
+        >
           <span className="inline-flex items-center gap-2">
-            <WifiOff className="h-4 w-4" />
+            <WifiOff className="h-4 w-4 shrink-0" />
             Weak venue reception detected — queued uploads will automatically resume as soon as your
             connection returns.
           </span>
@@ -1370,10 +1602,10 @@ function GuestEventPageContent() {
       ) : null}
 
       {/* Hero Header */}
-      <header className="border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-65">
+      <header className="wqr-safe-top border-b border-stone-200/70 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-600">
               {album.event_date
                 ? new Date(album.event_date).toLocaleDateString(undefined, {
                     month: "short",
@@ -1382,20 +1614,39 @@ function GuestEventPageContent() {
                   })
                 : "Private Wedding Vault"}
             </p>
-            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h1 className="mt-0.5 break-words text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
               {album.title}
             </h1>
             {mainHubStep?.settings.welcomeBanner ? (
-              <p className="mt-1 text-xs opacity-75">{mainHubStep.settings.welcomeBanner}</p>
+              <p className="mt-1 text-xs text-stone-600">{mainHubStep.settings.welcomeBanner}</p>
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {features.enableLiveSlideshow && photoSlides.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSlideshowIndex(0);
+                  setSlideshowPlaying(true);
+                  setIsSlideshowOpen(true);
+                }}
+                style={{
+                  backgroundColor: theme.primaryColor,
+                  color: "var(--event-primary-fg)",
+                }}
+                className={`inline-flex min-h-12 items-center gap-1.5 px-4 py-2.5 text-xs font-semibold shadow-xs transition hover:opacity-95 ${btnRadius}`}
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                <span>Live Slideshow ({photoSlides.length})</span>
+              </button>
+            ) : null}
+
             {enabledSteps.length > 1 ? (
               <button
                 type="button"
                 onClick={() => setActiveStepIndex(0)}
-                className={`flex min-h-12 items-center gap-1.5 border border-stone-300/80 bg-white/95 px-4 py-2.5 text-xs font-medium text-stone-700 shadow-2xs transition hover:bg-stone-100 ${btnRadius}`}
+                className={`inline-flex min-h-12 items-center gap-1.5 border border-stone-300/80 bg-white/95 px-4 py-2.5 text-xs font-medium text-stone-700 shadow-2xs transition hover:bg-stone-100 ${btnRadius}`}
                 title="Replay Welcome & Sign-In Flow"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1408,11 +1659,12 @@ function GuestEventPageContent() {
 
       <main className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         {/* Upload Action Card */}
-        <section className="rounded-3xl border border-stone-200/80 bg-white/90 p-5 text-stone-900 shadow-sm backdrop-blur-md sm:p-6">
+        <section className="rounded-3xl border border-stone-200/80 bg-white/95 p-5 text-stone-900 shadow-sm backdrop-blur-md sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <input
                 type="text"
+                aria-label="Your name for the couple"
                 value={guestName}
                 onChange={(e) => {
                   setGuestName(e.target.value);
@@ -1423,14 +1675,14 @@ function GuestEventPageContent() {
                   }
                 }}
                 placeholder="Your name (for the couple)"
-                className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:ring-2 sm:w-52"
+                className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700 sm:w-52"
               />
 
               <select
                 value={selectedUploadCategory}
                 onChange={(e) => setSelectedUploadCategory(e.target.value as MediaCategory)}
                 aria-label="Moment category"
-                className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:ring-2 sm:w-auto"
+                className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700 sm:w-auto"
               >
                 <option value="general">Moment: Auto / Candid</option>
                 <option value="getting_ready">Moment: Getting Ready</option>
@@ -1444,10 +1696,13 @@ function GuestEventPageContent() {
             <div className="flex flex-wrap items-center gap-2.5">
               {features.enablePhotoUpload || features.enableVideoUpload ? (
                 <label
-                  style={{ backgroundColor: theme.primaryColor }}
-                  className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 px-5 py-3 text-xs font-semibold text-white shadow-md transition hover:opacity-95 ${btnRadius}`}
+                  style={{
+                    backgroundColor: theme.primaryColor,
+                    color: "var(--event-primary-fg)",
+                  }}
+                  className={`inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 px-5 py-3 text-xs font-semibold shadow-md transition hover:opacity-95 ${btnRadius}`}
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-4 w-4 shrink-0" />
                   <span>{mainHubStep?.settings.uploadCtaText || "Add Photos & Videos"}</span>
                   <input
                     type="file"
@@ -1468,10 +1723,10 @@ function GuestEventPageContent() {
                 <button
                   type="button"
                   onClick={() => setIsVoiceModalOpen(true)}
-                  className={`flex min-h-12 items-center gap-2 border border-stone-300 bg-stone-900 px-4 py-3 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 ${btnRadius}`}
+                  className={`inline-flex min-h-12 items-center gap-2 border border-stone-300 bg-stone-900 px-4 py-3 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 ${btnRadius}`}
                 >
-                  <Mic className="h-4 w-4 text-amber-400" />
-                  Leave Voice Toast
+                  <Mic className="h-4 w-4 shrink-0 text-amber-400" />
+                  <span>Leave Voice Toast</span>
                 </button>
               ) : null}
 
@@ -1479,10 +1734,10 @@ function GuestEventPageContent() {
                 <button
                   type="button"
                   onClick={() => setIsFaceScannerOpen(true)}
-                  className={`flex min-h-12 items-center gap-1.5 border border-stone-300 bg-white px-4 py-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100 ${btnRadius}`}
+                  className={`inline-flex min-h-12 items-center gap-1.5 border border-stone-300 bg-white px-4 py-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100 ${btnRadius}`}
                 >
-                  <ScanFace style={{ color: theme.primaryColor }} className="h-4 w-4" />
-                  {faceEmbedding ? "Rescan My Face" : "Scan Face to Unlock Photos"}
+                  <ScanFace style={{ color: theme.primaryColor }} className="h-4 w-4 shrink-0" />
+                  <span>{faceEmbedding ? "Rescan My Face" : "Scan Face to Unlock Photos"}</span>
                 </button>
               ) : null}
             </div>
@@ -1499,15 +1754,15 @@ function GuestEventPageContent() {
                       ? `${failedUploadCount} upload(s) paused — tap Retry below`
                       : `All ${uploadQueue.length} file(s) uploaded in full resolution`}
                 </span>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{overallUploadProgress}%</span>
                   {failedUploadCount > 0 ? (
                     <button
                       type="button"
                       onClick={handleRetryAllFailed}
-                      className="inline-flex min-h-9 items-center gap-1 rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-amber-500"
+                      className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-500"
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                       Retry All Failed
                     </button>
                   ) : null}
@@ -1515,7 +1770,7 @@ function GuestEventPageContent() {
                     <button
                       type="button"
                       onClick={clearCompletedQueueItems}
-                      className="min-h-9 px-2 text-[11px] text-stone-500 underline hover:text-stone-800"
+                      className="inline-flex min-h-12 items-center rounded-full px-3 py-2 text-xs text-stone-600 underline hover:text-stone-900"
                     >
                       Clear Queue
                     </button>
@@ -1533,13 +1788,13 @@ function GuestEventPageContent() {
                 />
               </div>
 
-              <ul className="mt-3 max-h-56 space-y-2 overflow-y-auto text-xs">
+              <ul className="mt-3 max-h-60 space-y-2 overflow-y-auto text-xs">
                 {uploadQueue.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-stone-700 shadow-2xs"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-stone-700 shadow-2xs"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       {item.previewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -1591,7 +1846,7 @@ function GuestEventPageContent() {
                       {item.status === "error" ? (
                         <div className="flex items-center gap-2">
                           <span
-                            className="max-w-44 truncate text-[11px] text-rose-600"
+                            className="max-w-[160px] truncate text-[11px] text-rose-600"
                             title={item.errorMessage}
                           >
                             {item.errorMessage ?? "Error"}
@@ -1599,7 +1854,7 @@ function GuestEventPageContent() {
                           <button
                             type="button"
                             onClick={() => handleRetryQueueItem(item.id)}
-                            className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-stone-300 bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-800 hover:bg-stone-200"
+                            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-stone-300 bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-stone-200"
                           >
                             <RefreshCw className="h-3 w-3" />
                             Retry
@@ -1623,13 +1878,16 @@ function GuestEventPageContent() {
                 onClick={() => setActiveTab("find_me")}
                 style={
                   activeTab === "find_me"
-                    ? { backgroundColor: theme.primaryColor, color: "#ffffff" }
+                    ? {
+                        backgroundColor: theme.primaryColor,
+                        color: "var(--event-primary-fg)",
+                      }
                     : undefined
                 }
-                className={`flex min-h-12 items-center gap-2 px-5 py-2.5 text-xs font-semibold transition ${btnRadius} ${
+                className={`inline-flex min-h-12 items-center gap-2 px-5 py-2.5 text-xs font-semibold transition ${btnRadius} ${
                   activeTab === "find_me"
                     ? "shadow-xs"
-                    : "bg-white/80 text-stone-700 hover:bg-white"
+                    : "bg-white/85 text-stone-700 hover:bg-white"
                 }`}
               >
                 <ScanFace className="h-4 w-4" />
@@ -1647,13 +1905,16 @@ function GuestEventPageContent() {
               onClick={() => setActiveTab("my_uploads")}
               style={
                 activeTab === "my_uploads"
-                  ? { backgroundColor: theme.primaryColor, color: "#ffffff" }
+                  ? {
+                      backgroundColor: theme.primaryColor,
+                      color: "var(--event-primary-fg)",
+                    }
                   : undefined
               }
-              className={`flex min-h-12 items-center gap-2 px-5 py-2.5 text-xs font-semibold transition ${btnRadius} ${
+              className={`inline-flex min-h-12 items-center gap-2 px-5 py-2.5 text-xs font-semibold transition ${btnRadius} ${
                 activeTab === "my_uploads"
                   ? "shadow-xs"
-                  : "bg-white/80 text-stone-700 hover:bg-white"
+                  : "bg-white/85 text-stone-700 hover:bg-white"
               }`}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -1669,10 +1930,10 @@ function GuestEventPageContent() {
                   key={cat.value}
                   type="button"
                   onClick={() => setSelectedCategory(cat.value)}
-                  className={`min-h-10 rounded-full px-3.5 py-1.5 text-[11px] font-medium transition ${
+                  className={`inline-flex min-h-12 items-center rounded-full px-4 py-2 text-xs font-medium transition ${
                     selectedCategory === cat.value
                       ? "bg-stone-900 text-white"
-                      : "bg-white/75 text-stone-700 hover:bg-white"
+                      : "bg-white/85 text-stone-700 hover:bg-white"
                   }`}
                 >
                   {cat.label}
@@ -1684,7 +1945,7 @@ function GuestEventPageContent() {
 
         {/* Disposable Camera Countdown / Private Album State */}
         {isGalleryLocked && activeTab === "find_me" ? (
-          <section className="mt-8 rounded-3xl border border-stone-200/80 bg-white/90 p-10 text-center text-stone-900 shadow-sm backdrop-blur-md">
+          <section className="mt-8 rounded-3xl border border-stone-200/80 bg-white/95 p-8 text-center text-stone-900 shadow-sm backdrop-blur-md sm:p-10">
             <div
               style={{ backgroundColor: `${theme.primaryColor}1a` }}
               className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
@@ -1732,7 +1993,7 @@ function GuestEventPageContent() {
 
         {/* BIOMETRIC FACE GATE: Shown when guest is on "find_me" tab and has NOT scanned their face yet */}
         {!isGalleryLocked && activeTab === "find_me" && !faceEmbedding ? (
-          <section className="mt-8 rounded-3xl border border-stone-200/80 bg-white/90 p-8 text-center text-stone-900 shadow-sm backdrop-blur-md sm:p-12">
+          <section className="mt-8 rounded-3xl border border-stone-200/80 bg-white/95 p-8 text-center text-stone-900 shadow-sm backdrop-blur-md sm:p-12">
             <div
               style={{ backgroundColor: `${theme.primaryColor}18` }}
               className="mx-auto flex h-20 w-20 items-center justify-center rounded-full"
@@ -1755,8 +2016,11 @@ function GuestEventPageContent() {
               <button
                 type="button"
                 onClick={() => setIsFaceScannerOpen(true)}
-                style={{ backgroundColor: theme.primaryColor }}
-                className={`flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 ${btnRadius}`}
+                style={{
+                  backgroundColor: theme.primaryColor,
+                  color: "var(--event-primary-fg)",
+                }}
+                className={`flex min-h-12 w-full items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold shadow-lg transition hover:opacity-95 ${btnRadius}`}
               >
                 <Camera className="h-4 w-4" />
                 Scan My Face to View My Photos
@@ -1772,7 +2036,7 @@ function GuestEventPageContent() {
 
         {/* Active Biometric Face Match Banner when `faceEmbedding` is present */}
         {!isGalleryLocked && activeTab === "find_me" && faceEmbedding ? (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/90 p-4 text-xs text-stone-900 shadow-2xs">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/95 p-4 text-xs text-stone-900 shadow-2xs">
             <div className="flex items-center gap-3">
               <ScanFace style={{ color: theme.primaryColor }} className="h-5 w-5 shrink-0" />
               <div>
@@ -1790,12 +2054,15 @@ function GuestEventPageContent() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsFaceScannerOpen(true)}
-                style={{ backgroundColor: theme.primaryColor }}
-                className={`min-h-12 px-4 py-2 text-xs font-semibold text-white ${btnRadius}`}
+                style={{
+                  backgroundColor: theme.primaryColor,
+                  color: "var(--event-primary-fg)",
+                }}
+                className={`inline-flex min-h-12 items-center px-4 py-2 text-xs font-semibold ${btnRadius}`}
               >
                 Rescan Selfie
               </button>
@@ -1805,7 +2072,7 @@ function GuestEventPageContent() {
                   setFaceEmbedding(null);
                   setFaceMatches([]);
                 }}
-                className="min-h-12 px-3 py-2 text-xs font-medium text-stone-500 hover:text-stone-800"
+                className="inline-flex min-h-12 items-center px-3 py-2 text-xs font-medium text-stone-500 hover:text-stone-800"
               >
                 Lock Gallery
               </button>
@@ -1816,13 +2083,22 @@ function GuestEventPageContent() {
         {/* Media Gallery Feed (Rendered ONLY for verified `faceMatches` or `myUploads`) */}
         {(activeTab === "my_uploads" || (!isGalleryLocked && faceEmbedding !== null)) && (
           <section className="mt-6">
-            {displayedMedia.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-stone-300 bg-white/60 p-12 text-center text-stone-800">
+            {isMatchingFaces && activeTab === "find_me" ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {[0, 1, 2].map((idx) => (
+                  <div
+                    key={idx}
+                    className="aspect-square animate-pulse rounded-2xl border border-stone-200 bg-white/80"
+                  />
+                ))}
+              </div>
+            ) : displayedMedia.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-stone-300 bg-white/75 p-12 text-center text-stone-800">
                 <ImageIcon className="mx-auto h-10 w-10 text-stone-400" />
                 <p className="mt-3 text-sm font-semibold">
                   {activeTab === "find_me"
                     ? "No photos matching your face have been uploaded yet"
-                    : "You haven't uploaded any moments from this device yet"}
+                    : "No photos yet—be the first to capture a memory!"}
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   {activeTab === "find_me"
@@ -1857,7 +2133,7 @@ function GuestEventPageContent() {
                         <button
                           type="button"
                           onClick={() => setLightboxMedia(item)}
-                          className="block w-full text-left"
+                          className="block w-full bg-stone-100 text-left"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1865,7 +2141,9 @@ function GuestEventPageContent() {
                             alt="Wedding moment"
                             loading="lazy"
                             className={`w-full object-cover transition duration-300 group-hover:scale-[1.02] ${
-                              theme.galleryLayout === "grid" ? "aspect-square" : "max-h-96"
+                              theme.galleryLayout === "grid"
+                                ? "aspect-square"
+                                : "min-h-48 max-h-96"
                             }`}
                           />
                         </button>
@@ -1887,7 +2165,7 @@ function GuestEventPageContent() {
                       ) : null}
 
                       {item.media_type === "audio" ? (
-                        <div className="flex flex-col justify-between bg-gradient-to-br from-stone-900 to-stone-800 p-5 text-stone-100">
+                        <div className="flex min-h-44 flex-col justify-between bg-gradient-to-br from-stone-900 to-stone-800 p-5 text-stone-100">
                           <div className="flex items-center gap-2 text-amber-400">
                             <Volume2 className="h-5 w-5" />
                             <span className="text-xs font-semibold uppercase tracking-wider">
@@ -1899,12 +2177,12 @@ function GuestEventPageContent() {
                       ) : null}
 
                       {/* Card Footer */}
-                      <div className="flex items-center justify-between px-3.5 py-2.5 text-xs">
-                        <div className="truncate">
+                      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs">
+                        <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">
                             {isMine ? item.guest_name || "My Upload" : "Matched Moment"}
                           </p>
-                          <p className="text-[10px] capitalize text-stone-500">
+                          <p className="truncate text-[10px] capitalize text-stone-500">
                             {item.category.replace("_", " ")}
                             {item.is_hidden ? " · Pending host approval" : ""}
                           </p>
@@ -1913,12 +2191,17 @@ function GuestEventPageContent() {
                         {isMine ? (
                           <button
                             type="button"
+                            disabled={deletingMediaId === item.id}
                             onClick={() => void handleDeleteOwnUpload(item.id)}
-                            className="flex h-12 w-12 items-center justify-center rounded-full text-stone-400 transition hover:bg-rose-50 hover:text-rose-600"
+                            className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                             title="Delete my upload"
                             aria-label="Delete my upload"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deletingMediaId === item.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </button>
                         ) : null}
                       </div>
@@ -1948,21 +2231,26 @@ function GuestEventPageContent() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="voice-toast-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeVoiceModal();
+          }}
         >
-          <div className="w-full max-w-md rounded-3xl border border-stone-800 bg-stone-950 p-6 text-stone-100 shadow-2xl">
-            <div className="flex items-center justify-between">
+          <div
+            ref={voiceModalRef}
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-800 bg-stone-950 p-6 text-stone-100 shadow-2xl"
+          >
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Mic className="h-5 w-5 text-amber-400" />
-                <h2 className="text-base font-semibold">Record a Voice Toast</h2>
+                <h2 id="voice-toast-modal-title" className="text-base font-semibold">
+                  Record a Voice Toast
+                </h2>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  stopVoiceRecording();
-                  cleanupRecordedVoicePreview();
-                  setIsVoiceModalOpen(false);
-                }}
-                className="flex h-12 w-12 items-center justify-center rounded-full text-stone-400 hover:bg-stone-800 hover:text-white"
+                onClick={closeVoiceModal}
+                className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full text-stone-400 hover:bg-stone-800 hover:text-white"
                 aria-label="Close voice recorder"
               >
                 <X className="h-5 w-5" />
@@ -1973,7 +2261,7 @@ function GuestEventPageContent() {
               Leave a heartfelt audio message or marriage advice for the couple.
             </p>
 
-            <div className="my-6 flex flex-col items-center justify-center rounded-2xl border border-stone-800 bg-stone-900/70 p-6">
+            <div className="my-5 flex flex-col items-center justify-center rounded-2xl border border-stone-800 bg-stone-900/70 p-6">
               <div className="font-mono text-3xl font-bold text-amber-400">
                 {formatDuration(recordingSeconds)}
               </div>
@@ -1994,7 +2282,7 @@ function GuestEventPageContent() {
                   <button
                     type="button"
                     onClick={() => void startVoiceRecording()}
-                    className="flex min-h-12 items-center gap-2 rounded-full bg-rose-600 px-6 py-3 text-xs font-semibold text-white shadow-lg transition hover:bg-rose-500"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-rose-600 px-6 py-3 text-xs font-semibold text-white shadow-lg transition hover:bg-rose-500"
                   >
                     <Mic className="h-4 w-4" />
                     Start Recording
@@ -2005,7 +2293,7 @@ function GuestEventPageContent() {
                   <button
                     type="button"
                     onClick={stopVoiceRecording}
-                    className="flex min-h-12 items-center gap-2 rounded-full bg-amber-500 px-6 py-3 text-xs font-semibold text-stone-950 shadow-lg transition hover:bg-amber-400"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-amber-500 px-6 py-3 text-xs font-semibold text-stone-950 shadow-lg transition hover:bg-amber-400"
                   >
                     <Square className="h-4 w-4 fill-current" />
                     Stop Recording
@@ -2017,7 +2305,7 @@ function GuestEventPageContent() {
                     <button
                       type="button"
                       onClick={cleanupRecordedVoicePreview}
-                      className="min-h-12 rounded-full border border-stone-700 px-5 py-2.5 text-xs font-medium text-stone-300 hover:bg-stone-800"
+                      className="inline-flex min-h-12 items-center rounded-full border border-stone-700 px-5 py-2.5 text-xs font-medium text-stone-300 hover:bg-stone-800"
                     >
                       Re-record
                     </button>
@@ -2025,8 +2313,11 @@ function GuestEventPageContent() {
                       type="button"
                       disabled={isUploadingVoice}
                       onClick={() => void handleUploadVoiceToast()}
-                      style={{ backgroundColor: theme.primaryColor }}
-                      className="flex min-h-12 items-center gap-2 rounded-full px-6 py-2.5 text-xs font-semibold text-white shadow-lg disabled:opacity-50"
+                      style={{
+                        backgroundColor: theme.primaryColor,
+                        color: "var(--event-primary-fg)",
+                      }}
+                      className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 py-2.5 text-xs font-semibold shadow-lg disabled:opacity-50"
                     >
                       {isUploadingVoice ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -2039,10 +2330,138 @@ function GuestEventPageContent() {
                 ) : null}
               </div>
 
+              {/* Audio File Picker Fallback for devices where microphone permission is blocked */}
+              {!isRecordingVoice && !recordedAudioUrl ? (
+                <label className="mt-4 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-stone-700 bg-stone-950 px-4 py-2 text-xs font-medium text-stone-300 transition hover:bg-stone-800">
+                  <Upload className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Or Upload Recorded Audio Memo</span>
+                  <input
+                    type="file"
+                    accept="audio/mp4,audio/mpeg,audio/webm,audio/ogg,audio/wav,audio/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        enqueueFiles([file]);
+                        setIsVoiceModalOpen(false);
+                        setActiveTab("my_uploads");
+                        e.target.value = "";
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              ) : null}
+
               {voiceError ? (
-                <p className="mt-3 text-center text-xs text-rose-400">{voiceError}</p>
+                <div
+                  role="alert"
+                  className="mt-4 w-full rounded-xl border border-rose-800/80 bg-rose-950/60 p-3 text-left text-xs text-rose-200"
+                >
+                  <p className="font-semibold text-rose-300">{voiceError}</p>
+                  <ol className="mt-1.5 list-inside list-decimal space-y-1 text-[11px] text-stone-300">
+                    <li>
+                      Tap the lock or microphone icon in your browser&apos;s address bar and set{" "}
+                      <strong>Microphone → Allow</strong>.
+                    </li>
+                    <li>
+                      Or tap <strong>&ldquo;Or Upload Recorded Audio Memo&rdquo;</strong> above to
+                      select a voice memo recorded on your phone.
+                    </li>
+                  </ol>
+                </div>
               ) : null}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Live Slideshow Modal */}
+      {isSlideshowOpen && activeSlide ? (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 p-4 text-white"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Live Wedding Photo Slideshow"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsSlideshowOpen(false);
+          }}
+        >
+          <div
+            ref={slideshowModalRef}
+            className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 pt-2"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
+                {album.title} · Live Slideshow
+              </p>
+              <p className="text-[11px] text-stone-400">
+                Slide {slideshowIndex + 1} of {photoSlides.length}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSlideshowPlaying((p) => !p)}
+                className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-semibold text-white hover:bg-white/25"
+              >
+                {slideshowPlaying ? (
+                  <>
+                    <Pause className="h-4 w-4" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Play
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSlideshowOpen(false)}
+                className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                aria-label="Close slideshow"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative my-auto flex items-center justify-center">
+            {photoSlides.length > 1 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setSlideshowIndex((prev) => (prev - 1 + photoSlides.length) % photoSlides.length)
+                }
+                aria-label="Previous slide"
+                className="absolute left-2 z-10 inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            ) : null}
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeSlide.file_url}
+              alt="Slideshow moment"
+              className="max-h-[76vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+            />
+
+            {photoSlides.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => setSlideshowIndex((prev) => (prev + 1) % photoSlides.length)}
+                aria-label="Next slide"
+                className="absolute right-2 z-10 inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="pb-2 text-center text-xs text-stone-400">
+            {activeSlide.category.replace("_", " ").toUpperCase()}
           </div>
         </div>
       ) : null}
@@ -2051,23 +2470,28 @@ function GuestEventPageContent() {
       {lightboxMedia ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full resolution wedding photo"
           onClick={() => setLightboxMedia(null)}
         >
-          <button
-            type="button"
-            onClick={() => setLightboxMedia(null)}
-            className="absolute top-5 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-            aria-label="Close photo"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxMedia.file_url}
-            alt="Full resolution wedding moment"
-            className="max-h-[88vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div ref={lightboxModalRef} className="relative flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setLightboxMedia(null)}
+              className="fixed top-5 right-5 inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+              aria-label="Close photo"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxMedia.file_url}
+              alt="Full resolution wedding moment"
+              className="max-h-[88vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       ) : null}
     </div>

@@ -7,7 +7,6 @@ import type { NextRequest } from "next/server";
 
 import { jsonError } from "@/lib/api/http";
 import { getAuthenticatedActor, verifyAlbumManagerAccess } from "@/lib/auth";
-import { DEMO_ALBUM_ID, DEMO_FULL_ALBUM, DEMO_MEDIA_ITEMS } from "@/lib/demo-data";
 import { getR2ServerEnv, isR2Configured } from "@/lib/env.server";
 import { getR2Client, readLocalStorageObject } from "@/lib/r2";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -77,7 +76,7 @@ export async function GET(
       : null;
 
   const actor = await getAuthenticatedActor();
-  if (!actor && albumId !== DEMO_ALBUM_ID) {
+  if (!actor) {
     return jsonError(401, "UNAUTHORIZED", "Please sign in to download this album archive.");
   }
 
@@ -85,34 +84,27 @@ export async function GET(
     namespace: "album:zip",
     limit: 6,
     windowSeconds: 60,
-    subject: actor?.userId ?? albumId,
+    subject: actor.userId,
   });
   if (!rateLimit.ok) return rateLimit.response;
 
-  if (actor) {
-    const access = await verifyAlbumManagerAccess(albumId, actor);
-    if (!access.allowed) {
-      return jsonError(403, "FORBIDDEN", "You do not have permission to download this album.");
-    }
+  const access = await verifyAlbumManagerAccess(albumId, actor);
+  if (!access.allowed) {
+    return jsonError(403, "FORBIDDEN", "You do not have permission to download this album.");
   }
 
-  let albumSlug = DEMO_FULL_ALBUM.slug;
+  let albumSlug = "wedding-archive";
   let mediaItems: Pick<
     Media,
     "id" | "file_key" | "file_url" | "media_type" | "guest_name" | "category" | "is_hidden"
   >[] = [];
 
-  if (albumId === DEMO_ALBUM_ID) {
-    mediaItems = DEMO_MEDIA_ITEMS.filter(
-      (m) => !m.is_hidden && (!validCategory || m.category === validCategory),
-    );
-  } else {
-    try {
-      const supabase = await getSupabasePrivilegedClient();
-      const { data: album, error: albumError } = await supabase
-        .from("albums")
-        .select("id, slug")
-        .eq("id", albumId)
+  try {
+    const supabase = await getSupabasePrivilegedClient();
+    const { data: album, error: albumError } = await supabase
+      .from("albums")
+      .select("id, slug")
+      .eq("id", albumId)
         .maybeSingle();
 
       if (albumError || !album) {
@@ -144,7 +136,6 @@ export async function GET(
       console.error("[album:download] setup failed", error);
       return jsonError(500, "INTERNAL_ERROR", "Failed to initialize album download.");
     }
-  }
 
   // Level 0 (STORE) avoids re-compressing JPEG/MP4/WebM, boosting Vercel throughput 8x
   const archive = new ZipArchive({ zlib: { level: 0 } });
@@ -169,7 +160,7 @@ export async function GET(
           { name: "README.txt" },
         );
       } else {
-        const useR2 = albumId !== DEMO_ALBUM_ID && isR2Configured();
+        const useR2 = isR2Configured();
         const r2Env = useR2 ? getR2ServerEnv() : null;
         const r2 = useR2 ? getR2Client() : null;
 

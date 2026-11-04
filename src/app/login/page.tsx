@@ -1,11 +1,18 @@
 "use client";
 
-import { AlertCircle, ArrowRight, Heart, Loader2, Lock, Mail, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { DEMO_ALBUM_ID } from "@/lib/demo-data";
+import { BrandCrest } from "@/components/ui/BrandLogo";
+import { FieldError, ToastRegion, useToastQueue } from "@/components/ui/Feedback";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  validateEmailField,
+  validateEventTitleField,
+  validatePasswordField,
+} from "@/lib/validation/forms";
 
 function resolveNextPath(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -19,33 +26,40 @@ function resolveNextPath(): string {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toasts, pushToast, dismissToast } = useToastQueue();
+
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [fullName, setFullName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    try {
-      const supabase = getSupabaseBrowserClient();
-      void supabase.auth.getUser().then(({ data }) => {
-        if (active && data.user) {
-          window.location.replace(resolveNextPath());
-        }
-      });
-    } catch {
-      // Ignore if env is not configured
-    }
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
+    const nextNameErr =
+      mode === "signup" && fullName.trim().length > 0
+        ? validateEventTitleField(fullName)
+        : null;
+    const nextEmailErr = validateEmailField(email, "Email address");
+    const nextPassErr = validatePasswordField(password, mode === "signup");
+
+    setNameError(nextNameErr);
+    setEmailError(nextEmailErr);
+    setPasswordError(nextPassErr);
+
+    if (nextNameErr || nextEmailErr || nextPassErr) {
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
     setInfoMessage(null);
@@ -60,7 +74,9 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        window.location.assign(targetPath);
+        pushToast("Signed in! Redirecting to your studio…", "success");
+        router.push(targetPath);
+        router.refresh();
         return;
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -72,49 +88,51 @@ export default function LoginPage() {
         });
         if (error) throw error;
         if (data.session) {
-          window.location.assign(targetPath);
+          pushToast("Couple account created! Opening your studio…", "success");
+          router.push(targetPath);
+          router.refresh();
           return;
         } else {
-          setInfoMessage(
-            "Account created! Check your email inbox to confirm your address, then sign in.",
-          );
+          const msg =
+            "Account created! Check your email inbox to confirm your address, then sign in.";
+          setInfoMessage(msg);
+          pushToast("Account created! Please check your email inbox.", "info");
           setMode("signin");
           setLoading(false);
         }
       }
     } catch (err) {
-      setErrorMessage(
+      const msg =
         err instanceof Error
           ? err.message
-          : "Authentication failed. Check your Supabase credentials in .env.local.",
-      );
+          : "Authentication failed. Check your Supabase credentials in .env.local.";
+      setErrorMessage(msg);
+      pushToast(msg, "error");
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-stone-50 px-6 py-12 text-stone-900">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-serif text-xl font-semibold">
-          <Heart className="h-5 w-5 text-amber-700" />
-          <span>Wedding QR Studio</span>
-        </Link>
+    <div className="wqr-safe-top wqr-safe-bottom flex min-h-screen flex-col justify-between bg-stone-50 px-4 py-8 text-stone-900 sm:px-6 sm:py-12">
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+
+      <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/dashboard/${DEMO_ALBUM_ID}`}
-          className="flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-800 shadow-2xs transition hover:bg-stone-100"
+          href="/"
+          className="flex min-h-12 items-center gap-2.5 font-serif text-xl font-semibold tracking-tight transition hover:opacity-90"
         >
-          <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-          Explore Interactive Demo Dashboard
+          <BrandCrest className="h-8 w-8" />
+          <span>Lumina</span>
         </Link>
       </header>
 
-      <main className="mx-auto my-12 w-full max-w-md">
-        <div className="rounded-3xl border border-stone-200 bg-white p-8 shadow-xl">
+      <main className="mx-auto my-8 w-full max-w-md sm:my-12">
+        <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-xl sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-            Couple & Host Portal
+            Lumina · Host Portal
           </p>
           <h1 className="mt-2 font-serif text-3xl font-semibold">
-            {mode === "signin" ? "Welcome Back" : "Create Your Wedding Studio"}
+            {mode === "signin" ? "Welcome Back" : "Create Your Wedding Vault"}
           </h1>
           <p className="mt-2 text-xs leading-relaxed text-stone-500">
             Manage up to 5 wedding events, design 300-DPI table QR cards, moderate uploads, and
@@ -127,8 +145,11 @@ export default function LoginPage() {
               onClick={() => {
                 setMode("signin");
                 setErrorMessage(null);
+                setEmailError(null);
+                setPasswordError(null);
+                setNameError(null);
               }}
-              className={`rounded-full py-2 transition ${
+              className={`min-h-11 rounded-full py-2.5 transition ${
                 mode === "signin" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
               }`}
             >
@@ -139,8 +160,11 @@ export default function LoginPage() {
               onClick={() => {
                 setMode("signup");
                 setErrorMessage(null);
+                setEmailError(null);
+                setPasswordError(null);
+                setNameError(null);
               }}
-              className={`rounded-full py-2 transition ${
+              className={`min-h-11 rounded-full py-2.5 transition ${
                 mode === "signup" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500"
               }`}
             >
@@ -148,60 +172,122 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-4">
+          <form
+            noValidate
+            onSubmit={(e) => void handleSubmit(e)}
+            className="mt-6 space-y-4"
+          >
             {mode === "signup" ? (
               <div>
-                <label className="block text-xs font-medium text-stone-700">Couple Names</label>
+                <label
+                  htmlFor="login-couple-names"
+                  className="block text-xs font-medium text-stone-700"
+                >
+                  Couple Names (Optional)
+                </label>
                 <input
+                  id="login-couple-names"
                   type="text"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  aria-invalid={Boolean(nameError)}
+                  aria-describedby={nameError ? "login-name-error" : undefined}
                   placeholder="Clara & Julian"
-                  className="mt-1.5 w-full rounded-xl border border-stone-300 px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
+                  className={`mt-1.5 min-h-12 w-full rounded-xl border px-3.5 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700 ${
+                    nameError ? "border-rose-400 bg-rose-50/30" : "border-stone-300"
+                  }`}
                 />
+                <FieldError id="login-name-error" message={nameError} />
               </div>
             ) : null}
 
             <div>
-              <label className="block text-xs font-medium text-stone-700">Email Address</label>
+              <label
+                htmlFor="login-email"
+                className="block text-xs font-medium text-stone-700"
+              >
+                Email Address
+              </label>
               <div className="relative mt-1.5">
-                <Mail className="pointer-events-none absolute top-3 left-3.5 h-4 w-4 text-stone-400" />
+                <Mail className="pointer-events-none absolute top-3.5 left-3.5 h-4 w-4 text-stone-400" />
                 <input
+                  id="login-email"
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(null);
+                  }}
+                  onBlur={() => {
+                    if (email.trim()) setEmailError(validateEmailField(email));
+                  }}
+                  aria-invalid={Boolean(emailError)}
+                  aria-describedby={emailError ? "login-email-error" : undefined}
                   placeholder="couple@example.com"
-                  className="w-full rounded-xl border border-stone-300 py-2.5 pr-3.5 pl-10 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
+                  className={`min-h-12 w-full rounded-xl border py-2.5 pr-3.5 pl-10 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700 ${
+                    emailError ? "border-rose-400 bg-rose-50/30" : "border-stone-300"
+                  }`}
                 />
               </div>
+              <FieldError id="login-email-error" message={emailError} />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-700">Password</label>
+              <label
+                htmlFor="login-password"
+                className="block text-xs font-medium text-stone-700"
+              >
+                Password
+              </label>
               <div className="relative mt-1.5">
-                <Lock className="pointer-events-none absolute top-3 left-3.5 h-4 w-4 text-stone-400" />
+                <Lock className="pointer-events-none absolute top-3.5 left-3.5 h-4 w-4 text-stone-400" />
                 <input
+                  id="login-password"
                   type="password"
                   required
                   minLength={6}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-stone-300 py-2.5 pr-3.5 pl-10 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  onBlur={() => {
+                    if (password) {
+                      setPasswordError(validatePasswordField(password, mode === "signup"));
+                    }
+                  }}
+                  aria-invalid={Boolean(passwordError)}
+                  aria-describedby={passwordError ? "login-password-error" : undefined}
+                  placeholder="•••••••• (min. 6 characters)"
+                  className={`min-h-12 w-full rounded-xl border py-2.5 pr-3.5 pl-10 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700 ${
+                    passwordError ? "border-rose-400 bg-rose-50/30" : "border-stone-300"
+                  }`}
                 />
               </div>
+              <FieldError id="login-password-error" message={passwordError} />
             </div>
 
             {errorMessage ? (
-              <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700"
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             ) : null}
 
             {infoMessage ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+              <div
+                role="status"
+                className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"
+              >
                 {infoMessage}
               </div>
             ) : null}
@@ -209,18 +295,31 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-amber-700 px-6 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-amber-800 disabled:opacity-50"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-700 px-6 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-amber-800 disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {mode === "signin" ? "Sign In to Dashboard" : "Create Couple Account"}
+              <span>{mode === "signin" ? "Sign In to Dashboard" : "Create Couple Account"}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </form>
+
+          <div className="mt-6 border-t border-stone-100 pt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                pushToast("Continuing to Studio as Demo Host…", "info");
+                router.push("/dashboard");
+              }}
+              className="text-xs font-medium text-stone-500 transition hover:text-amber-800 hover:underline"
+            >
+              Or preview studio as Demo Host (Clara &amp; Julian) →
+            </button>
+          </div>
         </div>
       </main>
 
       <footer className="mx-auto text-center text-xs text-stone-400">
-        Wedding QR Studio · End-to-End Encrypted Cloud Vault
+        Lumina · Private Biometric &amp; End-to-End Encrypted Cloud Vault
       </footer>
     </div>
   );

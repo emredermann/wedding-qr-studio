@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useModalAccessibility } from "@/components/ui/Feedback";
 import {
   extractAllFacesFromFile,
   extractSingleFaceFromSelfie,
@@ -49,6 +50,7 @@ export function FaceScannerModal({
   onEmbeddingCaptured,
   accentColor = "#b45309",
 }: FaceScannerModalProps) {
+  const modalCardRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const autoScanTimerRef = useRef<number | null>(null);
@@ -83,9 +85,19 @@ export function FaceScannerModal({
     }
   }, []);
 
+  const handleCloseModal = useCallback(() => {
+    stopCamera();
+    onClose();
+  }, [onClose, stopCamera]);
+
+  useModalAccessibility({
+    isOpen,
+    onClose: handleCloseModal,
+    containerRef: modalCardRef,
+  });
+
   const deliverInMemory = useCallback(
     (embedding: number[]) => {
-      // Never write biometric vectors or selfie frames to persistent storage
       try {
         window.localStorage.removeItem(GUEST_FACE_EMBEDDING_STORAGE_KEY);
       } catch {
@@ -161,7 +173,7 @@ export function FaceScannerModal({
       setStatusText("Camera permission denied — use gallery selfie fallback below");
       setErrorMessage(
         err instanceof Error
-          ? `Live camera permission was denied (${err.message}). Select a clear selfie from your phone gallery below instead.`
+          ? `Live camera permission was denied (${err.message}). Follow the steps below or choose a selfie from your phone gallery.`
           : "Camera permission denied. Please choose a clear selfie photo from your phone gallery below.",
       );
     }
@@ -243,7 +255,9 @@ export function FaceScannerModal({
 
       if (!biometricConsent) {
         setState("awaiting_consent");
-        setErrorMessage("Please check the GDPR/KVKK biometric consent box before scanning a selfie.");
+        setErrorMessage(
+          "Please check the GDPR/KVKK biometric consent box before scanning a selfie.",
+        );
         return;
       }
 
@@ -274,27 +288,32 @@ export function FaceScannerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+      className="wqr-safe-top wqr-safe-bottom fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="face-scanner-title"
+      onClick={handleCloseModal}
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-stone-800 bg-stone-950 text-stone-100 shadow-2xl">
+      <div
+        ref={modalCardRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative my-auto w-full max-w-md overflow-hidden rounded-3xl border border-stone-800 bg-stone-950 text-stone-100 shadow-2xl"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-stone-800/80 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <Sparkles className="h-5 w-5 text-amber-400" />
-            <h2 id="face-scanner-title" className="text-base font-semibold tracking-tight">
+        <div className="flex items-center justify-between border-b border-stone-800/80 px-5 py-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Sparkles className="h-5 w-5 shrink-0 text-amber-400" />
+            <h2
+              id="face-scanner-title"
+              className="truncate text-base font-semibold tracking-tight"
+            >
               Private Biometric Photo Unlock
             </h2>
           </div>
           <button
             type="button"
-            onClick={() => {
-              stopCamera();
-              onClose();
-            }}
-            className="flex h-12 w-12 items-center justify-center rounded-full text-stone-400 transition hover:bg-stone-800 hover:text-white"
+            onClick={handleCloseModal}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-stone-400 transition hover:bg-stone-800 hover:text-white"
             aria-label="Close scanner"
           >
             <X className="h-5 w-5" />
@@ -302,8 +321,8 @@ export function FaceScannerModal({
         </div>
 
         {/* Camera Viewport with Circular Alignment Guide */}
-        <div className="px-6 pt-5">
-          <div className="relative mx-auto aspect-square w-60 overflow-hidden rounded-full border-4 border-amber-400/80 bg-stone-900 shadow-[0_0_50px_rgba(251,191,36,0.18)]">
+        <div className="px-5 pt-5 sm:px-6">
+          <div className="relative mx-auto aspect-square w-56 max-w-full overflow-hidden rounded-full border-4 border-amber-400/80 bg-stone-900 shadow-[0_0_50px_rgba(251,191,36,0.18)] sm:w-60">
             <video
               ref={videoRef}
               playsInline
@@ -343,6 +362,23 @@ export function FaceScannerModal({
 
           <p className="mt-3.5 text-center text-sm font-medium text-stone-200">{statusText}</p>
 
+          {/* Step-by-step Camera Permission Recovery Help */}
+          {state === "error" ? (
+            <div className="mt-3 rounded-2xl border border-amber-500/30 bg-amber-950/30 p-3 text-left text-[11px] leading-relaxed text-amber-200/90">
+              <p className="font-semibold text-amber-300">
+                How to enable camera access (or use a gallery selfie):
+              </p>
+              <ol className="mt-1 list-inside list-decimal space-y-0.5 text-stone-300">
+                <li>Tap the camera or lock icon in your browser&apos;s address bar.</li>
+                <li>Set Camera permission to &ldquo;Allow&rdquo;, then tap Retry below.</li>
+                <li>
+                  Or simply tap <strong>&ldquo;Choose a Clear Selfie from Phone Gallery&rdquo;</strong>{" "}
+                  below — no live camera required!
+                </li>
+              </ol>
+            </div>
+          ) : null}
+
           {/* Explicit GDPR / KVKK Biometric Opt-In Consent */}
           <label className="mt-3 flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border border-stone-800 bg-stone-900/70 px-3.5 py-2.5 text-left text-[11px] leading-relaxed text-stone-300">
             <input
@@ -357,7 +393,7 @@ export function FaceScannerModal({
                   setStatusText("Consent required to process facial landmarks.");
                 }
               }}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-600 accent-amber-500"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-stone-600 accent-amber-500"
             />
             <span>
               I consent to on-device biometric processing (GDPR / KVKK). My selfie never leaves my
@@ -376,7 +412,11 @@ export function FaceScannerModal({
                 style={{ backgroundColor: accentColor }}
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95 disabled:opacity-50"
               >
-                <Camera className="h-4 w-4" />
+                {state === "scanning" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
                 {state === "scanning" ? "Scanning Face…" : "Scan Live Camera Now"}
               </button>
             ) : null}
@@ -395,13 +435,13 @@ export function FaceScannerModal({
 
             {/* Gallery Picker Fallback (NO capture="user" attribute so iOS/Android opens Photo Library when camera is denied!) */}
             <label
-              className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-semibold transition ${
+              className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 py-3 text-center text-xs font-semibold transition ${
                 state === "error"
                   ? "border-amber-500/70 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25"
                   : "border-stone-800 bg-stone-900/70 text-stone-200 hover:bg-stone-800"
               }`}
             >
-              <ImageIcon className="h-4 w-4 text-amber-400" />
+              <ImageIcon className="h-4 w-4 shrink-0 text-amber-400" />
               <span>Choose a Clear Selfie from Phone Gallery</span>
               <input
                 type="file"
@@ -414,12 +454,12 @@ export function FaceScannerModal({
         </div>
 
         {/* Footer Privacy Guarantee */}
-        <div className="mt-5 border-t border-stone-800/80 bg-stone-900/60 px-6 py-3.5">
+        <div className="mt-5 border-t border-stone-800/80 bg-stone-900/60 px-5 py-3.5 sm:px-6">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
             <p className="text-[11px] leading-relaxed text-stone-400">
-              100% client-side WebGL extraction · Zero raw selfie uploads · Ephemeral in-memory
-              session.
+              100% client-side WebGL extraction · Zero raw selfie uploads · Press ESC or tap outside
+              to close.
             </p>
           </div>
         </div>

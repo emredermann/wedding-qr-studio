@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Clock,
   Download,
-  Heart,
   Mic,
   QrCode,
   ScanFace,
@@ -19,7 +18,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
-import { DEMO_ALBUM_ID, DEMO_ALBUM_SLUG } from "@/lib/demo-data";
+import { BrandCrest } from "@/components/ui/BrandLogo";
 
 interface FaqItem {
   question: string;
@@ -53,9 +52,9 @@ const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
       "Each uploaded photo is fingerprinted with a 64-bit Perceptual Hash (pHash) to group burst shots in your moderation studio, while Vision AI automatically sorts moments into Getting Ready, Ceremony, Reception, Party, and Venue.",
   },
   {
-    question: "Is the pricing really a one-time payment?",
+    question: "Are there any storage limits or upload restrictions?",
     answer:
-      "Yes — no monthly subscriptions. A single one-time payment unlocks your wedding studio and keeps your full-resolution archive active for 24 months post-wedding.",
+      "None. Lumina provides unlimited uncompressed 4K photo, video, and audio uploads, with direct Cloudflare R2 streaming and on-device AI face search completely unrestricted.",
   },
 ];
 
@@ -104,53 +103,54 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-stone-900 selection:bg-amber-200 selection:text-stone-950">
       {/* Editorial Navigation */}
-      <header className="sticky top-0 z-40 border-b border-stone-200/80 bg-[#FAF8F5]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5 font-serif text-xl font-semibold">
-            <Heart className="h-5 w-5 text-amber-700" />
-            <span>Wedding QR Studio</span>
+      <header className="wqr-safe-top sticky top-0 z-40 border-b border-stone-200/80 bg-[#FAF8F5]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link
+            href="/"
+            className="inline-flex min-h-12 items-center gap-3 transition hover:opacity-90"
+          >
+            <BrandCrest className="h-8 w-8 shadow-xs" />
+            <div className="flex flex-col leading-tight">
+              <span className="font-serif text-xl font-semibold tracking-tight text-stone-900">
+                Lumina
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.22em] text-stone-700">
+                Biometric Memory Vault
+              </span>
+            </div>
           </Link>
 
           <nav className="hidden items-center gap-7 text-xs font-medium text-stone-600 md:flex">
-            <a href="#how-it-works" className="transition hover:text-stone-950">
+            <a href="#how-it-works" className="py-2 transition hover:text-stone-950">
               How It Works
             </a>
-            <a href="#face-recognition" className="transition hover:text-stone-950">
+            <a href="#face-recognition" className="py-2 transition hover:text-stone-950">
               AI Face Match
             </a>
-            <a href="#disposable-mode" className="transition hover:text-stone-950">
+            <a href="#disposable-mode" className="py-2 transition hover:text-stone-950">
               Disposable Mode
             </a>
-            <a href="#comparison" className="transition hover:text-stone-950">
+            <a href="#comparison" className="py-2 transition hover:text-stone-950">
               Compare
             </a>
-            <a href="#pricing" className="transition hover:text-stone-950">
-              Pricing
-            </a>
-            <a href="#faq" className="transition hover:text-stone-950">
+            <a href="#faq" className="py-2 transition hover:text-stone-950">
               FAQ
             </a>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/admin"
-              className="hidden items-center gap-1 rounded-full border border-stone-300 bg-white px-3.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100 sm:flex"
+              className="hidden min-h-12 items-center gap-1 rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100 sm:inline-flex"
             >
               <Sliders className="h-3.5 w-3.5 text-amber-700" />
               Flow Builder
             </Link>
             <Link
               href="/dashboard"
-              className="rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-stone-900 px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800"
             >
-              Couple Studio
-            </Link>
-            <Link
-              href={`/e/${DEMO_ALBUM_SLUG}`}
-              className="flex items-center gap-1.5 rounded-full bg-amber-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-800"
-            >
-              <span>Live Demo</span>
+              <span>Dashboard</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -158,16 +158,11 @@ export default function LandingPage() {
       </header>
 
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden border-b border-stone-200/70 pt-16 pb-24 sm:pt-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="relative overflow-hidden border-b border-stone-200/70 pt-14 pb-20 sm:pt-24 sm:pb-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-12">
             <div className="lg:col-span-7">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-50/90 px-3.5 py-1.5 text-xs font-semibold text-amber-900">
-                <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-                <span>Zero App Downloads · On-Device AI Face Match · Uncompressed 4K</span>
-              </div>
-
-              <h1 className="mt-6 font-serif text-4xl leading-[1.12] font-semibold tracking-tight text-stone-950 sm:text-6xl">
+              <h1 className="font-serif text-4xl leading-[1.12] font-semibold tracking-tight text-stone-950 sm:text-6xl">
                 Every candid moment your guests captured, in one heirloom vault.
               </h1>
 
@@ -180,25 +175,17 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-wrap items-center gap-3.5">
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-2 rounded-full bg-stone-950 px-7 py-4 text-sm font-semibold text-white shadow-lg transition hover:bg-stone-800"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-stone-950 px-7 py-4 text-sm font-semibold text-white shadow-lg transition hover:bg-stone-800"
                 >
                   <span>Create Your Wedding QR</span>
                   <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <Link
-                  href={`/e/${DEMO_ALBUM_SLUG}`}
-                  className="flex items-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-4 text-sm font-semibold text-stone-900 shadow-xs transition hover:border-amber-700 hover:bg-amber-50/40"
-                >
-                  <QrCode className="h-4 w-4 text-amber-700" />
-                  <span>Try Interactive Guest Demo</span>
                 </Link>
               </div>
 
               <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-stone-500">
                 <span className="flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-emerald-700" />
-                  One-time payment from $29
+                  Unlimited 4K uploads &amp; downloads
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-emerald-700" />
@@ -231,34 +218,14 @@ export default function LandingPage() {
                   <img
                     src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80"
                     alt="Ceremony candid"
-                    className="aspect-[4/5] w-full rounded-2xl object-cover"
+                    className="aspect-[4/5] w-full rounded-2xl bg-stone-100 object-cover"
                   />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=600&q=80"
                     alt="Reception toast"
-                    className="aspect-[4/5] w-full rounded-2xl object-cover"
+                    className="aspect-[4/5] w-full rounded-2xl bg-stone-100 object-cover"
                   />
-                </div>
-
-                <div className="mt-4 flex items-center justify-between rounded-2xl bg-stone-950 p-4 text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
-                      <ScanFace className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold">AI Face Match Active</p>
-                      <p className="text-[11px] text-stone-400">
-                        Guests find their photos in 0.4s
-                      </p>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/e/${DEMO_ALBUM_SLUG}`}
-                    className="rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
-                  >
-                    Open Demo
-                  </Link>
                 </div>
               </div>
             </div>
@@ -267,7 +234,7 @@ export default function LandingPage() {
       </section>
 
       {/* 2. HOW IT WORKS IN 3 STEPS */}
-      <section id="how-it-works" className=" mx-auto max-w-6xl px-6 py-24">
+      <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">
             Effortless From Table to Archive
@@ -316,8 +283,8 @@ export default function LandingPage() {
       </section>
 
       {/* 3. ZERO-APP GUEST EXPERIENCE + VOICE TOASTS */}
-      <section className="border-y border-stone-200/80 bg-white py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-y border-stone-200/80 bg-white py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">
@@ -328,7 +295,7 @@ export default function LandingPage() {
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-stone-600">
                 Traditional photo-sharing apps lose 80% of guests at the App Store login screen.
-                Wedding QR Studio opens in under a second and streams files straight from the
+                Lumina opens in under a second and streams files straight from the
                 browser to Cloudflare R2 via Presigned PUT URLs.
               </p>
 
@@ -362,8 +329,9 @@ export default function LandingPage() {
                 <Mic className="h-7 w-7 text-amber-700" />
                 <h3 className="mt-4 font-serif text-lg font-semibold">Voice Toasts</h3>
                 <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                  Every spoken toast is saved into a dedicated <code className="font-mono">Voice_Toasts/</code>{" "}
-                  folder inside your master ZIP download.
+                  Every spoken toast is saved into a dedicated{" "}
+                  <code className="font-mono">Voice_Toasts/</code> folder inside your master ZIP
+                  download.
                 </p>
               </div>
               <div className="rounded-3xl border border-stone-200 bg-[#FAF8F5] p-6">
@@ -375,7 +343,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="rounded-3xl border border-stone-200 bg-[#FAF8F5] p-6 sm:col-span-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="font-serif text-lg font-semibold">
                       Interactive Per-Event Flow Studio
@@ -385,8 +353,8 @@ export default function LandingPage() {
                     </p>
                   </div>
                   <Link
-                    href={`/admin/events/${DEMO_ALBUM_ID}/builder`}
-                    className="rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800"
+                    href="/admin"
+                    className="inline-flex min-h-12 items-center rounded-full bg-stone-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-stone-800"
                   >
                     Open Builder
                   </Link>
@@ -398,8 +366,8 @@ export default function LandingPage() {
       </section>
 
       {/* 4. AI FACE RECOGNITION SPOTLIGHT */}
-      <section id="face-recognition" className="mx-auto max-w-6xl px-6 py-24">
-        <div className="rounded-[2.5rem] bg-stone-950 p-8 text-stone-100 shadow-2xl sm:p-14">
+      <section id="face-recognition" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
+        <div className="rounded-[2.5rem] bg-stone-950 p-6 text-stone-100 shadow-2xl sm:p-14">
           <div className="grid items-center gap-10 lg:grid-cols-12">
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-3.5 py-1 text-xs font-semibold text-amber-300">
@@ -437,19 +405,13 @@ export default function LandingPage() {
               <p className="mt-2 text-xs text-stone-400">
                 Group photos index every face automatically in the background after upload.
               </p>
-              <Link
-                href={`/e/${DEMO_ALBUM_SLUG}`}
-                className="mt-6 rounded-full bg-amber-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-amber-500"
-              >
-                Test Face Scanner in Live Demo
-              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* 5. DISPOSABLE CAMERA MODE */}
-      <section id="disposable-mode" className="mx-auto max-w-6xl px-6 pb-24">
+      <section id="disposable-mode" className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-24">
         <div className="rounded-3xl border border-stone-200 bg-amber-50/60 p-8 sm:p-12">
           <div className="grid items-center gap-8 lg:grid-cols-12">
             <div className="lg:col-span-8">
@@ -478,8 +440,8 @@ export default function LandingPage() {
       </section>
 
       {/* 6. COMPETITOR COMPARISON MATRIX */}
-      <section id="comparison" className="border-t border-stone-200/80 bg-white py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section id="comparison" className="border-t border-stone-200/80 bg-white py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">
               Why Couples Switch
@@ -495,7 +457,7 @@ export default function LandingPage() {
                 <tr className="border-b border-stone-200 bg-stone-100/80">
                   <th className="p-4 font-semibold text-stone-700">Capability</th>
                   <th className="bg-amber-50/90 p-4 font-serif text-base font-semibold text-amber-950">
-                    Wedding QR Studio
+                    Lumina
                   </th>
                   <th className="p-4 font-semibold text-stone-500">Google Photos / iCloud</th>
                   <th className="p-4 font-semibold text-stone-500">Traditional Wedding Apps</th>
@@ -531,135 +493,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7. TRANSPARENT ONE-TIME PRICING CARDS */}
-      <section id="pricing" className="mx-auto max-w-6xl px-6 py-24">
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">
-            One-Time Event Pass · No Subscriptions
-          </p>
-          <h2 className="mt-2 font-serif text-3xl font-semibold sm:text-4xl">
-            Transparent Wedding Pricing
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-stone-600">
-            Pay once for your celebration. Every tier includes 300-DPI print-ready QR cards and
-            zero-RAM streaming ZIP exports.
-          </p>
-        </div>
 
-        <div className="mt-14 grid gap-8 lg:grid-cols-3">
-          {[
-            {
-              name: "Starter",
-              price: "$29",
-              subtitle: "For intimate ceremonies & elopements",
-              badge: null,
-              features: [
-                "1 Wedding Event Album",
-                "Up to 500 Full-Resolution Photos",
-                "300-DPI 5×7\" Print QR Card Studio",
-                "Direct-to-R2 Zero-Proxy Uploads",
-                "12 Months Cloud Vault Retention",
-              ],
-            },
-            {
-              name: "Pro",
-              price: "$69",
-              subtitle: "Our most popular full wedding day suite",
-              badge: "Most Popular",
-              features: [
-                "Up to 3 Wedding Event Albums",
-                "Unlimited Photos, 4K Videos & Voice Toasts",
-                "On-Device WebGL AI Face Recognition ('Find Me')",
-                "Disposable Camera Countdown Mode",
-                "pHash Duplicate Detection & Moderation",
-                "24 Months Post-Wedding Cloud Retention",
-              ],
-            },
-            {
-              name: "Unlimited",
-              price: "$99",
-              subtitle: "Multi-day destination weddings & planners",
-              badge: "Complete Bespoke Suite",
-              features: [
-                "Up to 5 Separate Event Albums per Account",
-                "Custom Guest Onboarding Flow & Theme Builder",
-                "OpenAI Vision Auto-Categorization",
-                "Unlimited Co-Host & Planner Invitations",
-                "Live Reception Slideshow Mode",
-                "24 Months Post-Wedding Cloud Retention",
-              ],
-            },
-          ].map((plan) => {
-            const highlighted = plan.name === "Pro";
-            return (
-              <div
-                key={plan.name}
-                className={`flex flex-col justify-between rounded-3xl border p-8 ${
-                  highlighted
-                    ? "border-amber-700 bg-stone-950 text-white shadow-2xl ring-2 ring-amber-700"
-                    : "border-stone-200 bg-white text-stone-900 shadow-xs"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-2xl font-semibold">{plan.name}</h3>
-                    {plan.badge ? (
-                      <span className="rounded-full bg-amber-500 px-3 py-0.5 text-[11px] font-bold text-stone-950">
-                        {plan.badge}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p
-                    className={`mt-1 text-xs ${
-                      highlighted ? "text-stone-400" : "text-stone-500"
-                    }`}
-                  >
-                    {plan.subtitle}
-                  </p>
-
-                  <div className="mt-6 flex items-baseline gap-2">
-                    <span className="font-serif text-5xl font-bold">{plan.price}</span>
-                    <span
-                      className={`text-xs ${highlighted ? "text-stone-400" : "text-stone-500"}`}
-                    >
-                      one-time payment
-                    </span>
-                  </div>
-
-                  <ul className="mt-8 space-y-3 text-xs">
-                    {plan.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2.5">
-                        <Check
-                          className={`mt-0.5 h-4 w-4 shrink-0 ${
-                            highlighted ? "text-amber-400" : "text-amber-700"
-                          }`}
-                        />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <Link
-                  href="/dashboard"
-                  className={`mt-8 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-xs font-semibold transition ${
-                    highlighted
-                      ? "bg-amber-600 text-white hover:bg-amber-500"
-                      : "bg-stone-900 text-white hover:bg-stone-800"
-                  }`}
-                >
-                  <span>Select {plan.name}</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* 8. ACCORDION FAQ */}
-      <section id="faq" className="border-t border-stone-200/80 bg-white py-24">
-        <div className="mx-auto max-w-3xl px-6">
+      <section id="faq" className="border-t border-stone-200/80 bg-white py-20 sm:py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">
               Questions &amp; Answers
@@ -670,12 +508,15 @@ export default function LandingPage() {
           <div className="mt-10 divide-y divide-stone-200 rounded-3xl border border-stone-200 bg-[#FAF8F5] px-6">
             {FAQ_ITEMS.map((item, idx) => {
               const isOpen = openFaqIndex === idx;
+              const panelId = `faq-panel-${idx}`;
               return (
-                <div key={item.question} className="py-5">
+                <div key={item.question} className="py-3">
                   <button
                     type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
                     onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="flex w-full items-center justify-between gap-4 text-left font-serif text-base font-semibold text-stone-900"
+                    className="flex min-h-12 w-full items-center justify-between gap-4 py-2 text-left font-serif text-base font-semibold text-stone-900"
                   >
                     <span>{item.question}</span>
                     <ChevronDown
@@ -685,7 +526,12 @@ export default function LandingPage() {
                     />
                   </button>
                   {isOpen ? (
-                    <p className="mt-3 text-sm leading-relaxed text-stone-600">{item.answer}</p>
+                    <p
+                      id={panelId}
+                      className="pb-3 text-sm leading-relaxed text-stone-600"
+                    >
+                      {item.answer}
+                    </p>
                   ) : null}
                 </div>
               );
@@ -696,23 +542,30 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-stone-200 bg-[#FAF8F5] py-12">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-xs text-stone-500">
-          <div className="flex items-center gap-2 font-serif text-base font-semibold text-stone-900">
-            <Heart className="h-4 w-4 text-amber-700" />
-            <span>Wedding QR Studio</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-stone-500 sm:px-6">
+          <div className="flex items-center gap-3">
+            <BrandCrest className="h-7 w-7" />
+            <div className="flex flex-col leading-tight">
+              <span className="font-serif text-base font-semibold text-stone-900">
+                Lumina
+              </span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-stone-700">
+                Editorial &amp; Biometric Vault
+              </span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-6">
-            <Link href={`/e/${DEMO_ALBUM_SLUG}`} className="hover:text-stone-900">
-              Live Guest Demo
+            <Link
+              href="/dashboard"
+              className="inline-flex min-h-11 items-center hover:text-stone-900"
+            >
+              Dashboard
             </Link>
-            <Link href="/dashboard" className="hover:text-stone-900">
-              Couple Dashboard
-            </Link>
-            <Link href="/admin" className="hover:text-stone-900">
+            <Link
+              href="/admin"
+              className="inline-flex min-h-11 items-center hover:text-stone-900"
+            >
               Master Admin Portal
-            </Link>
-            <Link href={`/admin/events/${DEMO_ALBUM_ID}/builder`} className="hover:text-stone-900">
-              Event Flow Builder
             </Link>
           </div>
         </div>

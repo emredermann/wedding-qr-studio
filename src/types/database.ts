@@ -1,7 +1,7 @@
 import type { EventFlowConfig, EventThemeConfig } from "@/types/flow";
 
 /**
- * Strict type definitions for Wedding QR Studio: database tables, RPCs and
+ * Strict type definitions for Lumina: database tables, RPCs and
  * API payloads across Tasks 1–5.
  *
  * Domain entities are declared as interfaces (`Album`, `Media`, `MediaFace`,
@@ -494,6 +494,11 @@ export interface GuestEventPayload {
   lockReason: "private" | "disposable_camera" | null;
   myUploads: Media[];
   guestSessionId: string;
+  registration?: {
+    guestName: string | null;
+    contact: string | null;
+    tableNumber: string | null;
+  } | null;
 }
 
 /** POST /api/webhooks/process-media */

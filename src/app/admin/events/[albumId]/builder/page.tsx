@@ -25,7 +25,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
-import { DEMO_ALBUM_ID, DEMO_MEDIA_ITEMS } from "@/lib/demo-data";
+import { FieldError, ToastRegion, useToastQueue } from "@/components/ui/Feedback";
+import { DEMO_MEDIA_ITEMS } from "@/lib/demo-data";
+import { validateOptionalUrlField } from "@/lib/validation/forms";
 import type { Album, PresignUploadResponse } from "@/types/database";
 import {
   BUTTON_STYLES,
@@ -45,6 +47,7 @@ import {
   THEME_FONTS,
   type ThemeFontFamily,
   type WelcomeSplashStep,
+  buildThemeCssVariables,
 } from "@/types/flow";
 
 type BuilderTab = "sequencer" | "theme" | "features";
@@ -93,6 +96,7 @@ export default function EventFlowBuilderPage() {
 function EventFlowBuilderPageContent() {
   const params = useParams<{ albumId: string }>();
   const albumId = typeof params.albumId === "string" ? params.albumId : "";
+  const { toasts, pushToast, dismissToast } = useToastQueue();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -103,11 +107,14 @@ function EventFlowBuilderPageContent() {
   const [themeConfig, setThemeConfig] = useState<EventThemeConfig>(DEFAULT_THEME_CONFIG);
   const [flowConfig, setFlowConfig] = useState<EventFlowConfig>(DEFAULT_FLOW_CONFIG);
 
+  const [logoUrlError, setLogoUrlError] = useState<string | null>(null);
+  const [coverUrlError, setCoverUrlError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<BuilderTab>("sequencer");
   const [selectedStepType, setSelectedStepType] = useState<FlowStepType>("welcome_splash");
-  const [uploadingAssetField, setUploadingAssetField] = useState<"logoUrl" | "coverMediaUrl" | null>(
-    null,
-  );
+  const [uploadingAssetField, setUploadingAssetField] = useState<
+    "logoUrl" | "coverMediaUrl" | null
+  >(null);
 
   const loadBuilderState = useCallback(async () => {
     if (!albumId) return;
@@ -140,6 +147,17 @@ function EventFlowBuilderPageContent() {
 
   const handleSaveConfiguration = async () => {
     if (!album) return;
+
+    const lErr = validateOptionalUrlField(themeConfig.logoUrl ?? "");
+    const cErr = validateOptionalUrlField(themeConfig.coverMediaUrl ?? "");
+    setLogoUrlError(lErr);
+    setCoverUrlError(cErr);
+    if (lErr || cErr) {
+      setActiveTab("theme");
+      pushToast("Please fix invalid brand asset URLs before publishing.", "error");
+      return;
+    }
+
     setSaving(true);
     setSavedNotice(null);
     setErrorMessage(null);
@@ -159,9 +177,12 @@ function EventFlowBuilderPageContent() {
       }
       if (data.album) setAlbum(data.album);
       setSavedNotice("Published to live guest page!");
+      pushToast("Published flow & theme to live guest page", "success");
       window.setTimeout(() => setSavedNotice(null), 3500);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to save configuration.");
+      const msg = err instanceof Error ? err.message : "Failed to save configuration.";
+      setErrorMessage(msg);
+      pushToast(msg, "error");
     } finally {
       setSaving(false);
     }
@@ -177,12 +198,6 @@ function EventFlowBuilderPageContent() {
     setErrorMessage(null);
 
     try {
-      if (album.id === DEMO_ALBUM_ID) {
-        const localPreviewUrl = URL.createObjectURL(file);
-        setThemeConfig((prev) => ({ ...prev, [field]: localPreviewUrl }));
-        return;
-      }
-
       const presignRes = await fetch("/api/upload/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,12 +225,17 @@ function EventFlowBuilderPageContent() {
         body: file,
       });
       if (!putRes.ok) {
-        throw new Error(`Cloudflare R2 upload failed (${putRes.status}).`);
+        throw new Error(`Storage upload failed (${putRes.status}).`);
       }
 
       setThemeConfig((prev) => ({ ...prev, [field]: presignData.publicUrl }));
+      if (field === "logoUrl") setLogoUrlError(null);
+      if (field === "coverMediaUrl") setCoverUrlError(null);
+      pushToast("Brand asset uploaded successfully", "success");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Asset upload failed.");
+      const msg = err instanceof Error ? err.message : "Asset upload failed.";
+      setErrorMessage(msg);
+      pushToast(msg, "error");
     } finally {
       setUploadingAssetField(null);
     }
@@ -272,34 +292,39 @@ function EventFlowBuilderPageContent() {
     flowConfig.steps.find((s) => s.type === selectedStepType) ?? flowConfig.steps[0];
   const btnRadius = getButtonRadiusClass(themeConfig.buttonStyle);
   const fontClass = getFontFamilyClass(themeConfig.fontFamily);
+  const previewCssVars = buildThemeCssVariables(themeConfig);
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100">
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+
       {/* Top Studio Header */}
-      <header className="sticky top-0 z-30 border-b border-stone-800 bg-stone-900/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
-          <div className="flex items-center gap-3">
+      <header className="wqr-safe-top sticky top-0 z-30 border-b border-stone-800 bg-stone-900/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/admin"
-              className="rounded-full border border-stone-700 p-2 text-stone-300 transition hover:bg-stone-800"
+              className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border border-stone-700 text-stone-300 transition hover:bg-stone-800"
               aria-label="Back to admin"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
                   Visual Event Flow &amp; Screen Studio
                 </span>
-                <span className="font-mono text-xs text-stone-500">/e/{album.slug}</span>
+                <span className="truncate font-mono text-xs text-stone-500">
+                  /e/{album.slug}
+                </span>
               </div>
-              <h1 className="font-serif text-lg font-semibold">{album.title}</h1>
+              <h1 className="truncate font-serif text-lg font-semibold">{album.title}</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {savedNotice ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3.5 py-1.5 text-xs font-semibold text-emerald-300">
+              <span className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-300">
                 <Check className="h-3.5 w-3.5" />
                 {savedNotice}
               </span>
@@ -307,7 +332,7 @@ function EventFlowBuilderPageContent() {
 
             <Link
               href={`/dashboard/${album.id}?tab=qr_studio`}
-              className="flex items-center gap-1.5 rounded-full border border-stone-700 bg-stone-900 px-4 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-stone-700 bg-stone-900 px-4 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800"
             >
               <QrCode className="h-3.5 w-3.5 text-amber-400" />
               QR Card Studio
@@ -316,7 +341,7 @@ function EventFlowBuilderPageContent() {
             <Link
               href={`/e/${album.slug}`}
               target="_blank"
-              className="flex items-center gap-1.5 rounded-full border border-stone-700 bg-stone-900 px-4 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-stone-700 bg-stone-900 px-4 py-2 text-xs font-semibold text-stone-200 hover:bg-stone-800"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Open Live Guest Page
@@ -326,66 +351,83 @@ function EventFlowBuilderPageContent() {
               type="button"
               disabled={saving}
               onClick={() => void handleSaveConfiguration()}
-              className="flex items-center gap-2 rounded-full bg-amber-600 px-5 py-2 text-xs font-semibold text-white shadow-md transition hover:bg-amber-500 disabled:opacity-50"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-amber-600 px-5 py-2 text-xs font-semibold text-white shadow-md transition hover:bg-amber-500 disabled:opacity-50"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Publish Flow &amp; Theme
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saving ? "Publishing…" : "Publish Flow & Theme"}
             </button>
           </div>
         </div>
       </header>
 
       {errorMessage ? (
-        <div className="mx-auto mt-4 max-w-7xl px-6">
-          <div className="rounded-2xl border border-rose-800 bg-rose-950/70 p-3 text-xs text-rose-200">
+        <div className="mx-auto mt-4 max-w-7xl px-4 sm:px-6">
+          <div
+            role="alert"
+            className="rounded-2xl border border-rose-800 bg-rose-950/70 p-3 text-xs text-rose-200"
+          >
             {errorMessage}
           </div>
         </div>
       ) : null}
 
       {/* Split-Screen Interactive Studio */}
-      <main className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-12">
+      <main className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-12">
         {/* ================================================================= */}
         {/* LEFT PANEL: CONFIGURATION CONTROLS (7 cols)                       */}
         {/* ================================================================= */}
         <div className="space-y-6 lg:col-span-7">
           {/* Control Section Switcher */}
-          <div className="grid grid-cols-3 rounded-2xl border border-stone-800 bg-stone-900 p-1.5 text-xs font-semibold">
+          <div
+            role="tablist"
+            aria-label="Builder Configuration Tabs"
+            className="grid grid-cols-3 rounded-2xl border border-stone-800 bg-stone-900 p-1.5 text-xs font-semibold"
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "sequencer"}
               onClick={() => setActiveTab("sequencer")}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 transition ${
+              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-2.5 transition ${
                 activeTab === "sequencer"
                   ? "bg-amber-600 text-white shadow-xs"
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              <Layers className="h-4 w-4" />
-              1. Flow Sequencer
+              <Layers className="h-4 w-4 shrink-0" />
+              <span>1. Flow Sequencer</span>
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "theme"}
               onClick={() => setActiveTab("theme")}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 transition ${
+              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-2.5 transition ${
                 activeTab === "theme"
                   ? "bg-amber-600 text-white shadow-xs"
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              <Palette className="h-4 w-4" />
-              2. Theme &amp; Branding
+              <Palette className="h-4 w-4 shrink-0" />
+              <span>2. Theme &amp; Brand</span>
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "features"}
               onClick={() => setActiveTab("features")}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 transition ${
+              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-2.5 transition ${
                 activeTab === "features"
                   ? "bg-amber-600 text-white shadow-xs"
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              <Sliders className="h-4 w-4" />
-              3. Rules &amp; Toggles
+              <Sliders className="h-4 w-4 shrink-0" />
+              <span>3. Rules &amp; Toggles</span>
             </button>
           </div>
 
@@ -394,7 +436,7 @@ function EventFlowBuilderPageContent() {
           {/* --------------------------------------------------------------- */}
           {activeTab === "sequencer" ? (
             <div className="space-y-6">
-              <div className="rounded-3xl border border-stone-800 bg-stone-900/70 p-6">
+              <div className="rounded-3xl border border-stone-800 bg-stone-900/70 p-5 sm:p-6">
                 <h2 className="font-serif text-lg font-semibold">
                   Guest Onboarding Screen Sequence
                 </h2>
@@ -411,7 +453,7 @@ function EventFlowBuilderPageContent() {
                       <div
                         key={step.id}
                         onClick={() => setSelectedStepType(step.type)}
-                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border p-4 transition ${
+                        className={`flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 transition ${
                           isSelected
                             ? "border-amber-500 bg-amber-500/10"
                             : "border-stone-800 bg-stone-950/70 hover:border-stone-700"
@@ -435,23 +477,23 @@ function EventFlowBuilderPageContent() {
                             type="button"
                             disabled={idx === 0}
                             onClick={() => moveStep(idx, -1)}
-                            className="rounded-lg border border-stone-700 p-1.5 text-stone-300 hover:bg-stone-800 disabled:opacity-30"
+                            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-stone-700 text-stone-300 hover:bg-stone-800 disabled:opacity-30"
                             aria-label="Move step up"
                           >
-                            <ArrowUp className="h-3.5 w-3.5" />
+                            <ArrowUp className="h-4 w-4" />
                           </button>
 
                           <button
                             type="button"
                             disabled={idx === flowConfig.steps.length - 1}
                             onClick={() => moveStep(idx, 1)}
-                            className="rounded-lg border border-stone-700 p-1.5 text-stone-300 hover:bg-stone-800 disabled:opacity-30"
+                            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl border border-stone-700 text-stone-300 hover:bg-stone-800 disabled:opacity-30"
                             aria-label="Move step down"
                           >
-                            <ArrowDown className="h-3.5 w-3.5" />
+                            <ArrowDown className="h-4 w-4" />
                           </button>
 
-                          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-xs">
+                          <label className="ml-1 inline-flex min-h-12 cursor-pointer items-center gap-2 px-2 text-xs">
                             <input
                               type="checkbox"
                               checked={step.enabled}
@@ -471,7 +513,7 @@ function EventFlowBuilderPageContent() {
               </div>
 
               {/* Selected Step Inspector */}
-              <div className="rounded-3xl border border-stone-800 bg-stone-900/70 p-6">
+              <div className="rounded-3xl border border-stone-800 bg-stone-900/70 p-5 sm:p-6">
                 <h3 className="font-serif text-lg font-semibold">
                   Customize Step: {activePreviewStep.title}
                 </h3>
@@ -492,7 +534,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                        className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                     <div>
@@ -509,7 +551,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2 text-sm text-white"
+                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -527,10 +569,10 @@ function EventFlowBuilderPageContent() {
                               },
                             })
                           }
-                          className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                          className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                         />
                       </div>
-                      <label className="mt-6 flex items-center gap-2">
+                      <label className="mt-6 flex min-h-12 cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={(activePreviewStep as WelcomeSplashStep).settings.showEventDate}
@@ -568,7 +610,7 @@ function EventFlowBuilderPageContent() {
                               },
                             })
                           }
-                          className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                          className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                         />
                       </div>
                       <div>
@@ -589,13 +631,13 @@ function EventFlowBuilderPageContent() {
                               },
                             })
                           }
-                          className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                          className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-2">
-                      <label className="flex items-center gap-2">
+                      <label className="flex min-h-12 cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={(activePreviewStep as GuestRegistrationStep).settings.mandatory}
@@ -612,7 +654,7 @@ function EventFlowBuilderPageContent() {
                         />
                         <span>Mandatory (Hide Skip Button)</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex min-h-12 cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={(activePreviewStep as GuestRegistrationStep).settings.askName}
@@ -629,7 +671,7 @@ function EventFlowBuilderPageContent() {
                         />
                         <span>Ask Guest Name</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex min-h-12 cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={
@@ -648,7 +690,7 @@ function EventFlowBuilderPageContent() {
                         />
                         <span>Ask Phone / Email</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex min-h-12 cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
                           checked={
@@ -687,7 +729,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                        className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                     <div>
@@ -704,7 +746,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2 text-sm text-white"
+                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                   </div>
@@ -726,7 +768,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                        className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                     <div>
@@ -745,7 +787,7 @@ function EventFlowBuilderPageContent() {
                             },
                           })
                         }
-                        className="mt-1 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
+                        className="mt-1 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3.5 py-2.5 text-sm text-white"
                       />
                     </div>
                   </div>
@@ -758,7 +800,7 @@ function EventFlowBuilderPageContent() {
           {/* LEFT TAB 2: THEME & BRANDING                                    */}
           {/* --------------------------------------------------------------- */}
           {activeTab === "theme" ? (
-            <div className="space-y-6 rounded-3xl border border-stone-800 bg-stone-900/70 p-6">
+            <div className="space-y-6 rounded-3xl border border-stone-800 bg-stone-900/70 p-5 sm:p-6">
               <h2 className="font-serif text-lg font-semibold">
                 Event Theme, Colors, Typography &amp; R2 Brand Assets
               </h2>
@@ -768,14 +810,15 @@ function EventFlowBuilderPageContent() {
                   <label className="block text-xs font-medium text-stone-300">
                     Primary Brand Color
                   </label>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
+                  <div className="mt-1.5 flex min-h-12 items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
                     <input
                       type="color"
+                      aria-label="Primary brand color"
                       value={themeConfig.primaryColor}
                       onChange={(e) =>
                         setThemeConfig((prev) => ({ ...prev, primaryColor: e.target.value }))
                       }
-                      className="h-7 w-9 cursor-pointer border-0 bg-transparent"
+                      className="h-8 w-10 cursor-pointer border-0 bg-transparent"
                     />
                     <span className="font-mono text-xs">{themeConfig.primaryColor}</span>
                   </div>
@@ -785,14 +828,15 @@ function EventFlowBuilderPageContent() {
                   <label className="block text-xs font-medium text-stone-300">
                     Background Color
                   </label>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
+                  <div className="mt-1.5 flex min-h-12 items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
                     <input
                       type="color"
+                      aria-label="Background color"
                       value={themeConfig.backgroundColor}
                       onChange={(e) =>
                         setThemeConfig((prev) => ({ ...prev, backgroundColor: e.target.value }))
                       }
-                      className="h-7 w-9 cursor-pointer border-0 bg-transparent"
+                      className="h-8 w-10 cursor-pointer border-0 bg-transparent"
                     />
                     <span className="font-mono text-xs">{themeConfig.backgroundColor}</span>
                   </div>
@@ -800,14 +844,15 @@ function EventFlowBuilderPageContent() {
 
                 <div>
                   <label className="block text-xs font-medium text-stone-300">Text Color</label>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
+                  <div className="mt-1.5 flex min-h-12 items-center gap-2 rounded-xl border border-stone-700 bg-stone-950 px-3 py-2">
                     <input
                       type="color"
+                      aria-label="Text color"
                       value={themeConfig.textColor}
                       onChange={(e) =>
                         setThemeConfig((prev) => ({ ...prev, textColor: e.target.value }))
                       }
-                      className="h-7 w-9 cursor-pointer border-0 bg-transparent"
+                      className="h-8 w-10 cursor-pointer border-0 bg-transparent"
                     />
                     <span className="font-mono text-xs">{themeConfig.textColor}</span>
                   </div>
@@ -818,6 +863,7 @@ function EventFlowBuilderPageContent() {
                 <div>
                   <label className="block text-xs font-medium text-stone-300">Font Family</label>
                   <select
+                    aria-label="Font family"
                     value={themeConfig.fontFamily}
                     onChange={(e) =>
                       setThemeConfig((prev) => ({
@@ -825,7 +871,7 @@ function EventFlowBuilderPageContent() {
                         fontFamily: e.target.value as ThemeFontFamily,
                       }))
                     }
-                    className="mt-1.5 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
+                    className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
                   >
                     {THEME_FONTS.map((f) => (
                       <option key={f} value={f}>
@@ -838,6 +884,7 @@ function EventFlowBuilderPageContent() {
                 <div>
                   <label className="block text-xs font-medium text-stone-300">Button Style</label>
                   <select
+                    aria-label="Button style"
                     value={themeConfig.buttonStyle}
                     onChange={(e) =>
                       setThemeConfig((prev) => ({
@@ -845,7 +892,7 @@ function EventFlowBuilderPageContent() {
                         buttonStyle: e.target.value as ButtonStyle,
                       }))
                     }
-                    className="mt-1.5 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
+                    className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
                   >
                     {BUTTON_STYLES.map((b) => (
                       <option key={b} value={b}>
@@ -858,6 +905,7 @@ function EventFlowBuilderPageContent() {
                 <div>
                   <label className="block text-xs font-medium text-stone-300">Gallery Layout</label>
                   <select
+                    aria-label="Gallery layout"
                     value={themeConfig.galleryLayout}
                     onChange={(e) =>
                       setThemeConfig((prev) => ({
@@ -865,7 +913,7 @@ function EventFlowBuilderPageContent() {
                         galleryLayout: e.target.value as GalleryLayout,
                       }))
                     }
-                    className="mt-1.5 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
+                    className="mt-1.5 min-h-12 w-full rounded-xl border border-stone-700 bg-stone-950 px-3 py-2.5 text-xs text-white capitalize"
                   >
                     {GALLERY_LAYOUTS.map((g) => (
                       <option key={g} value={g}>
@@ -879,26 +927,40 @@ function EventFlowBuilderPageContent() {
               {/* Cover Media & Logo Uploaders (Presigned R2 PUT) */}
               <div className="grid gap-4 pt-2 sm:grid-cols-2">
                 <div className="rounded-2xl border border-stone-800 bg-stone-950 p-4">
-                  <p className="text-xs font-semibold text-stone-200">Monogram / Event Logo</p>
+                  <label
+                    htmlFor="builder-logo-url"
+                    className="block text-xs font-semibold text-stone-200"
+                  >
+                    Monogram / Event Logo
+                  </label>
                   <input
+                    id="builder-logo-url"
                     type="url"
                     value={themeConfig.logoUrl ?? ""}
-                    onChange={(e) =>
-                      setThemeConfig((prev) => ({ ...prev, logoUrl: e.target.value || null }))
-                    }
+                    aria-invalid={Boolean(logoUrlError)}
+                    aria-describedby={logoUrlError ? "builder-logo-url-error" : undefined}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setThemeConfig((prev) => ({ ...prev, logoUrl: val || null }));
+                      setLogoUrlError(validateOptionalUrlField(val));
+                    }}
                     placeholder="https://... or upload below"
-                    className="mt-2 w-full rounded-lg border border-stone-800 bg-stone-900 px-3 py-1.5 text-xs text-white"
+                    className="mt-2 min-h-12 w-full rounded-xl border border-stone-800 bg-stone-900 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
-                  <label className="mt-2.5 flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-xs font-medium text-stone-200 hover:bg-stone-800">
+                  <FieldError id="builder-logo-url-error" message={logoUrlError} dark />
+                  <label className="mt-2.5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-xs font-medium text-stone-200 hover:bg-stone-800">
                     {uploadingAssetField === "logoUrl" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Upload className="h-3.5 w-3.5" />
                     )}
-                    <span>Upload Logo to R2</span>
+                    <span>
+                      {uploadingAssetField === "logoUrl" ? "Uploading Logo…" : "Upload Logo to R2"}
+                    </span>
                     <input
                       type="file"
                       accept="image/*"
+                      disabled={uploadingAssetField === "logoUrl"}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) void handleUploadBrandAsset("logoUrl", file);
@@ -909,29 +971,45 @@ function EventFlowBuilderPageContent() {
                 </div>
 
                 <div className="rounded-2xl border border-stone-800 bg-stone-950 p-4">
-                  <p className="text-xs font-semibold text-stone-200">Splash Cover Photo</p>
+                  <label
+                    htmlFor="builder-cover-url"
+                    className="block text-xs font-semibold text-stone-200"
+                  >
+                    Splash Cover Photo
+                  </label>
                   <input
+                    id="builder-cover-url"
                     type="url"
                     value={themeConfig.coverMediaUrl ?? ""}
-                    onChange={(e) =>
+                    aria-invalid={Boolean(coverUrlError)}
+                    aria-describedby={coverUrlError ? "builder-cover-url-error" : undefined}
+                    onChange={(e) => {
+                      const val = e.target.value;
                       setThemeConfig((prev) => ({
                         ...prev,
-                        coverMediaUrl: e.target.value || null,
-                      }))
-                    }
+                        coverMediaUrl: val || null,
+                      }));
+                      setCoverUrlError(validateOptionalUrlField(val));
+                    }}
                     placeholder="https://... or upload below"
-                    className="mt-2 w-full rounded-lg border border-stone-800 bg-stone-900 px-3 py-1.5 text-xs text-white"
+                    className="mt-2 min-h-12 w-full rounded-xl border border-stone-800 bg-stone-900 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
-                  <label className="mt-2.5 flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-xs font-medium text-stone-200 hover:bg-stone-800">
+                  <FieldError id="builder-cover-url-error" message={coverUrlError} dark />
+                  <label className="mt-2.5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-xs font-medium text-stone-200 hover:bg-stone-800">
                     {uploadingAssetField === "coverMediaUrl" ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Upload className="h-3.5 w-3.5" />
                     )}
-                    <span>Upload Cover Photo to R2</span>
+                    <span>
+                      {uploadingAssetField === "coverMediaUrl"
+                        ? "Uploading Cover…"
+                        : "Upload Cover Photo to R2"}
+                    </span>
                     <input
                       type="file"
                       accept="image/*"
+                      disabled={uploadingAssetField === "coverMediaUrl"}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) void handleUploadBrandAsset("coverMediaUrl", file);
@@ -948,7 +1026,7 @@ function EventFlowBuilderPageContent() {
           {/* LEFT TAB 3: FEATURE & RULE TOGGLES                              */}
           {/* --------------------------------------------------------------- */}
           {activeTab === "features" ? (
-            <div className="space-y-4 rounded-3xl border border-stone-800 bg-stone-900/70 p-6">
+            <div className="space-y-4 rounded-3xl border border-stone-800 bg-stone-900/70 p-5 sm:p-6">
               <h2 className="font-serif text-lg font-semibold">
                 Modular Feature &amp; Moderation Rule Toggles
               </h2>
@@ -987,7 +1065,7 @@ function EventFlowBuilderPageContent() {
               ].map((item) => (
                 <label
                   key={item.key}
-                  className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-stone-800 bg-stone-950/70 p-4"
+                  className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-stone-800 bg-stone-950/70 p-4"
                 >
                   <div>
                     <p className="text-sm font-semibold text-white">{item.title}</p>
@@ -997,14 +1075,14 @@ function EventFlowBuilderPageContent() {
                     type="checkbox"
                     checked={flowConfig.features[item.key]}
                     onChange={(e) => updateFeatureToggle(item.key, e.target.checked)}
-                    className="h-5 w-5 accent-amber-500"
+                    className="h-5 w-5 shrink-0 accent-amber-500"
                   />
                 </label>
               ))}
 
               <div className="rounded-2xl border border-stone-800 bg-stone-950/70 p-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-white">
+                  <label htmlFor="max-upload-size-range" className="text-sm font-semibold text-white">
                     Max Single File Upload Size Limit (MB)
                   </label>
                   <span className="font-mono text-sm font-bold text-amber-400">
@@ -1012,13 +1090,14 @@ function EventFlowBuilderPageContent() {
                   </span>
                 </div>
                 <input
+                  id="max-upload-size-range"
                   type="range"
                   min={10}
                   max={2048}
                   step={10}
                   value={flowConfig.features.maxUploadSizeMb}
                   onChange={(e) => updateFeatureToggle("maxUploadSizeMb", Number(e.target.value))}
-                  className="mt-3 w-full accent-amber-500"
+                  className="mt-3 min-h-12 w-full accent-amber-500"
                 />
               </div>
             </div>
@@ -1039,7 +1118,7 @@ function EventFlowBuilderPageContent() {
                 key={s.id}
                 type="button"
                 onClick={() => setSelectedStepType(s.type)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                className={`inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-[11px] font-medium transition ${
                   selectedStepType === s.type
                     ? "bg-amber-600 text-white"
                     : "bg-stone-900 text-stone-400 hover:text-white"
@@ -1052,15 +1131,16 @@ function EventFlowBuilderPageContent() {
           </div>
 
           {/* iPhone 16 Pro Titanium Bezel Frame */}
-          <div className="relative h-[740px] w-[360px] overflow-hidden rounded-[3.2rem] border-[10px] border-stone-800 bg-black shadow-[0_0_80px_rgba(0,0,0,0.85)] ring-2 ring-stone-700">
+          <div className="relative h-[740px] w-full max-w-[360px] overflow-hidden rounded-[3.2rem] border-[10px] border-stone-800 bg-black shadow-[0_0_80px_rgba(0,0,0,0.85)] ring-2 ring-stone-700">
             {/* Dynamic Island */}
             <div className="pointer-events-none absolute top-2.5 left-1/2 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-black ring-1 ring-stone-800/80" />
 
             {/* Live Screen Surface */}
             <div
               style={{
-                backgroundColor: themeConfig.backgroundColor,
-                color: themeConfig.textColor,
+                ...(previewCssVars as React.CSSProperties),
+                backgroundColor: "var(--event-bg)",
+                color: "var(--event-text)",
               }}
               className={`flex h-full w-full flex-col justify-between overflow-y-auto px-5 pt-12 pb-8 ${fontClass}`}
             >
@@ -1131,8 +1211,11 @@ function EventFlowBuilderPageContent() {
                   <button
                     type="button"
                     onClick={() => setSelectedStepType("guest_registration")}
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                    className={`mt-6 w-full py-3 text-xs font-semibold text-white shadow-md ${btnRadius}`}
+                    style={{
+                      backgroundColor: themeConfig.primaryColor,
+                      color: "var(--event-primary-fg)",
+                    }}
+                    className={`mt-6 min-h-12 w-full py-3 text-xs font-semibold shadow-md ${btnRadius}`}
                   >
                     {(activePreviewStep as WelcomeSplashStep).settings.ctaText}
                   </button>
@@ -1141,7 +1224,7 @@ function EventFlowBuilderPageContent() {
 
               {/* Preview Step 2: Guest Registration */}
               {activePreviewStep.type === "guest_registration" ? (
-                <div className="my-auto rounded-2xl border border-stone-300/60 bg-white/85 p-5 text-stone-900 shadow-md">
+                <div className="my-auto rounded-2xl border border-stone-300/60 bg-white/95 p-5 text-stone-900 shadow-md">
                   <div className="flex items-center gap-2">
                     <UserCheck style={{ color: themeConfig.primaryColor }} className="h-4 w-4" />
                     <h3 className="text-base font-semibold">
@@ -1158,7 +1241,7 @@ function EventFlowBuilderPageContent() {
                         type="text"
                         readOnly
                         placeholder="Your Name"
-                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                        className="min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
                       />
                     ) : null}
                     {(activePreviewStep as GuestRegistrationStep).settings.askContact ? (
@@ -1168,7 +1251,7 @@ function EventFlowBuilderPageContent() {
                         placeholder={
                           (activePreviewStep as GuestRegistrationStep).settings.contactLabel
                         }
-                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                        className="min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
                       />
                     ) : null}
                     {(activePreviewStep as GuestRegistrationStep).settings.askTableNumber ? (
@@ -1176,7 +1259,7 @@ function EventFlowBuilderPageContent() {
                         type="text"
                         readOnly
                         placeholder="Table Number"
-                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                        className="min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
                       />
                     ) : null}
                   </div>
@@ -1184,8 +1267,11 @@ function EventFlowBuilderPageContent() {
                   <button
                     type="button"
                     onClick={() => setSelectedStepType("biometric_opt_in")}
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                    className={`mt-4 w-full py-2.5 text-xs font-semibold text-white ${btnRadius}`}
+                    style={{
+                      backgroundColor: themeConfig.primaryColor,
+                      color: "var(--event-primary-fg)",
+                    }}
+                    className={`mt-4 min-h-11 w-full py-2.5 text-xs font-semibold ${btnRadius}`}
                   >
                     {(activePreviewStep as GuestRegistrationStep).settings.submitText}
                   </button>
@@ -1199,7 +1285,7 @@ function EventFlowBuilderPageContent() {
 
               {/* Preview Step 3: Biometric Opt-In */}
               {activePreviewStep.type === "biometric_opt_in" ? (
-                <div className="my-auto rounded-2xl border border-stone-300/60 bg-white/85 p-5 text-center text-stone-900 shadow-md">
+                <div className="my-auto rounded-2xl border border-stone-300/60 bg-white/95 p-5 text-center text-stone-900 shadow-md">
                   <div
                     style={{ backgroundColor: `${themeConfig.primaryColor}20` }}
                     className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
@@ -1219,8 +1305,11 @@ function EventFlowBuilderPageContent() {
                   <button
                     type="button"
                     onClick={() => setSelectedStepType("main_hub")}
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                    className={`mt-4 flex w-full items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-white ${btnRadius}`}
+                    style={{
+                      backgroundColor: themeConfig.primaryColor,
+                      color: "var(--event-primary-fg)",
+                    }}
+                    className={`mt-4 flex min-h-11 w-full items-center justify-center gap-1.5 py-2.5 text-xs font-semibold ${btnRadius}`}
                   >
                     <Camera className="h-3.5 w-3.5" />
                     {(activePreviewStep as BiometricOptInStep).settings.ctaScanText}
@@ -1242,8 +1331,11 @@ function EventFlowBuilderPageContent() {
                     {flowConfig.features.enablePhotoUpload ||
                     flowConfig.features.enableVideoUpload ? (
                       <span
-                        style={{ backgroundColor: themeConfig.primaryColor }}
-                        className={`inline-flex items-center gap-1 px-3 py-2 text-[11px] font-semibold text-white ${btnRadius}`}
+                        style={{
+                          backgroundColor: themeConfig.primaryColor,
+                          color: "var(--event-primary-fg)",
+                        }}
+                        className={`inline-flex items-center gap-1 px-3 py-2 text-[11px] font-semibold ${btnRadius}`}
                       >
                         <Upload className="h-3 w-3" />
                         {(activePreviewStep as MainHubStep).settings.uploadCtaText}

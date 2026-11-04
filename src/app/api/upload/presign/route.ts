@@ -12,7 +12,6 @@ import {
   normaliseMimeType,
   PRESIGN_TTL_SECONDS,
   resolveExtension,
-  TIER_ALBUM_QUOTAS,
 } from "@/lib/media-config";
 import { buildAlbumFileKey, createPresignedPutUrl, getPublicUrl } from "@/lib/r2";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -132,25 +131,7 @@ export async function POST(request: NextRequest) {
       return jsonError(
         413,
         "FILE_TOO_LARGE",
-        `${mediaType} files on the ${album.plan_tier} tier must be at most ${formatBytes(maxBytes)}.`,
-      );
-    }
-
-    // Enforce per-tier album item & storage quota to prevent bucket depletion
-    const quota = TIER_ALBUM_QUOTAS[album.plan_tier];
-    const { data: existingMedia } = await supabase
-      .from("media")
-      .select("size_bytes")
-      .eq("album_id", album.id);
-
-    const currentItems = existingMedia?.length ?? 0;
-    const currentBytes = (existingMedia ?? []).reduce((sum, m) => sum + (m.size_bytes || 0), 0);
-
-    if (currentItems >= quota.maxItems || currentBytes + fileSize > quota.maxTotalBytes) {
-      return jsonError(
-        403,
-        "QUOTA_EXCEEDED",
-        `This wedding album has reached its ${album.plan_tier} tier storage quota.`,
+        `${mediaType} files must be at most ${formatBytes(maxBytes)}.`,
       );
     }
 

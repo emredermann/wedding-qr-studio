@@ -126,14 +126,14 @@ export async function writeLocalStorageObject(params: {
   contentType: string;
 }): Promise<void> {
   const { dataPath, metaPath } = resolveLocalFilePaths(params.key);
-  await fs.mkdir(path.dirname(dataPath), { recursive: true });
-  await fs.writeFile(dataPath, params.bytes);
+  await fs.mkdir(/* turbopackIgnore: true */ path.dirname(dataPath), { recursive: true });
+  await fs.writeFile(/* turbopackIgnore: true */ dataPath, params.bytes);
   const meta: LocalObjectMeta = {
     contentType: params.contentType,
     contentLength: params.bytes.byteLength,
     createdAt: new Date().toISOString(),
   };
-  await fs.writeFile(metaPath, JSON.stringify(meta), "utf8");
+  await fs.writeFile(/* turbopackIgnore: true */ metaPath, JSON.stringify(meta), "utf8");
 }
 
 export async function readLocalStorageObject(
@@ -142,8 +142,8 @@ export async function readLocalStorageObject(
   try {
     const { dataPath, metaPath } = resolveLocalFilePaths(key);
     const [bytes, rawMeta] = await Promise.all([
-      fs.readFile(dataPath),
-      fs.readFile(metaPath, "utf8").catch(() => null),
+      fs.readFile(/* turbopackIgnore: true */ dataPath),
+      fs.readFile(/* turbopackIgnore: true */ metaPath, "utf8").catch(() => null),
     ]);
     let contentType = "application/octet-stream";
     if (rawMeta) {
@@ -336,10 +336,10 @@ export async function headR2Object(key: string): Promise<R2ObjectHead | null> {
   if (!isR2Configured()) {
     try {
       const { dataPath, metaPath } = resolveLocalFilePaths(key);
-      const stat = await fs.stat(dataPath);
+      const stat = await fs.stat(/* turbopackIgnore: true */ dataPath);
       let contentType: string | null = null;
       try {
-        const rawMeta = await fs.readFile(metaPath, "utf8");
+        const rawMeta = await fs.readFile(/* turbopackIgnore: true */ metaPath, "utf8");
         const parsed = JSON.parse(rawMeta) as Partial<LocalObjectMeta>;
         contentType = typeof parsed.contentType === "string" ? parsed.contentType : null;
       } catch {
@@ -381,7 +381,7 @@ export async function readR2ObjectMagicBytes(
   if (!isR2Configured()) {
     try {
       const { dataPath } = resolveLocalFilePaths(key);
-      const handle = await fs.open(dataPath, "r");
+      const handle = await fs.open(/* turbopackIgnore: true */ dataPath, "r");
       try {
         const buffer = Buffer.alloc(maxBytes);
         const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
@@ -421,8 +421,8 @@ export async function deleteR2Object(key: string): Promise<void> {
     try {
       const { dataPath, metaPath } = resolveLocalFilePaths(key);
       await Promise.all([
-        fs.unlink(dataPath).catch(() => undefined),
-        fs.unlink(metaPath).catch(() => undefined),
+        fs.unlink(/* turbopackIgnore: true */ dataPath).catch(() => undefined),
+        fs.unlink(/* turbopackIgnore: true */ metaPath).catch(() => undefined),
       ]);
     } catch {
       // No-op if missing

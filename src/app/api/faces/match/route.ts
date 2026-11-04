@@ -2,7 +2,6 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { getDatabaseErrorCode, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DEMO_ALBUM_ID, getDemoFaceMatches } from "@/lib/demo-data";
 import { attachGuestSessionCookie, resolveOrMintGuestSession } from "@/lib/guest-session";
 import { createPresignedGetUrl, getPublicUrl } from "@/lib/r2";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -59,11 +58,6 @@ export async function POST(request: NextRequest) {
       "VALIDATION_FAILED",
       err instanceof Error ? err.message : "Invalid face embedding.",
     );
-  }
-
-  if (albumId === DEMO_ALBUM_ID) {
-    const response: MatchFacesResponse = { matches: getDemoFaceMatches() };
-    return attachGuestSessionCookie(jsonOk(response), guestSession);
   }
 
   try {
