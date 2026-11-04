@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f5;
+  --foreground: #1c1917;
+  --event-primary: #b45309;
+  --event-primary-soft: rgba(180, 83, 9, 0.12);
+  --event-primary-border: rgba(180, 83, 9, 0.24);
+  --event-bg: #fafaf9;
+  --event-text: #1c1917;
+  --event-font: Georgia, "Times New Roman", serif;
+  --event-radius: 9999px;
 }
 
 @theme inline {
@@ -12,15 +19,35 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes wqrFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wqr-step-enter {
+  animation: wqrFadeUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.wqr-ambient-surface {
+  background-color: var(--event-bg);
+  color: var(--event-text);
+  font-family: var(--event-font);
+  background-image: radial-gradient(
+    circle at 50% 0%,
+    var(--event-primary-soft),
+    transparent 65%
+  );
 }

@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local signed object storage
+/.local-storage/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+!.env.example
