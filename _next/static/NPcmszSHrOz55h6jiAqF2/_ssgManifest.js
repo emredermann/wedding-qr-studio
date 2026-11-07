@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Fadmin\u002Fevents\u002F[albumId]\u002Fbuilder","\u002Fdashboard\u002F[albumId]","\u002Fe\u002F[slug]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()
