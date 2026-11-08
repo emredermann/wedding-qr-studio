@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Lumina — Bespoke Wedding & Biometric Memory Vault",
-    template: "%s · Lumina",
+    default: "Wedding QR — Ücretsiz düğün fotoğraf paylaşımı",
+    template: "%s · Wedding QR",
   },
-  applicationName: "Lumina",
+  applicationName: "Wedding QR",
   description:
-    "Lumina: Private biometric wedding gallery, 300-DPI editorial QR table cards, uncompressed 4K uploads, and voice guestbook toasts.",
+    "Misafirler QR kodu okutur, fotoğraf ve videolarını uygulama indirmeden orijinal kalitede çiftin Google Drive’ına yükler. Yüz tanıma, canlı ekran, anı defteri ve masa kartı tasarlayıcı — tamamen ücretsiz.",
 };
 
 export const viewport: Viewport = {
@@ -36,7 +36,7 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang="tr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>

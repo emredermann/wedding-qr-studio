@@ -1,70 +1,26 @@
-import type { MediaType, PlanTier } from "@/types/database";
+import type { MediaKind } from "@/types/domain";
 
 /**
- * Shared (client + server) media rules, strict MIME whitelist, per-tier size
- * ceilings, and magic-byte signature verification.
- *
- * The server is authoritative and re-validates every file at presign time and
- * via R2 range-read magic-byte inspection at completion time.
+ * Media rules shared by the browser (pre-checks) and the server (authoritative
+ * checks). Uploads are whitelisted by MIME type AND verified by magic bytes.
  */
 
-const MiB = 1024 * 1024;
-const GiB = 1024 * MiB;
+type MediaType = MediaKind;
 
-/** Global per-file size ceilings across all tiers. */
-export const MAX_FILE_SIZE_BYTES: Readonly<Record<MediaType, number>> = {
-  photo: 50 * MiB,
-  video: 2048 * MiB,
+const MiB = 1024 * 1024;
+
+/** Per-file size limits. Google Drive itself accepts up to 5 TB. */
+export const MAX_FILE_SIZE_BYTES: Readonly<Record<MediaKind, number>> = {
+  photo: 60 * MiB,
+  video: 4000 * MiB, // < 4 GiB keeps every ZIP entry within the classic (non-ZIP64) format
   audio: 200 * MiB,
 };
 
-/** Full uncompressed per-file size limits across all media types (unrestricted). */
-export const TIER_MAX_FILE_SIZE_BYTES: Readonly<
-  Record<PlanTier, Readonly<Record<MediaType, number>>>
-> = {
-  starter: {
-    photo: 50 * MiB,
-    video: 2048 * MiB,
-    audio: 200 * MiB,
-  },
-  pro: {
-    photo: 50 * MiB,
-    video: 2048 * MiB,
-    audio: 200 * MiB,
-  },
-  unlimited: {
-    photo: 50 * MiB,
-    video: 2048 * MiB,
-    audio: 200 * MiB,
-  },
-};
+/** Guestbook recordings (MediaRecorder) duration caps in seconds. */
+export const MAX_AUDIO_RECORDING_SECONDS = 180;
+export const MAX_VIDEO_RECORDING_SECONDS = 60;
 
-/** Unrestricted storage limits for all albums. */
-export const TIER_ALBUM_QUOTAS: Readonly<
-  Record<PlanTier, { readonly maxItems: number; readonly maxTotalBytes: number }>
-> = {
-  starter: {
-    maxItems: 100_000,
-    maxTotalBytes: 1_000 * GiB,
-  },
-  pro: {
-    maxItems: 100_000,
-    maxTotalBytes: 1_000 * GiB,
-  },
-  unlimited: {
-    maxItems: 100_000,
-    maxTotalBytes: 1_000 * GiB,
-  },
-};
-
-/**
- * Presigned URL lifetime in seconds — strictly under 300 seconds (4 minutes)
- * per security mandate.
- */
-export const PRESIGN_TTL_SECONDS = 240;
-export const MAX_PRESIGN_TTL_SECONDS = 299;
-
-/** Max simultaneous browser → R2 uploads (keeps mobile Safari/Chrome memory bounded). */
+/** Max simultaneous browser → Drive uploads (keeps mobile memory bounded). */
 export const MAX_CONCURRENT_UPLOADS = 3;
 
 /** Explicit whitelist of allowed photo MIME types (SVG and arbitrary subtypes are forbidden). */
@@ -111,16 +67,6 @@ export function classifyMimeType(mimeType: string): MediaType | null {
   if (ALLOWED_VIDEO_MIMES.has(mimeType)) return "video";
   if (ALLOWED_AUDIO_MIMES.has(mimeType)) return "audio";
   return null;
-}
-
-/** Computes the effective per-file byte limit for an album media type and flow setting. */
-export function getMaxFileSizeForTier(
-  _planTier: PlanTier,
-  mediaType: MediaType,
-  flowMaxUploadSizeMb: number,
-): number {
-  const flowLimit = Math.max(1, flowMaxUploadSizeMb) * MiB;
-  return Math.min(MAX_FILE_SIZE_BYTES[mediaType], flowLimit);
 }
 
 const EXTENSION_BY_MIME: Readonly<Record<string, string>> = {
@@ -265,7 +211,7 @@ export function detectMimeFromMagicBytes(
     if (brand.startsWith("3gp") || brand.startsWith("3g2")) {
       return { mimeType: "video/3gpp", mediaType: "video" };
     }
-    if (brand === "m4a " || claimedMimeType === "audio/mp4") {
+    if (brand === "m4a " || claimedMimeType?.startsWith("audio/")) {
       return { mimeType: "audio/mp4", mediaType: "audio" };
     }
     return { mimeType: "video/mp4", mediaType: "video" };
@@ -278,7 +224,7 @@ export function detectMimeFromMagicBytes(
     bytes[2] === 0xdf &&
     bytes[3] === 0xa3
   ) {
-    if (claimedMimeType === "audio/webm") {
+    if (claimedMimeType?.startsWith("audio/")) {
       return { mimeType: "audio/webm", mediaType: "audio" };
     }
     return { mimeType: "video/webm", mediaType: "video" };
@@ -300,34 +246,12 @@ export function detectMimeFromMagicBytes(
   return null;
 }
 
-export function hexToBytes(hex: string): Uint8Array | null {
-  const cleaned = hex.trim().toLowerCase();
-  if (cleaned.length < 8 || cleaned.length % 2 !== 0 || !/^[0-9a-f]+$/.test(cleaned)) {
-    return null;
-  }
-  const out = new Uint8Array(cleaned.length / 2);
-  for (let i = 0; i < out.length; i += 1) {
-    out[i] = Number.parseInt(cleaned.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
-}
-
 export function bytesToHex(bytes: Uint8Array): string {
   let hex = "";
   for (let i = 0; i < bytes.byteLength; i += 1) {
     hex += bytes[i].toString(16).padStart(2, "0");
   }
   return hex;
-}
-
-/**
- * Reads the first `byteCount` bytes of a browser `Blob`/`File` and returns
- * them as a lowercase hex string for magic-byte verification.
- */
-export async function readFileMagicBytesHex(file: Blob, byteCount = 32): Promise<string> {
-  const slice = file.slice(0, byteCount);
-  const buffer = await slice.arrayBuffer();
-  return bytesToHex(new Uint8Array(buffer));
 }
 
 export function formatBytes(bytes: number): string {

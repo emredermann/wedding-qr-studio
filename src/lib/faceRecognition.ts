@@ -128,13 +128,12 @@ export async function extractAllFacesFromImage(
 export async function extractAllFacesFromFile(file: Blob): Promise<number[][]> {
   const objectUrl = URL.createObjectURL(file);
   const img = new Image();
-  img.crossOrigin = "anonymous";
   img.decoding = "async";
 
   try {
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Failed to decode image for face recognition."));
+      img.onerror = () => reject(new Error("Görsel yüz tanıma için açılamadı."));
       img.src = objectUrl;
     });
     return await extractAllFacesFromImage(img);
@@ -173,59 +172,92 @@ export async function extractSingleFaceFromSelfie(
   return descriptorToNumberArray(detection.descriptor);
 }
 
-/**
- * Computes a 64-bit difference perceptual hash (`dHash`, 16 lowercase hex
- * characters) on the client from an image `Blob`. Always revokes the temporary
- * ObjectURL and frees the 9x8 canvas in `finally`.
- */
-export async function computeClientDifferenceHash(file: Blob): Promise<string | null> {
+const HEIC_UNSUPPORTED_MESSAGE =
+  "Bu fotoğraf formatı (HEIC) tarayıcınızda açılamadı. Lütfen 'Selfie çek' seçeneğini kullanın veya JPEG/PNG seçin.";
+
+/** True for HEIC/HEIF photos (by MIME type or, when the type is empty, by file name). */
+function isHeicLike(file: Blob): boolean {
+  const type = file.type.toLowerCase();
+  if (type.startsWith("image/heic") || type.startsWith("image/heif")) return true;
+  const name = typeof File !== "undefined" && file instanceof File ? file.name.toLowerCase() : "";
+  return /\.(heic|heif)$/.test(name);
+}
+
+async function decodeImage(file: Blob): Promise<{ img: HTMLImageElement; release: () => void }> {
   const objectUrl = URL.createObjectURL(file);
   const img = new Image();
-  img.crossOrigin = "anonymous";
   img.decoding = "async";
-  const canvas = document.createElement("canvas");
-  canvas.width = 9;
-  canvas.height = 8;
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Failed to decode image for perceptual hash."));
-      img.src = objectUrl;
-    });
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, 9, 8);
-    const { data } = ctx.getImageData(0, 0, 9, 8);
-
-    const gray = new Float32Array(72);
-    for (let i = 0; i < 72; i += 1) {
-      const offset = i * 4;
-      gray[i] = 0.299 * data[offset] + 0.587 * data[offset + 1] + 0.114 * data[offset + 2];
-    }
-
-    let hex = "";
-    for (let row = 0; row < 8; row += 1) {
-      let byte = 0;
-      for (let col = 0; col < 8; col += 1) {
-        const left = gray[row * 9 + col];
-        const right = gray[row * 9 + col + 1];
-        if (left > right) {
-          byte |= 1 << (7 - col);
-        }
-      }
-      hex += byte.toString(16).padStart(2, "0");
-    }
-    return hex;
-  } catch {
-    return null;
-  } finally {
-    canvas.width = 0;
-    canvas.height = 0;
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () =>
+      reject(new Error(isHeicLike(file) ? HEIC_UNSUPPORTED_MESSAGE : "Görsel bu tarayıcıda açılamadı. Lütfen JPEG veya PNG bir fotoğraf seçin."));
+    img.src = objectUrl;
+  }).catch((error: unknown) => {
     img.onload = null;
     img.onerror = null;
-    img.src = "";
     URL.revokeObjectURL(objectUrl);
+    throw error;
+  });
+  return {
+    img,
+    release: () => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = "";
+      URL.revokeObjectURL(objectUrl);
+    },
+  };
+}
+
+/**
+ * Reads dimensions and (optionally) all face descriptors of a photo before
+ * upload. Never throws: formats the browser cannot decode (e.g. HEIC outside
+ * Safari) simply yield no faces.
+ */
+export async function analyzePhoto(
+  file: Blob,
+  withFaces: boolean,
+): Promise<{ faces: number[][]; width?: number; height?: number }> {
+  let decoded: Awaited<ReturnType<typeof decodeImage>> | null = null;
+  try {
+    decoded = await decodeImage(file);
+    const width = decoded.img.naturalWidth || undefined;
+    const height = decoded.img.naturalHeight || undefined;
+    if (!withFaces) return { faces: [], width, height };
+    const faces = await extractAllFacesFromImage(decoded.img);
+    return { faces, width, height };
+  } catch {
+    return { faces: [] };
+  } finally {
+    decoded?.release();
+  }
+}
+
+/** Largest face in an uploaded selfie photo, or null when none is found. */
+export async function extractSelfieFromFile(file: Blob): Promise<number[] | null> {
+  const decoded = await decodeImage(file);
+  try {
+    await loadFaceModels();
+    const faceapi = await getFaceApi();
+    const input = createBoundedCanvasFromImage(decoded.img, 1280);
+    try {
+      const detections = await faceapi
+        .detectAllFaces(input, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+      if (detections.length === 0) return null;
+      const largest = detections.reduce((best, det) =>
+        det.detection.box.area > best.detection.box.area ? det : best,
+      );
+      return descriptorToNumberArray(largest.descriptor);
+    } finally {
+      // Release the scaled canvas' backing store right away (iOS Safari leaks otherwise).
+      if (input instanceof HTMLCanvasElement) {
+        input.width = 0;
+        input.height = 0;
+      }
+    }
+  } finally {
+    decoded.release();
   }
 }

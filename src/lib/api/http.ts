@@ -3,7 +3,9 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 
-import type { ApiErrorBody, ApiErrorCode, DatabaseErrorCode } from "@/types/database";
+import { DriveError } from "@/lib/drive";
+import { ServerMisconfiguredError } from "@/lib/env.server";
+import type { ApiErrorBody } from "@/types/domain";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" } as const;
 
@@ -13,7 +15,7 @@ export function jsonOk<T>(body: T, status = 200): NextResponse<T> {
 
 export function jsonError(
   status: number,
-  code: ApiErrorCode,
+  code: string,
   message: string,
   details?: Record<string, string[]>,
 ): NextResponse<ApiErrorBody> {
@@ -30,12 +32,11 @@ export function zodIssuesToDetails(issues: readonly z.core.$ZodIssue[]): Record<
   return details;
 }
 
-export type ParseResult<T> = { ok: true; data: T } | { ok: false; response: NextResponse<ApiErrorBody> };
+export type ParseResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; response: NextResponse<ApiErrorBody> };
 
-/**
- * Reads and validates a JSON body with a hard byte cap, so a malicious client
- * cannot make the server buffer an arbitrarily large payload.
- */
+/** Reads and validates a JSON body with a hard byte cap. */
 export async function parseJsonBody<S extends z.ZodType>(
   request: Request,
   schema: S,
@@ -43,51 +44,63 @@ export async function parseJsonBody<S extends z.ZodType>(
 ): Promise<ParseResult<z.infer<S>>> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
-    return { ok: false, response: jsonError(415, "BAD_REQUEST", "Content-Type must be application/json.") };
+    return { ok: false, response: jsonError(415, "BAD_REQUEST", "Content-Type application/json olmalı.") };
   }
-
-  const declaredLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-    return { ok: false, response: jsonError(413, "BAD_REQUEST", "Request body is too large.") };
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    return { ok: false, response: jsonError(413, "BAD_REQUEST", "İstek gövdesi çok büyük.") };
   }
 
   let raw: string;
   try {
     raw = await request.text();
   } catch {
-    return { ok: false, response: jsonError(400, "BAD_REQUEST", "Unable to read request body.") };
+    return { ok: false, response: jsonError(400, "BAD_REQUEST", "İstek gövdesi okunamadı.") };
   }
-
   if (new TextEncoder().encode(raw).byteLength > maxBytes) {
-    return { ok: false, response: jsonError(413, "BAD_REQUEST", "Request body is too large.") };
+    return { ok: false, response: jsonError(413, "BAD_REQUEST", "İstek gövdesi çok büyük.") };
   }
 
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
-    return { ok: false, response: jsonError(400, "BAD_REQUEST", "Request body is not valid JSON.") };
+    return { ok: false, response: jsonError(400, "BAD_REQUEST", "Geçersiz JSON.") };
   }
 
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
     return {
       ok: false,
-      response: jsonError(422, "VALIDATION_FAILED", "Request validation failed.", zodIssuesToDetails(parsed.error.issues)),
+      response: jsonError(422, "VALIDATION_FAILED", "Gönderilen bilgiler geçersiz.", zodIssuesToDetails(parsed.error.issues)),
     };
   }
   return { ok: true, data: parsed.data };
 }
 
-const DATABASE_ERROR_CODES: readonly DatabaseErrorCode[] = [
-  "INVALID_ARGUMENTS",
-  "ALBUM_NOT_ACCESSIBLE",
-  "MEDIA_FACES_CAP_REACHED",
-];
+/** Maps unexpected errors to a safe JSON response and logs the details. */
+export function handleRouteError(scope: string, error: unknown): NextResponse<ApiErrorBody> {
+  if (error instanceof ServerMisconfiguredError) {
+    console.error(`[${scope}] ${error.message}`);
+    return jsonError(503, "SERVER_MISCONFIGURED", "Sunucu yapılandırması eksik. Yönetici .env değişkenlerini kontrol etmeli.", {
+      env: error.problems,
+    });
+  }
+  if (error instanceof DriveError) {
+    console.error(`[${scope}] Google Drive error`, { status: error.status, reason: error.reason, message: error.message });
+    if (error.reason === "invalid_grant") {
+      return jsonError(503, "DRIVE_AUTH_FAILED", "Google Drive yetkisi geçersiz. Yönetici `npm run drive:token` ile yeni token üretmeli.");
+    }
+    return jsonError(502, "DRIVE_ERROR", "Google Drive şu anda yanıt vermiyor. Lütfen tekrar deneyin.");
+  }
+  console.error(`[${scope}] unexpected error`, error);
+  return jsonError(500, "INTERNAL_ERROR", "Beklenmeyen bir sunucu hatası oluştu.");
+}
 
-/** Extracts our custom PL/pgSQL exception code from a PostgREST error. */
-export function getDatabaseErrorCode(error: { code?: string; message?: string } | null): DatabaseErrorCode | null {
-  if (!error || error.code !== "P0001" || !error.message) return null;
-  const match = DATABASE_ERROR_CODES.find((code) => code === error.message);
-  return match ?? null;
+/** Throws if a Supabase query returned an error. */
+export function assertDb<T>(result: { data: T; error: { message: string; code?: string } | null }, scope: string): T {
+  if (result.error) {
+    throw new Error(`[db:${scope}] ${result.error.code ?? ""} ${result.error.message}`);
+  }
+  return result.data;
 }

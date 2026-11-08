@@ -4,14 +4,13 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getPublicEnv } from "@/lib/env.public";
-import type { Database } from "@/types/database";
 
-let browserClient: SupabaseClient<Database> | null = null;
+let browserClient: SupabaseClient | null = null;
 
-/** Singleton Supabase client for Client Components (cookie-based session). */
-export function getSupabaseBrowserClient(): SupabaseClient<Database> {
+/** Browser Supabase client — used ONLY for host authentication (sign in / out). */
+export function getSupabaseBrowserClient(): SupabaseClient {
   if (browserClient) return browserClient;
   const { supabaseUrl, supabaseAnonKey } = getPublicEnv();
-  browserClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
   return browserClient;
 }

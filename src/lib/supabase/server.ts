@@ -4,22 +4,28 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-import { getPublicEnv } from "@/lib/env.public";
-import { getSupabaseServerEnv } from "@/lib/env.server";
-import type { Database } from "@/types/database";
+import { getServerEnv } from "@/lib/env.server";
 
-export type TypedSupabaseClient = SupabaseClient<Database>;
+let adminClient: SupabaseClient | null = null;
 
 /**
- * Per-request SSR client for Server Components, Server Actions and Route
- * Handlers. Acts as the signed-in user — every query is subject to RLS.
- * Never cache it across requests: it is bound to this request's cookies.
+ * Service-role client. Bypasses RLS, so it is used ONLY inside API routes after
+ * the route has authorised the caller (host ownership or signed guest session).
  */
-export async function createSupabaseServerClient(): Promise<TypedSupabaseClient> {
-  const cookieStore = await cookies();
-  const { supabaseUrl, supabaseAnonKey } = getPublicEnv();
+export function getAdminDb(): SupabaseClient {
+  if (adminClient) return adminClient;
+  const env = getServerEnv();
+  adminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return adminClient;
+}
 
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+/** Cookie-bound client used only to read the signed-in host (Supabase Auth). */
+export async function createAuthClient(): Promise<SupabaseClient> {
+  const env = getServerEnv();
+  const cookieStore = await cookies();
+  return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -30,46 +36,9 @@ export async function createSupabaseServerClient(): Promise<TypedSupabaseClient>
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components cannot write cookies; `src/proxy.ts` refreshes
-          // the session on every request, so this is safe to ignore.
+          // Called from a context that cannot set cookies; src/proxy.ts refreshes sessions.
         }
       },
     },
   });
-}
-
-let adminClient: TypedSupabaseClient | null = null;
-
-/**
- * Service-role client that BYPASSES RLS when `SUPABASE_SERVICE_ROLE_KEY` is
- * configured. If `SUPABASE_SERVICE_ROLE_KEY` has not been added to `.env.local`
- * yet, falls back to `NEXT_PUBLIC_SUPABASE_ANON_KEY` so public/RLS-permitted
- * queries continue working without crashing.
- */
-export function getSupabaseAdminClient(): TypedSupabaseClient {
-  if (adminClient) return adminClient;
-  const env = getSupabaseServerEnv();
-  const key =
-    env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_SERVICE_ROLE_KEY.length >= 20
-      ? env.SUPABASE_SERVICE_ROLE_KEY
-      : env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  adminClient = createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, key, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: {
-      headers: {
-        "x-wqr-server-key": env.SUPABASE_SERVER_RPC_SECRET,
-      },
-    },
-  });
-  return adminClient;
-}
-
-/**
- * Returns `getSupabaseAdminClient()`, which operates with elevated privileges:
- * either directly via `SUPABASE_SERVICE_ROLE_KEY` or through the verified
- * `x-wqr-server-key` header (`SUPABASE_SERVER_RPC_SECRET`) matching `public.is_trusted_server()`.
- */
-export async function getSupabasePrivilegedClient(): Promise<TypedSupabaseClient> {
-  return getSupabaseAdminClient();
 }

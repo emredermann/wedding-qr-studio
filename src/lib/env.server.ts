@@ -2,90 +2,66 @@ import "server-only";
 
 import { z } from "zod";
 
-const DEFAULT_SERVER_RPC_SECRET =
-  "wqr_srv_9f4e2a8c1d7b6e3f5a0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c";
-
-const supabaseServerEnvSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-  SUPABASE_SERVER_RPC_SECRET: z.string().min(32).default(DEFAULT_SERVER_RPC_SECRET),
+/**
+ * Server environment, validated once per process. Nothing here is ever
+ * hard-coded: every secret comes from `process.env`.
+ */
+const serverEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.url("must be a valid URL (https://<ref>.supabase.co)"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20, "missing or too short"),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20, "missing (Supabase → Project Settings → API → service_role / secret key)"),
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .regex(/^[\w.-]+\.apps\.googleusercontent\.com$/, "missing (Google Cloud → Credentials → OAuth client ID, ends with .apps.googleusercontent.com)"),
+  GOOGLE_CLIENT_SECRET: z.string().min(10, "missing (shown next to the OAuth client ID)"),
+  GOOGLE_REFRESH_TOKEN: z.string().min(10, "missing — run `npm run drive:token`"),
+  GOOGLE_DRIVE_ROOT_FOLDER_ID: z.string().regex(/^[A-Za-z0-9_-]{10,128}$/, "missing — created by `npm run drive:token -- --write`"),
+  APP_SECRET: z.string().min(32, "must be at least 32 characters (openssl rand -hex 32)"),
 });
 
-const r2ServerEnvSchema = z.object({
-  R2_ACCOUNT_ID: z.string().regex(/^[a-f0-9]{32}$/i, "must be a 32-char hex Cloudflare account id"),
-  R2_ACCESS_KEY_ID: z.string().min(16),
-  R2_SECRET_ACCESS_KEY: z.string().min(32),
-  R2_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, "must be a valid bucket name"),
-  R2_PUBLIC_URL: z
-    .url()
-    .refine((v) => v.startsWith("https://") || v.startsWith("http://localhost"), "must use https")
-    .transform((v) => v.replace(/\/+$/, "")),
-});
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
-export type SupabaseServerEnv = z.infer<typeof supabaseServerEnvSchema>;
-export type R2ServerEnv = z.infer<typeof r2ServerEnvSchema>;
-export type ServerEnv = SupabaseServerEnv & R2ServerEnv;
+export const REQUIRED_SERVER_ENV_KEYS = Object.keys(serverEnvSchema.shape) as ReadonlyArray<keyof ServerEnv>;
 
-let cachedSupabaseEnv: SupabaseServerEnv | null = null;
-let cachedR2Env: R2ServerEnv | null = null;
+let cached: ServerEnv | null = null;
 
-export function getSupabaseServerEnv(): SupabaseServerEnv {
-  if (cachedSupabaseEnv) return cachedSupabaseEnv;
-
-  const parsed = supabaseServerEnvSchema.safeParse({
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || undefined,
-    SUPABASE_SERVER_RPC_SECRET:
-      process.env.SUPABASE_SERVER_RPC_SECRET?.trim() || DEFAULT_SERVER_RPC_SECRET,
-  });
-
-  if (!parsed.success) {
-    const fields = parsed.error.issues
-      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-      .join("; ");
-    throw new Error(`Invalid Supabase environment configuration — ${fields}`);
+export class ServerMisconfiguredError extends Error {
+  readonly problems: string[];
+  constructor(problems: string[]) {
+    super(`Server environment is not configured: ${problems.join("; ")}`);
+    this.name = "ServerMisconfiguredError";
+    this.problems = problems;
   }
-
-  cachedSupabaseEnv = parsed.data;
-  return cachedSupabaseEnv;
 }
 
-export function isR2Configured(): boolean {
-  return r2ServerEnvSchema.safeParse({
-    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID?.trim(),
-    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID?.trim(),
-    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY?.trim(),
-    R2_BUCKET: process.env.R2_BUCKET?.trim(),
-    R2_PUBLIC_URL: process.env.R2_PUBLIC_URL?.trim(),
-  }).success;
+function readRaw(): Record<keyof ServerEnv, string | undefined> {
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID?.trim(),
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET?.trim(),
+    GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN?.trim(),
+    GOOGLE_DRIVE_ROOT_FOLDER_ID: process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.trim(),
+    APP_SECRET: process.env.APP_SECRET?.trim(),
+  };
 }
 
-export function getR2ServerEnv(): R2ServerEnv {
-  if (cachedR2Env) return cachedR2Env;
-
-  const parsed = r2ServerEnvSchema.safeParse({
-    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID?.trim(),
-    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID?.trim(),
-    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY?.trim(),
-    R2_BUCKET: process.env.R2_BUCKET?.trim(),
-    R2_PUBLIC_URL: process.env.R2_PUBLIC_URL?.trim(),
-  });
-
-  if (!parsed.success) {
-    const fields = parsed.error.issues
-      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-      .join("; ");
-    throw new Error(`Invalid Cloudflare R2 environment configuration — ${fields}`);
-  }
-
-  cachedR2Env = parsed.data;
-  return cachedR2Env;
+/** Returns a list of human-readable problems, or an empty list when valid. */
+export function describeServerEnvProblems(): string[] {
+  const parsed = serverEnvSchema.safeParse(readRaw());
+  if (parsed.success) return [];
+  return parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
 }
 
 export function getServerEnv(): ServerEnv {
-  const supa = getSupabaseServerEnv();
-  const r2 = getR2ServerEnv();
-  return { ...supa, ...r2 };
+  if (cached) return cached;
+  const parsed = serverEnvSchema.safeParse(readRaw());
+  if (!parsed.success) {
+    throw new ServerMisconfiguredError(
+      parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
+    );
+  }
+  cached = parsed.data;
+  return cached;
 }
