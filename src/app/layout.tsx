@@ -1,3 +1,5 @@
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -39,7 +41,13 @@ export default function RootLayout({
       lang="tr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden">
+        {children}
+        {/* Vercel Web Analytics (page views) + Speed Insights (Core Web Vitals).
+            Both are no-ops outside Vercel and send no data in development. */}
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

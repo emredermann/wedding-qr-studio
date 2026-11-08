@@ -8,6 +8,7 @@ import { GalleryPanel } from "@/components/guest/GalleryPanel";
 import { GuestbookPanel } from "@/components/guest/GuestbookPanel";
 import { UploadPanel } from "@/components/guest/UploadPanel";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
 
@@ -69,6 +70,7 @@ export function GuestApp({ slug }: { slug: string }) {
     } catch {
       // Private mode: keep it in memory only.
     }
+    if (!guestName) trackEvent("guest_joined");
     setGuestName(value);
     setEditingName(false);
   };

@@ -4,6 +4,7 @@ import { Loader2, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
 
@@ -39,6 +40,7 @@ export function SettingsTab({
     setSaving(true);
     try {
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, { method: "PATCH", json: form });
+      trackEvent("settings_saved");
       onSaved(res.event);
       onMessage("Ayarlar kaydedildi.", "success");
     } catch (error) {

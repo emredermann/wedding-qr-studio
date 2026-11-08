@@ -4,6 +4,7 @@ import { Download, FileDown, ImageUp, Loader2, Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
 
@@ -413,7 +414,10 @@ export function QrCardDesigner({
     try {
       const canvas = renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (blob) saveBlob(blob, `masa-karti-${slug}${tables[0] ? `-${tables[0]}` : ""}.png`);
+      if (blob) {
+        saveBlob(blob, `masa-karti-${slug}${tables[0] ? `-${tables[0]}` : ""}.png`);
+        trackEvent("qr_card_exported", { format: "png", cards: 1 });
+      }
     } finally {
       setExporting(null);
     }
@@ -465,6 +469,7 @@ export function QrCardDesigner({
         }
       }
       saveBlob(buildPdf(pages), `masa-kartlari-${slug}.pdf`);
+      trackEvent("qr_card_exported", { format: "pdf", cards: list.length });
     } finally {
       setExporting(null);
     }

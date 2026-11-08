@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Recorder, type Recording } from "@/components/guest/Recorder";
 import { StatusBadge } from "@/components/media/MediaThumb";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
 import { streamUrl } from "@/lib/media-urls";
@@ -65,6 +66,7 @@ export function GuestbookPanel({
         json: { guestName, message: text.trim() },
       });
       setMessages((prev) => [res.item, ...prev]);
+      trackEvent("guestbook_note_sent");
       setText("");
       onMessage(event.requireApproval ? "Mesajınız onaydan sonra görünecek. Teşekkürler!" : "Mesajınız anı defterine eklendi 💛", "success");
     } catch (error) {
@@ -91,6 +93,7 @@ export function GuestbookPanel({
         onProgress: setUploadProgress,
       });
       setMediaEntries((prev) => [media, ...prev]);
+      trackEvent("guestbook_recording_sent", { kind: media.kind === "audio" ? "audio" : "video" });
       onMessage("Mesajınız kaydedildi. Teşekkürler!", "success");
     } catch (error) {
       onMessage(errorMessage(error), "error");

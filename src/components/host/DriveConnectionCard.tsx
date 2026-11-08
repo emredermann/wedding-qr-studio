@@ -2,8 +2,9 @@
 
 import { AlertTriangle, CheckCircle2, HardDrive, Loader2, Unplug, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { DriveConnectionStatusDto } from "@/types/domain";
 
@@ -41,6 +42,10 @@ export function DriveConnectionCard({
   const [error, setError] = useState<string | null>(null);
 
   const outcome = params.get("drive");
+
+  useEffect(() => {
+    if (outcome === "connected") trackEvent("drive_connected");
+  }, [outcome]);
   const reason = params.get("reason") ?? "";
   const banner =
     outcome === "connected"
@@ -124,7 +129,7 @@ export function DriveConnectionCard({
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />} Bağlantıyı kaldır
               </button>
             ) : (
-              <a href={CONNECT_URL} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white">
+              <a href={CONNECT_URL} onClick={() => trackEvent("drive_connect_started")} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white">
                 <HardDrive className="h-4 w-4" />
                 {status.status === "revoked" ? "Yeniden bağla" : "Google Drive’ı bağla"}
               </a>

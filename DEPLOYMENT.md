@@ -139,6 +139,8 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
    - **Redirect URLs** listesine `https://<proje>.vercel.app/auth/callback` ekleyin.
 5. `vercel.json` fonksiyonları **Frankfurt (`fra1`)** bölgesinde çalıştırır. Supabase projeniz başka bir bölgedeyse buradaki `regions` değerini ona en yakın bölgeyle değiştirin.
 
+6. **Analytics (isteğe bağlı, ücretsiz katmanda var):** Vercel’de projenizin **Analytics** sekmesinde **Enable**, **Speed Insights** sekmesinde **Enable** deyin ve bir kez **Redeploy** edin. Uygulama `@vercel/analytics` ve `@vercel/speed-insights` bileşenlerini zaten yüklüyor; veriler birkaç dakika içinde panelde görünür. Bu bileşenler Vercel dışında ve geliştirme modunda veri göndermez.
+
 **Yayın sonrası kontrol listesi**
 
 - [ ] `https://<proje>.vercel.app/login` ile giriş yapılıyor

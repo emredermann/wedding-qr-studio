@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 
 import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
 import { formatBytes } from "@/lib/media-config";
 import type { EventStatsDto, ExportItem, HostEventDto } from "@/types/domain";
@@ -28,6 +29,7 @@ export function OverviewTab({
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(guestUrl);
+      trackEvent("guest_link_shared", { method: "copy" });
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -66,7 +68,7 @@ export function OverviewTab({
               <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
                 {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />} Kopyala
               </button>
-              <a href={`https://wa.me/?text=${encodeURIComponent(`${event.coupleNames || event.title} düğününden fotoğraflarınızı buradan paylaşın: ${guestUrl}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
+              <a href={`https://wa.me/?text=${encodeURIComponent(`${event.coupleNames || event.title} düğününden fotoğraflarınızı buradan paylaşın: ${guestUrl}`)}`} target="_blank" rel="noreferrer" onClick={() => trackEvent("guest_link_shared", { method: "whatsapp" })} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
                 <Share2 className="h-4 w-4" /> WhatsApp
               </a>
               <a href={guestUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
@@ -100,6 +102,7 @@ export function OverviewTab({
               Misafir yüklemeleri açık
             </label>
             <ZipDownloadButton
+              scope="host"
               baseName={event.slug}
               label="Tüm medyayı indir (ZIP)"
               onMessage={onMessage}

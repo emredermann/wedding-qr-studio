@@ -3,6 +3,7 @@
 import { Archive, Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { trackEvent, type AnalyticsEvents } from "@/lib/client/analytics";
 import { downloadZip, type DownloadableFile, type ZipProgress } from "@/lib/client/download";
 import { formatBytes } from "@/lib/media-config";
 
@@ -12,7 +13,10 @@ export function ZipDownloadButton({
   loadFiles,
   className = "",
   onMessage,
+  scope,
 }: {
+  /** Analytics label for where the ZIP was requested from. */
+  scope: AnalyticsEvents["zip_downloaded"]["scope"];
   label?: string;
   baseName: string;
   loadFiles: () => Promise<DownloadableFile[]>;
@@ -33,6 +37,7 @@ export function ZipDownloadButton({
         return;
       }
       const result = await downloadZip(files, baseName, setProgress, controller.current.signal);
+      trackEvent("zip_downloaded", { scope, files: files.length - result.failed.length });
       if (result.failed.length > 0) {
         onMessage?.(`${result.failed.length} dosya indirilemedi, kalanlar ZIP'e eklendi.`, "error");
       } else {

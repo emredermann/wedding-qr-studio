@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { DriveConnectionCard } from "@/components/host/DriveConnectionCard";
 import { HostHeader } from "@/components/host/HostHeader";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { DriveConnectionStatusDto, HostEventDto, HostEventListItem } from "@/types/domain";
 
@@ -66,6 +67,7 @@ export function EventsDashboard() {
           slug: form.slug || undefined,
         },
       });
+      trackEvent("event_created", { drive: res.event.driveAccount });
       router.push(`/dashboard/${res.event.id}`);
     } catch (err) {
       setFormError(errorMessage(err));

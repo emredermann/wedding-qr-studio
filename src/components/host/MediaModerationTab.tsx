@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { BulkMediaResponse, HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
 
@@ -124,6 +125,7 @@ function MediaFeed({
         method: "POST",
         json: { ids: targets.map((m) => m.id), action },
       });
+      trackEvent("moderation_bulk", { action, items: targets.length });
       const deleted = new Set(res.deletedIds);
       const updated = new Map(res.updated.map((m) => [m.id, m]));
       setItems((prev) =>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -34,6 +35,7 @@ export function LoginForm() {
       if (mode === "signin") {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (signInError) throw signInError;
+        trackEvent("host_signed_in");
         router.replace(next);
         router.refresh();
       } else {
@@ -43,6 +45,7 @@ export function LoginForm() {
           options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
         });
         if (signUpError) throw signUpError;
+        trackEvent("host_signed_up");
         if (data.session) {
           router.replace(next);
           router.refresh();

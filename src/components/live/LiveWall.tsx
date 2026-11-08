@@ -4,6 +4,7 @@ import { Expand, Heart, Shrink } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useReducer, useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
@@ -84,6 +85,7 @@ export function LiveWall({ slug }: { slug: string }) {
         if (cancelled) return;
         setEvent(ev.event);
         setGuestUrl(`${window.location.origin}/e/${encodeURIComponent(slug)}`);
+        trackEvent("live_wall_opened");
         const approved = media.items.filter((m) => m.status === "approved");
         dispatch({ type: "merge", items: approved, fresh: false });
         setNewestMedia(maxIso(media.items.map((m) => m.publishedAt)));

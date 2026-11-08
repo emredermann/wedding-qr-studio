@@ -3,6 +3,7 @@
 import { AlertCircle, Camera, CheckCircle2, ImagePlus, Loader2, RotateCcw, Trash2, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
 import { analyzePhoto } from "@/lib/faceRecognition";
@@ -106,9 +107,11 @@ export function UploadPanel({
         onProgress: (fraction) => patch(item.id, { progress: fraction }),
       });
       patch(item.id, { status: "done", progress: 1 });
+      trackEvent("upload_completed", { kind: item.kind });
       onUploaded(media);
     } catch (error) {
       startedRef.current.delete(item.id);
+      trackEvent("upload_failed", { kind: item.kind });
       patch(item.id, { status: "error", error: errorMessage(error) });
     } finally {
       pump();

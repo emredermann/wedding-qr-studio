@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, Download, Loader2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { trackEvent } from "@/lib/client/analytics";
 import { downloadOriginal } from "@/lib/client/download";
 import { formatBytes } from "@/lib/media-config";
 import { FULL_IMAGE_SIZE, mediaImageSrc, streamUrl } from "@/lib/media-urls";
@@ -57,6 +58,7 @@ export function Lightbox({
     setDownloading(true);
     try {
       await downloadOriginal({ fileId: item.fileId, name: item.originalName, sizeBytes: item.sizeBytes });
+      trackEvent("original_downloaded", { kind: item.kind });
     } finally {
       setDownloading(false);
     }

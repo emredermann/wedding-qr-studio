@@ -121,6 +121,7 @@ function GalleryFeed({
       {visible.length > 0 && (
         <div className="flex justify-end">
           <ZipDownloadButton
+            scope={mineOnly ? "mine" : "gallery"}
             baseName={`${event.slug}${category ? `-${category}` : ""}`}
             label={mineOnly ? "Yüklediklerimi indir" : "Tümünü indir (ZIP)"}
             loadFiles={loadAllForZip}

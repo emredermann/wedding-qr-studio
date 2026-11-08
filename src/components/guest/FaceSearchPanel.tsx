@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
+import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { extractSelfieFromFile, extractSingleFaceFromSelfie, loadFaceModels } from "@/lib/faceRecognition";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
@@ -41,6 +42,7 @@ export function FaceSearchPanel({
     });
     setResults(res.items);
     setPhase("results");
+    trackEvent("face_search", { found: res.items.length > 0 });
     if (res.items.length === 0) onMessage("Henüz sizi içeren bir fotoğraf bulunamadı. Daha sonra tekrar deneyin.", "info");
   }
 
@@ -163,6 +165,7 @@ export function FaceSearchPanel({
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-stone-800">{results.length} fotoğrafta sizi bulduk</p>
             <ZipDownloadButton
+              scope="faces"
               baseName={`${event.slug}-fotograflarim`}
               label="Hepsini indir"
               loadFiles={async () => results.map((m) => ({ fileId: m.fileId, name: m.originalName, sizeBytes: m.sizeBytes, createdAt: m.createdAt }))}
