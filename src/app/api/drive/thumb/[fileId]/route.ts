@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonError } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
 import { authorizeMediaAccess } from "@/lib/media-access";
 import { driveImageUrl } from "@/lib/media-urls";
 
@@ -24,7 +24,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ fil
       return Response.redirect(driveImageUrl(access.media.drive_file_id, size), 302);
     }
 
-    const thumb = await DriveService.fetchThumbnail(access.media.drive_file_id, size);
+    const drive = await driveForEvent(access.event);
+    const thumb = await drive.fetchThumbnail(access.media.drive_file_id, size);
     if (!thumb || !thumb.body) return jsonError(404, "NO_THUMBNAIL", "Önizleme henüz hazır değil.");
     return new Response(thumb.body, {
       status: 200,

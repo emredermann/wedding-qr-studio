@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { trashBestEffort } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
 import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
 import { loadOwnedChild } from "@/lib/host-ownership";
 import { getAdminDb } from "@/lib/supabase/server";
@@ -37,8 +38,9 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     const row = owned.row;
 
     if (status && status !== row.status) {
-      if (status === "approved") await DriveService.makePublic(row.drive_file_id);
-      else if (row.status === "approved") await DriveService.makePrivate(row.drive_file_id);
+      const drive = await driveForEvent(owned.event);
+      if (status === "approved") await drive.makePublic(row.drive_file_id);
+      else if (row.status === "approved") await drive.makePrivate(row.drive_file_id);
     }
 
     const update: Partial<Pick<MediaItemRow, "status" | "category" | "published_at">> = {};
@@ -67,9 +69,10 @@ export async function DELETE(_request: NextRequest, context: Ctx) {
     if (owned === "unauthenticated") return jsonError(401, "UNAUTHENTICATED", "Lütfen giriş yapın.");
     if (!owned) return jsonError(404, "NOT_FOUND", "Dosya bulunamadı.");
 
-    await DriveService.trash(owned.row.drive_file_id);
     const { error } = await getAdminDb().from("media_items").delete().eq("id", owned.row.id);
     if (error) throw new Error(error.message);
+    const drive = await driveForEvent(owned.event).catch(() => null);
+    if (drive) await trashBestEffort(drive, owned.row.drive_file_id, "host:media:delete");
     return jsonOk({ deleted: true });
   } catch (error) {
     return handleRouteError("host:media:delete", error);

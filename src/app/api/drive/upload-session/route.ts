@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
 import { findEventBySlug } from "@/lib/events";
 import { resolveGuestSession, withGuestCookie } from "@/lib/guest-session";
 import {
@@ -15,8 +15,9 @@ import {
   MAX_FILE_SIZE_BYTES,
   normaliseMimeType,
 } from "@/lib/media-config";
-import { rateLimit } from "@/lib/rate-limit";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { signToken } from "@/lib/signing";
+import { checkDriveSpace, reserveUploadQuota } from "@/lib/upload-quota";
 import { type UploadTokenPayload } from "@/lib/upload-token";
 import type { UploadSessionResponse } from "@/types/domain";
 
@@ -160,6 +161,17 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "UPLOADS_CLOSED", "Düğün sahibi şu anda yüklemeleri kapattı.");
     }
 
+    const drive = await driveForEvent(event);
+    const noSpace = await checkDriveSpace(drive, sizeBytes);
+    if (noSpace) return withGuestCookie(noSpace, guest);
+    const overQuota = await reserveUploadQuota({
+      eventId: event.id,
+      sessionId: guest.sessionId,
+      ip: clientIp(request),
+      sizeBytes,
+    });
+    if (overQuota) return withGuestCookie(overQuota, guest);
+
     const folderId =
       kind === "photo" ? event.drive_photos_folder_id : kind === "video" ? event.drive_videos_folder_id : event.drive_voice_folder_id;
     const uploadId = randomUUID();
@@ -168,7 +180,7 @@ export async function POST(request: NextRequest) {
       .filter(Boolean)
       .join("_");
 
-    const uploadUrl = await DriveService.createResumableSession({
+    const uploadUrl = await drive.createResumableSession({
       name: driveName,
       mimeType,
       sizeBytes,
@@ -177,6 +189,7 @@ export async function POST(request: NextRequest) {
       appProperties: { wqrUploadId: uploadId, wqrEventId: event.id },
       description: guestName ? `Yükleyen: ${guestName}` : undefined,
     });
+    drive.noteReservedBytes(sizeBytes);
 
     const payload: UploadTokenPayload = {
       u: uploadId,

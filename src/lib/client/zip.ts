@@ -86,8 +86,19 @@ export class ZipWriter {
     return nextOffset <= ZIP_MAX_OFFSET && nextOffset + nextCentral + END_RECORD_SIZE <= ZIP_MAX_OFFSET;
   }
 
+  /**
+   * Normalises an entry path segment by segment (prevents "zip-slip": no
+   * absolute paths, no "." / ".." segments, no control characters) and makes
+   * it unique inside the archive.
+   */
   private uniqueName(path: string): string {
-    const cleaned = path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\.\.+/g, ".");
+    const cleaned =
+      path
+        .replace(/\\/g, "/")
+        .split("/")
+        .map((segment) => segment.replace(/[\u0000-\u001f\u007f]/g, "_").trim())
+        .filter((segment) => segment !== "" && segment !== "." && segment !== "..")
+        .join("/") || "dosya";
     if (!this.usedNames.has(cleaned)) {
       this.usedNames.add(cleaned);
       return cleaned;

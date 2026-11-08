@@ -9,12 +9,20 @@ export interface HostUser {
   email: string | null;
 }
 
-/** Returns the signed-in host, or null. Never falls back to a demo user. */
+/**
+ * Returns the signed-in host, or null. Never falls back to a demo user.
+ *
+ * `getClaims()` verifies the session JWT locally against the project's cached
+ * JWKS (asymmetric signing keys), so moderation screens that load dozens of
+ * thumbnails do not make one Supabase Auth round trip per request. Projects
+ * still on the legacy shared secret transparently fall back to a server check.
+ */
 export async function getHostUser(): Promise<HostUser | null> {
   const supabase = await createAuthClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return { id: data.user.id, email: data.user.email ?? null };
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims || typeof claims.sub !== "string" || claims.sub.length === 0) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
 }
 
 export type OwnedEventResult =

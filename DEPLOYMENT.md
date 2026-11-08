@@ -39,29 +39,46 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 
 ## 2. Google Cloud: Drive API + OAuth istemcisi
 
-> **Neden Service Account değil?** Service Account’ların kişisel Google hesaplarında depolama kotası 0 GB’dir ve yüklemeler `storageQuotaExceeded` hatası verir. Bu yüzden kendi hesabınız adına çalışan bir **OAuth2 refresh token** kullanılır.
+> **Neden Service Account değil?** Service Account’ların kişisel Google hesaplarında depolama kotası 0 GB’dir ve yüklemeler `storageQuotaExceeded` hatası verir. Bu yüzden Google hesabı adına çalışan bir **OAuth2 refresh token** kullanılır.
+
+### Medya kimin Drive’ına gider?
+
+| Mod | Nasıl | Ne zaman |
+| --- | --- | --- |
+| **Her düğün sahibinin kendi Drive’ı** (önerilen) | Düğün sahibi panelde **“Google Drive’ı bağla”** düğmesine basar, kendi Google hesabıyla izin verir. Medya onun Drive’ındaki “Wedding QR” klasörüne gider. | Platformu başkaları da kullanacaksa. |
+| **Platform Drive’ı** (isteğe bağlı) | Siz bir kez `npm run drive:token -- --write` çalıştırırsınız; Drive bağlamamış düğün sahiplerinin etkinlikleri sizin Drive’ınıza gider. | Sadece kendi düğününüz/arkadaşlarınız için, ya da yedek olarak. |
+
+İkisi birlikte de çalışır: Drive’ını bağlayan düğün sahibinin **yeni** etkinlikleri kendi Drive’ına, bağlamayanınki platform Drive’ına gider. Platform Drive’ını hiç kurmazsanız (`GOOGLE_REFRESH_TOKEN` ve `GOOGLE_DRIVE_ROOT_FOLDER_ID` boş), her düğün sahibi etkinlik açmadan önce Drive’ını bağlamak zorundadır.
+
+### Adımlar
 
 1. https://console.cloud.google.com → üstten **yeni proje** oluşturun (ör. `wedding-qr`).
 2. **APIs & Services → Library** → “**Google Drive API**” → **Enable**.
-3. **APIs & Services → OAuth consent screen** (yeni arayüzde *Google Auth Platform*):
-   - User type: **External** → uygulama adı ve destek e-postası girin.
-   - **Data access / Scopes** bölümüne `.../auth/drive.file` kapsamını ekleyin (*“See, edit, create and delete only the specific Google Drive files you use with this app”*).
-   - **Audience / Test users** bölümüne kendi Gmail adresinizi ekleyin.
-   - **Önemli:** Ardından **Publish app** ile durumu **In production** yapın. “Testing” durumunda refresh token’lar **7 gün sonra** geçersiz olur. `drive.file` hassas olmayan bir kapsam olduğu için Google doğrulaması gerekmez; giriş sırasında görebileceğiniz “Google bu uygulamayı doğrulamadı” uyarısını **Gelişmiş → … sayfasına git** ile geçebilirsiniz.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - Application type: **Desktop app** → **Create**.
+3. **Google Auth Platform → Branding / Audience / Data access** (eski arayüzde *OAuth consent screen*):
+   - User type: **External** → uygulama adı, destek e-postası ve (yayına alınca) ana sayfa adresinizi girin.
+   - **Data access → Add or remove scopes**: `openid`, `.../auth/userinfo.email` ve `.../auth/drive.file` (*“See, edit, create and delete only the specific Google Drive files you use with this app”*). Üçü de hassas olmayan kapsamlardır; Google doğrulaması gerekmez.
+   - **Audience → Publish app** ile durumu **In production** yapın. Bu iki nedenle şart: “Testing” durumunda yalnızca listeye eklediğiniz test kullanıcıları bağlanabilir (diğer herkes *“Erişim engellendi: … Google doğrulama sürecini tamamlamadı”* hatası alır) ve refresh token’lar **7 gün sonra** geçersiz olur. Yayındaki uygulamada kullanıcılar bir kez *“Google bu uygulamayı doğrulamadı”* uyarısı görebilir; **Gelişmiş → … sayfasına git** ile devam ederler.
+4. **Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application** (Drive bağlama akışı tarayıcıdan bir web adresine döndüğü için *Desktop app* bu akışla çalışmaz).
+   - **Authorized redirect URIs** listesine şunları ekleyin:
+     - `http://localhost:3000/api/host/drive/callback` (yerel geliştirme)
+     - `https://<alan-adınız>/api/host/drive/callback` (yayın — ör. `https://wedding-qr.vercel.app/api/host/drive/callback`)
+     - `http://127.0.0.1:53682/oauth2callback` (yalnızca platform Drive’ı için `npm run drive:token` kullanacaksanız)
    - Çıkan **Client ID** ve **Client secret** değerlerini `.env.local` içindeki `GOOGLE_CLIENT_ID` ve `GOOGLE_CLIENT_SECRET` alanlarına yazın.
-   - (*Web application* türünü tercih ederseniz Authorized redirect URI olarak `http://127.0.0.1:53682/oauth2callback` ekleyin.)
-5. Refresh token’ı ve kök klasörü üretin:
+   - Daha önce *Desktop app* türünde istemci oluşturduysanız, yeni bir *Web application* istemcisi oluşturup `.env.local` ve Vercel’deki değerleri onunla değiştirin.
+5. **Kendi Drive’ınızı bağlama (önerilen):** Uygulamayı çalıştırın, `/dashboard` sayfasında **Google Drive’ı bağla** düğmesine basın, Google hesabınızı seçin ve izin ekranında **Google Drive kutucuğunun işaretli** olduğundan emin olun. Drive’ınızda “Wedding QR” klasörü otomatik oluşur. Bağlantı anahtarı veritabanında `APP_SECRET`’tan türetilen bir anahtarla AES-256-GCM ile şifrelenmiş olarak saklanır ve tarayıcıya hiç gönderilmez.
+6. **Platform Drive’ı (isteğe bağlı):**
 
    ```bash
    npm run drive:token -- --write
    ```
 
-   - Terminal bir yetkilendirme adresi yazdırır. Adresi açıp **medyanın saklanacağı Google hesabıyla** giriş yapın ve izin verin.
-   - Tarayıcı `127.0.0.1` adresine geri döner ve script kodu otomatik yakalar. Dönmezse adres çubuğundaki URL’yi veya `code` değerini terminale yapıştırın.
-   - Script, Drive’ınızda **“Wedding QR”** adlı kök klasörü oluşturur ve `GOOGLE_REFRESH_TOKEN` ile `GOOGLE_DRIVE_ROOT_FOLDER_ID` değerlerini `.env.local` dosyasına yazar.
-   - `drive.file` kapsamı yalnızca uygulamanın **kendi oluşturduğu** klasörleri görebilir. Bu yüzden Drive’da elle açtığınız bir klasörün ID’sini kullanmayın; script’in oluşturduğu klasörü kullanın.
+   - Terminal bir yetkilendirme adresi yazdırır; açıp medyanın saklanacağı Google hesabıyla izin verin.
+   - Tarayıcı `127.0.0.1` adresine döner ve script kodu otomatik yakalar. Dönmezse adres çubuğundaki URL’yi veya `code` değerini terminale yapıştırın.
+   - Script Drive’da **“Wedding QR”** kök klasörünü oluşturur ve `GOOGLE_REFRESH_TOKEN` ile `GOOGLE_DRIVE_ROOT_FOLDER_ID` değerlerini `.env.local` dosyasına yazar.
+   - `drive.file` kapsamı yalnızca uygulamanın **kendi oluşturduğu** klasörleri görür; Drive’da elle açtığınız bir klasörün ID’sini kullanmayın.
+
+> **Önemli:** `APP_SECRET` değiştirilirse kayıtlı Drive bağlantılarının şifresi çözülemez; düğün sahiplerinin Drive’larını yeniden bağlaması gerekir. Bu yüzden `APP_SECRET`’i sabit tutun.
 
 ---
 
@@ -89,7 +106,7 @@ npm run dev
 4. Production build’i doğrulayın:
 
 ```bash
-npm run check   # lint + typecheck + build — hepsi hatasız bitmeli
+npm run check   # lint + typecheck + test + build — hepsi hatasız bitmeli
 ```
 
 Bir ortam değişkeni eksikse sunucu açılırken terminalde çerçeveli bir uyarı listesi çıkar ve API’ler `503 SERVER_MISCONFIGURED` döner.
@@ -162,7 +179,11 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 | Belirti | Neden / Çözüm |
 | --- | --- |
 | API `503 SERVER_MISCONFIGURED` | Bir ortam değişkeni eksik veya hatalı. Yanıttaki `details.env` listesi hangisi olduğunu söyler; Vercel’de değişkeni ekleyip **Redeploy** edin. |
+| `409 DRIVE_NOT_CONNECTED` | Etkinliğin medyasını sakladığı Drive kullanılamıyor: düğün sahibi Drive bağlantısını kopardı/iptal etti ya da platform Drive’ı yapılandırılmadı. Düğün sahibi panelde **Yeniden bağla**’ya (aynı Google hesabıyla) basmalı. |
+| Drive bağlarken `redirect_uri_mismatch` | Google Cloud’daki *Web application* istemcisine `https://<alan-adınız>/api/host/drive/callback` adresini ekleyin. Özel alan adı kullanıyorsanız `NEXT_PUBLIC_APP_URL` de aynı adres olmalı. |
 | `503 DRIVE_AUTH_FAILED` / `invalid_grant` | Refresh token iptal edilmiş veya süresi dolmuş (çoğunlukla OAuth ekranı “Testing” durumunda kaldığı için). Uygulamayı **In production** yapın, `npm run drive:token -- --write` komutunu tekrar çalıştırın ve yeni token’ı Vercel’e girin. |
+| Yükleme `507 DRIVE_FULL` | Drive'da yeterli boş alan yok; yükleme başlamadan reddedildi. Google One ile alan ekleyin veya eski dosyaları silin. |
+| Yükleme `429 UPLOAD_QUOTA_EXCEEDED` | Bir misafir (20 GB / 1500 dosya) veya bir ağ (80 GB / 8000 dosya) etkinlik başı sınıra ulaştı. Sınırlar `src/lib/upload-quota.ts` içinde. |
 | Yükleme `ORIGIN_NOT_ALLOWED` | Siteye proxy veya farklı bir alan adı üzerinden erişiliyor. `NEXT_PUBLIC_APP_URL` değerini tarayıcıdaki adresle aynı yapın. |
 | Yükleme Drive’a giderken CORS hatası | Upload session URI’si başka bir origin için açılmış. Sayfayı yenileyip tekrar deneyin; `NEXT_PUBLIC_APP_URL` değerini kontrol edin. |
 | Drive `storageQuotaExceeded` | Drive (15 GB) dolu. Google One ile alan ekleyin veya eski dosyaları silin. |
@@ -171,6 +192,8 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 | Hesap oluşturduktan sonra giriş yapılamıyor | E-posta doğrulaması bekleniyor. Gelen kutunuzu kontrol edin veya Supabase’de “Confirm email” ayarını kapatın. |
 
 ---
+
+> **Şemayı güncellediyseniz:** `supabase/migrations/0001_wedding_qr_drive.sql` yeniden çalıştırılabilir (idempotent). Yükleme kotası (`upload_quota`, `reserve_upload_quota`) ve istatistik (`event_media_stats`) fonksiyonları bu dosyadadır; eski bir kurulumda dosyayı SQL Editor'da bir kez daha çalıştırın.
 
 ## 10. Güvenlik özeti
 

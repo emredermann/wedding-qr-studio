@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import type { DriveClient } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
 import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
 import { detectMimeFromMagicBytes } from "@/lib/media-config";
@@ -46,11 +47,11 @@ const schema = z.object({
 
 const MAKE_PUBLIC_ATTEMPTS = 2;
 
-async function makePublicWithRetry(fileId: string): Promise<void> {
+async function makePublicWithRetry(drive: DriveClient, fileId: string): Promise<void> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < MAKE_PUBLIC_ATTEMPTS; attempt += 1) {
     try {
-      await DriveService.makePublic(fileId);
+      await drive.makePublic(fileId);
       return;
     } catch (error) {
       lastError = error;
@@ -105,7 +106,8 @@ export async function POST(request: NextRequest) {
     const event = eventRes.data as EventRow | null;
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
 
-    const file = await DriveService.getFile(fileId);
+    const drive = await driveForEvent(event);
+    const file = await drive.getFile(fileId);
     const authentic =
       file !== null &&
       !file.trashed &&
@@ -117,14 +119,14 @@ export async function POST(request: NextRequest) {
     }
     const actualSize = Number(file.size ?? "0");
     if (actualSize !== token.s) {
-      await DriveService.trash(fileId);
+      await drive.trash(fileId);
       return jsonError(422, "UPLOAD_INCOMPLETE", "Dosya eksik yüklendi. Lütfen tekrar deneyin.");
     }
 
-    const head = await DriveService.readHeadBytes(fileId, 64);
+    const head = await drive.readHeadBytes(fileId, 64);
     const detected = detectMimeFromMagicBytes(head, token.m);
     if (!detected || detected.mediaType !== token.k) {
-      await DriveService.trash(fileId);
+      await drive.trash(fileId);
       return jsonError(415, "UNSUPPORTED_MEDIA_TYPE", "Dosya içeriği bir fotoğraf, video veya ses kaydı değil.");
     }
 
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
     // retried confirm does not treat a still-private file as approved.
     if (status === "approved") {
       try {
-        await makePublicWithRetry(fileId);
+        await makePublicWithRetry(drive, fileId);
       } catch (shareError) {
         const rollback = await db.from("media_items").delete().eq("id", row.id);
         if (rollback.error) {

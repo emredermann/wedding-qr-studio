@@ -8,7 +8,12 @@ export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { describeServerEnvProblems } = await import("@/lib/env.server");
   const problems = describeServerEnvProblems();
-  if (problems.length === 0) return;
+  if (problems.length === 0) {
+    if (!process.env.GOOGLE_REFRESH_TOKEN?.trim()) {
+      console.info("Wedding QR: no platform Drive configured — hosts must connect their own Google Drive before creating events.");
+    }
+    return;
+  }
 
   const lines = [
     "Wedding QR: environment is NOT configured. API routes will answer 503 until fixed.",

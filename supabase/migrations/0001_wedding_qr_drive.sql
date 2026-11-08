@@ -45,6 +45,28 @@ create table if not exists public.events (
 
 create index if not exists events_owner_id_idx on public.events (owner_id, created_at desc);
 
+-- Which Google Drive stores the event: 'app' = platform Drive from the env
+-- (GOOGLE_REFRESH_TOKEN), 'host' = the owner's own connected Drive.
+alter table public.events
+  add column if not exists drive_account text not null default 'app'
+  check (drive_account in ('app', 'host'));
+
+-- -----------------------------------------------------------------------------
+-- drive_connections — a host's own Google Drive (OAuth2, scope drive.file).
+-- The refresh token is AES-256-GCM encrypted by the server (APP_SECRET-derived
+-- key) and never leaves the server.
+-- -----------------------------------------------------------------------------
+create table if not exists public.drive_connections (
+  owner_id           uuid primary key references auth.users (id) on delete cascade,
+  google_sub         text not null check (char_length(google_sub) between 1 and 255),
+  google_email       text check (google_email is null or char_length(google_email) <= 320),
+  refresh_token_enc  text not null check (char_length(refresh_token_enc) between 20 and 4096),
+  root_folder_id     text not null check (char_length(root_folder_id) between 10 and 128),
+  status             text not null default 'active' check (status in ('active', 'revoked')),
+  connected_at       timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
 -- -----------------------------------------------------------------------------
 -- media_items (photos, videos, voice notes — all stored in Google Drive)
 -- -----------------------------------------------------------------------------
@@ -126,6 +148,19 @@ create table if not exists public.rate_limits (
 );
 
 -- -----------------------------------------------------------------------------
+-- upload_quota — bytes/files RESERVED when an upload session is issued (per
+-- guest session and per IP, per event). Reserving at session time (not at
+-- confirm) also covers uploads that are sent to Drive but never confirmed.
+-- -----------------------------------------------------------------------------
+create table if not exists public.upload_quota (
+  event_id  uuid not null references public.events (id) on delete cascade,
+  subject   text not null check (char_length(subject) between 1 and 100),
+  files     integer not null default 0,
+  bytes     bigint not null default 0,
+  primary key (event_id, subject)
+);
+
+-- -----------------------------------------------------------------------------
 -- updated_at trigger
 -- -----------------------------------------------------------------------------
 create or replace function public.touch_updated_at()
@@ -144,6 +179,11 @@ create trigger events_touch_updated_at
   before update on public.events
   for each row execute function public.touch_updated_at();
 
+drop trigger if exists drive_connections_touch_updated_at on public.drive_connections;
+create trigger drive_connections_touch_updated_at
+  before update on public.drive_connections
+  for each row execute function public.touch_updated_at();
+
 -- -----------------------------------------------------------------------------
 -- Row Level Security: deny everything to browser roles
 -- -----------------------------------------------------------------------------
@@ -152,13 +192,17 @@ alter table public.media_items        enable row level security;
 alter table public.face_descriptors   enable row level security;
 alter table public.guestbook_messages enable row level security;
 alter table public.rate_limits        enable row level security;
+alter table public.upload_quota       enable row level security;
+alter table public.drive_connections  enable row level security;
 
 revoke all on public.events, public.media_items, public.face_descriptors,
-              public.guestbook_messages, public.rate_limits
+              public.guestbook_messages, public.rate_limits, public.upload_quota,
+              public.drive_connections
   from anon, authenticated;
 
 grant all on public.events, public.media_items, public.face_descriptors,
-             public.guestbook_messages, public.rate_limits
+             public.guestbook_messages, public.rate_limits, public.upload_quota,
+             public.drive_connections
   to service_role;
 
 -- -----------------------------------------------------------------------------
@@ -167,6 +211,9 @@ grant all on public.events, public.media_items, public.face_descriptors,
 -- Exact scan over one wedding's faces (a few thousand rows) is fast and
 -- complete; an ANN index would post-filter by event and drop matches.
 -- -----------------------------------------------------------------------------
+-- Functions returning TABLE cannot change their row type with CREATE OR REPLACE
+-- (older installs had different versions), so drop them first.
+drop function if exists public.match_event_faces(uuid, vector, double precision, integer);
 create or replace function public.match_event_faces(
   p_event_id      uuid,
   p_descriptor    vector(128),
@@ -196,8 +243,72 @@ revoke all on function public.match_event_faces(uuid, vector, double precision, 
 grant execute on function public.match_event_faces(uuid, vector, double precision, integer) to service_role;
 
 -- -----------------------------------------------------------------------------
+-- RPC: reserve_upload_quota — atomically checks and reserves one file of
+-- p_bytes for both the guest session and the IP. Rows are always locked in
+-- the same order (session, then IP), so concurrent calls cannot deadlock.
+-- -----------------------------------------------------------------------------
+drop function if exists public.reserve_upload_quota(uuid, text, text, bigint, integer, bigint, integer, bigint);
+create or replace function public.reserve_upload_quota(
+  p_event_id           uuid,
+  p_session            text,
+  p_ip                 text,
+  p_bytes              bigint,
+  p_session_max_files  integer,
+  p_session_max_bytes  bigint,
+  p_ip_max_files       integer,
+  p_ip_max_bytes       bigint
+)
+returns table (allowed boolean, reason text)
+language plpgsql
+volatile
+set search_path = ''
+as $$
+declare
+  v_session_key text := 'sid:' || left(coalesce(p_session, ''), 64);
+  v_ip_key      text := 'ip:' || left(coalesce(p_ip, 'unknown'), 64);
+  v_s_files     integer;
+  v_s_bytes     bigint;
+  v_i_files     integer;
+  v_i_bytes     bigint;
+begin
+  insert into public.upload_quota (event_id, subject)
+  values (p_event_id, v_session_key), (p_event_id, v_ip_key)
+  on conflict (event_id, subject) do nothing;
+
+  select q.files, q.bytes into v_s_files, v_s_bytes
+  from public.upload_quota q
+  where q.event_id = p_event_id and q.subject = v_session_key
+  for update;
+
+  select q.files, q.bytes into v_i_files, v_i_bytes
+  from public.upload_quota q
+  where q.event_id = p_event_id and q.subject = v_ip_key
+  for update;
+
+  if v_s_files + 1 > p_session_max_files or v_s_bytes + p_bytes > p_session_max_bytes then
+    return query select false, 'session'::text;
+    return;
+  end if;
+  if v_i_files + 1 > p_ip_max_files or v_i_bytes + p_bytes > p_ip_max_bytes then
+    return query select false, 'ip'::text;
+    return;
+  end if;
+
+  update public.upload_quota q
+  set files = q.files + 1, bytes = q.bytes + p_bytes
+  where q.event_id = p_event_id and q.subject in (v_session_key, v_ip_key);
+
+  return query select true, null::text;
+end;
+$$;
+
+revoke all on function public.reserve_upload_quota(uuid, text, text, bigint, integer, bigint, integer, bigint) from public, anon, authenticated;
+grant execute on function public.reserve_upload_quota(uuid, text, text, bigint, integer, bigint, integer, bigint) to service_role;
+
+-- -----------------------------------------------------------------------------
 -- RPC: consume_rate_limit — atomic fixed-window counter
 -- -----------------------------------------------------------------------------
+drop function if exists public.consume_rate_limit(text, integer, integer);
 create or replace function public.consume_rate_limit(
   p_bucket          text,
   p_limit           integer,
@@ -239,6 +350,7 @@ grant execute on function public.consume_rate_limit(text, integer, integer) to s
 -- RPC: event_media_stats — dashboard counters aggregated in Postgres, so the
 -- host panel no longer streams every media row into Node.js memory.
 -- -----------------------------------------------------------------------------
+drop function if exists public.event_media_stats(uuid);
 create or replace function public.event_media_stats(p_event_id uuid)
 returns table (
   total        bigint,

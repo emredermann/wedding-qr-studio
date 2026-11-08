@@ -34,6 +34,43 @@ export const eventSettingsSchema = z.object({
 
 export type EventSettingsInput = z.infer<typeof eventSettingsSchema>;
 
+/**
+ * PATCH body: any subset of the settings. Only the keys that are sent are
+ * written, so two open dashboard tabs cannot overwrite each other's changes.
+ */
+export const eventSettingsPatchSchema = eventSettingsSchema
+  .partial()
+  .refine((value) => Object.values(value).some((v) => v !== undefined), "Güncellenecek en az bir alan gönderin.");
+
+export type EventSettingsPatch = z.infer<typeof eventSettingsPatchSchema>;
+
+/** Maps a settings patch to `events` column updates, skipping keys that were not sent. */
+export function settingsPatchToColumns(patch: EventSettingsPatch): Record<string, unknown> {
+  const columns: Record<keyof EventSettingsInput, string> = {
+    title: "title",
+    coupleNames: "couple_names",
+    eventDate: "event_date",
+    welcomeMessage: "welcome_message",
+    themeColor: "theme_color",
+    categories: "categories",
+    uploadsEnabled: "uploads_enabled",
+    requireApproval: "require_approval",
+    galleryPublic: "gallery_public",
+    faceSearchEnabled: "face_search_enabled",
+    guestbookEnabled: "guestbook_enabled",
+  };
+  const update: Record<string, unknown> = {};
+  for (const [key, column] of Object.entries(columns) as Array<[keyof EventSettingsInput, string]>) {
+    if (patch[key] !== undefined) update[column] = patch[key];
+  }
+  return update;
+}
+
+export const bulkMediaSchema = z.object({
+  ids: z.array(z.uuid()).min(1).max(500).transform((list) => [...new Set(list)]),
+  action: z.enum(["approve", "hide", "delete"]),
+});
+
 export const createEventSchema = z.object({
   title: z.string().trim().min(2, "En az 2 karakter").max(120),
   coupleNames: z

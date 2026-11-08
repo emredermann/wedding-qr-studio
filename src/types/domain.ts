@@ -31,6 +31,8 @@ export interface EventRow {
   drive_photos_folder_id: string;
   drive_videos_folder_id: string;
   drive_voice_folder_id: string;
+  /** "app" = platform Drive from the env, "host" = the owner's connected Drive. */
+  drive_account: "app" | "host";
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +89,7 @@ export interface PublicEventDto {
 export interface HostEventDto extends PublicEventDto {
   id: string;
   driveFolderUrl: string;
+  driveAccount: "app" | "host";
   createdAt: string;
   updatedAt: string;
 }
@@ -167,4 +170,24 @@ export interface ExportItem {
   sizeBytes: number;
   folder: string;
   createdAt: string;
+}
+
+/** Result of POST /api/host/events/:eventId/media/bulk. */
+export interface BulkMediaResponse {
+  updated: MediaDto[];
+  deletedIds: string[];
+  /** Ids that were not found or whose Drive permission change failed. */
+  failedIds: string[];
+}
+
+/** GET /api/host/drive — the host's own Google Drive connection (tokens never leave the server). */
+export interface DriveConnectionStatusDto {
+  connected: boolean;
+  status: "none" | "active" | "revoked";
+  email: string | null;
+  connectedAt: string | null;
+  /** A platform Drive (env) exists, so hosts may create events without connecting. */
+  platformDriveAvailable: boolean;
+  /** Events whose media is stored in this host's own Drive. */
+  eventsOnOwnDrive: number;
 }

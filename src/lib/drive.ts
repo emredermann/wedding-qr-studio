@@ -3,7 +3,11 @@ import "server-only";
 import { getServerEnv } from "@/lib/env.server";
 
 /**
- * DriveService — Google Drive API v3 over plain `fetch`.
+ * Google Drive API v3 over plain `fetch`, one client per Google account.
+ *
+ * Accounts: the optional "platform Drive" from the env (GOOGLE_REFRESH_TOKEN)
+ * and each host's own connected Drive (see `src/lib/drive-accounts.ts`).
+ * Access tokens and quota are cached per account.
  *
  * Why not a Service Account: service accounts have a 0 GB quota on personal
  * Google accounts (`storageQuotaExceeded`). We authenticate as the owner with
@@ -19,15 +23,39 @@ const API_BASE = "https://www.googleapis.com/drive/v3";
 const UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3";
 export const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 
+export type DriveAccountKind = "app" | "host";
+
 export class DriveError extends Error {
   readonly status: number;
   readonly reason: string | null;
-  constructor(message: string, status: number, reason: string | null = null) {
+  /** Which kind of account failed (set for OAuth token errors). */
+  readonly account: DriveAccountKind | null;
+  constructor(message: string, status: number, reason: string | null = null, account: DriveAccountKind | null = null) {
     super(message);
     this.name = "DriveError";
     this.status = status;
     this.reason = reason;
+    this.account = account;
   }
+}
+
+/** Raised when an event's Drive cannot be used (host not connected / revoked, no platform Drive). */
+export class DriveNotConnectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DriveNotConnectedError";
+  }
+}
+
+export interface DriveCredentials {
+  /** Cache key: "app" or "host:<ownerId>". */
+  key: string;
+  account: DriveAccountKind;
+  refreshToken: string;
+  /** Folder under which this account's event folders are created. */
+  rootFolderId: string;
+  /** Called once when Google answers `invalid_grant` (access revoked or expired). */
+  onRevoked?: () => Promise<void>;
 }
 
 export interface DriveFile {
@@ -54,15 +82,15 @@ export interface EventFolders {
 // OAuth2 access token (refresh-token grant), cached per server instance
 // ---------------------------------------------------------------------------
 
-let cachedToken: { value: string; expiresAtMs: number } | null = null;
-let inflightToken: Promise<string> | null = null;
+const tokenCache = new Map<string, { value: string; expiresAtMs: number }>();
+const inflightTokens = new Map<string, Promise<string>>();
 
-async function requestAccessToken(): Promise<{ token: string; expiresInSec: number }> {
+async function requestAccessToken(creds: DriveCredentials): Promise<{ token: string; expiresInSec: number }> {
   const env = getServerEnv();
   const body = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
     client_secret: env.GOOGLE_CLIENT_SECRET,
-    refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    refresh_token: creds.refreshToken,
     grant_type: "refresh_token",
   });
 
@@ -79,31 +107,42 @@ async function requestAccessToken(): Promise<{ token: string; expiresInSec: numb
     error_description?: string;
   };
   if (!res.ok || !json.access_token) {
+    if (json.error === "invalid_grant" && creds.onRevoked) {
+      await creds.onRevoked().catch((error) => console.error("[drive] onRevoked handler failed", error));
+    }
     throw new DriveError(
       `OAuth token refresh failed: ${json.error ?? res.status} ${json.error_description ?? ""}`.trim(),
       res.status,
       json.error ?? null,
+      creds.account,
     );
   }
   return { token: json.access_token, expiresInSec: json.expires_in ?? 3600 };
 }
 
-export async function getAccessToken(forceRefresh = false): Promise<string> {
-  const now = Date.now();
-  if (!forceRefresh && cachedToken && cachedToken.expiresAtMs - 60_000 > now) {
-    return cachedToken.value;
-  }
-  if (!inflightToken) {
-    inflightToken = requestAccessToken()
+export async function getAccessToken(creds: DriveCredentials, forceRefresh = false): Promise<string> {
+  const cached = tokenCache.get(creds.key);
+  if (!forceRefresh && cached && cached.expiresAtMs - 60_000 > Date.now()) return cached.value;
+
+  let inflight = inflightTokens.get(creds.key);
+  if (!inflight) {
+    inflight = requestAccessToken(creds)
       .then(({ token, expiresInSec }) => {
-        cachedToken = { value: token, expiresAtMs: Date.now() + expiresInSec * 1000 };
+        tokenCache.set(creds.key, { value: token, expiresAtMs: Date.now() + expiresInSec * 1000 });
         return token;
       })
       .finally(() => {
-        inflightToken = null;
+        inflightTokens.delete(creds.key);
       });
+    inflightTokens.set(creds.key, inflight);
   }
-  return inflightToken;
+  return inflight;
+}
+
+/** Drops cached tokens for an account (after disconnect / reconnect). */
+export function forgetDriveAccount(key: string): void {
+  tokenCache.delete(key);
+  quotaCache.delete(key);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,12 +179,12 @@ interface DriveRequestOptions extends Omit<RequestInit, "headers"> {
   retries?: number;
 }
 
-async function driveRequest(url: string, options: DriveRequestOptions = {}): Promise<Response> {
+async function driveRequest(creds: DriveCredentials, url: string, options: DriveRequestOptions = {}): Promise<Response> {
   const { retries = 3, headers = {}, ...init } = options;
   let refreshed = false;
 
   for (let attempt = 0; ; attempt += 1) {
-    const token = await getAccessToken(false);
+    const token = await getAccessToken(creds, false);
     const res = await fetch(url, {
       ...init,
       cache: "no-store",
@@ -154,7 +193,7 @@ async function driveRequest(url: string, options: DriveRequestOptions = {}): Pro
 
     if (res.status === 401 && !refreshed) {
       refreshed = true;
-      await getAccessToken(true);
+      await getAccessToken(creds, true);
       continue;
     }
 
@@ -196,13 +235,54 @@ function sanitiseDriveName(value: string, maxLength = 120): string {
 // Public API
 // ---------------------------------------------------------------------------
 
-export const DriveService = {
-  folderUrl(folderId: string): string {
-    return `https://drive.google.com/drive/folders/${encodeURIComponent(folderId)}`;
+const quotaCache = new Map<string, { value: DriveStorageQuota; fetchedAtMs: number }>();
+const QUOTA_CACHE_MS = 60_000;
+
+export interface DriveStorageQuota {
+  /** Total bytes, or null for unlimited plans. */
+  limit: number | null;
+  usage: number;
+}
+
+export function driveFolderUrl(folderId: string): string {
+  return `https://drive.google.com/drive/folders/${encodeURIComponent(folderId)}`;
+}
+
+/** Creates a Drive client bound to one Google account. */
+export function createDriveClient(creds: DriveCredentials) {
+  const client = {
+  account: creds.account,
+  rootFolderId: creds.rootFolderId,
+
+  /**
+   * Drive storage quota of this account, cached for a minute per server
+   * instance so a burst of uploads costs one Drive call.
+   */
+  async getStorageQuota(): Promise<DriveStorageQuota> {
+    const cachedQuota = quotaCache.get(creds.key);
+    if (cachedQuota && Date.now() - cachedQuota.fetchedAtMs < QUOTA_CACHE_MS) return cachedQuota.value;
+    const res = await driveRequest(creds, `${API_BASE}/about?fields=${encodeURIComponent("storageQuota(limit,usage)")}`);
+    await ensureOk(res, "getStorageQuota");
+    const json = (await res.json()) as { storageQuota?: { limit?: string; usage?: string } };
+    const limit = json.storageQuota?.limit ? Number(json.storageQuota.limit) : null;
+    const value: DriveStorageQuota = {
+      limit: limit !== null && Number.isFinite(limit) ? limit : null,
+      usage: Number(json.storageQuota?.usage ?? 0) || 0,
+    };
+    quotaCache.set(creds.key, { value, fetchedAtMs: Date.now() });
+    return value;
+  },
+
+  /** Adds bytes to the cached usage so back-to-back sessions see each other. */
+  noteReservedBytes(bytes: number): void {
+    const cachedQuota = quotaCache.get(creds.key);
+    if (cachedQuota) {
+      quotaCache.set(creds.key, { ...cachedQuota, value: { ...cachedQuota.value, usage: cachedQuota.value.usage + bytes } });
+    }
   },
 
   async createFolder(name: string, parentId: string): Promise<string> {
-    const res = await driveRequest(`${API_BASE}/files?fields=id`, {
+    const res = await driveRequest(creds, `${API_BASE}/files?fields=id`, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify({ name: sanitiseDriveName(name), mimeType: DRIVE_FOLDER_MIME, parents: [parentId] }),
@@ -220,28 +300,27 @@ export const DriveService = {
       "trashed = false",
     ].join(" and ");
     const params = new URLSearchParams({ q, fields: "files(id)", pageSize: "1", spaces: "drive" });
-    const res = await driveRequest(`${API_BASE}/files?${params.toString()}`);
+    const res = await driveRequest(creds, `${API_BASE}/files?${params.toString()}`);
     await ensureOk(res, "findFolder");
     const json = (await res.json()) as { files?: Array<{ id: string }> };
     return json.files?.[0]?.id ?? null;
   },
 
   async ensureFolder(name: string, parentId: string): Promise<string> {
-    return (await DriveService.findFolder(name, parentId)) ?? DriveService.createFolder(name, parentId);
+    return (await client.findFolder(name, parentId)) ?? client.createFolder(name, parentId);
   },
 
   /**
    * Creates `<Event_Title>_<slug>/{Photos,Videos,VoiceNotes}` under
-   * GOOGLE_DRIVE_ROOT_FOLDER_ID. Idempotent: existing folders are reused.
+   * this account's root folder. Idempotent: existing folders are reused.
    */
   async createEventFolders(title: string, slug: string): Promise<EventFolders> {
-    const env = getServerEnv();
     const safeTitle = sanitiseDriveName(title, 80).replace(/\s+/g, "_");
-    const rootId = await DriveService.ensureFolder(`${safeTitle}_${slug}`, env.GOOGLE_DRIVE_ROOT_FOLDER_ID);
+    const rootId = await client.ensureFolder(`${safeTitle}_${slug}`, creds.rootFolderId);
     const [photosId, videosId, voiceId] = await Promise.all([
-      DriveService.ensureFolder("Photos", rootId),
-      DriveService.ensureFolder("Videos", rootId),
-      DriveService.ensureFolder("VoiceNotes", rootId),
+      client.ensureFolder("Photos", rootId),
+      client.ensureFolder("Videos", rootId),
+      client.ensureFolder("VoiceNotes", rootId),
     ]);
     return { rootId, photosId, videosId, voiceId };
   },
@@ -264,7 +343,7 @@ export const DriveService = {
       uploadType: "resumable",
       fields: "id,name,mimeType,size",
     });
-    const res = await driveRequest(`${UPLOAD_BASE}/files?${query.toString()}`, {
+    const res = await driveRequest(creds, `${UPLOAD_BASE}/files?${query.toString()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json; charset=UTF-8",
@@ -290,7 +369,7 @@ export const DriveService = {
 
   async getFile(fileId: string): Promise<DriveFile | null> {
     const fields = "id,name,mimeType,size,parents,appProperties,trashed,createdTime,imageMediaMetadata(width,height),videoMediaMetadata(width,height,durationMillis)";
-    const res = await driveRequest(`${API_BASE}/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent(fields)}`);
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent(fields)}`);
     if (res.status === 404) return null;
     await ensureOk(res, "getFile");
     return (await res.json()) as DriveFile;
@@ -298,7 +377,7 @@ export const DriveService = {
 
   /** Reads the first `byteCount` bytes (magic-byte verification). */
   async readHeadBytes(fileId: string, byteCount = 64): Promise<Uint8Array> {
-    const res = await driveRequest(`${API_BASE}/files/${encodeURIComponent(fileId)}?alt=media`, {
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?alt=media`, {
       headers: { Range: `bytes=0-${byteCount - 1}` },
     });
     await ensureOk(res, "readHeadBytes");
@@ -308,7 +387,7 @@ export const DriveService = {
 
   /** Anyone with the link can view — required for lh3 thumbnails. */
   async makePublic(fileId: string): Promise<void> {
-    const res = await driveRequest(`${API_BASE}/files/${encodeURIComponent(fileId)}/permissions?fields=id`, {
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}/permissions?fields=id`, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify({ role: "reader", type: "anyone", allowFileDiscovery: false }),
@@ -319,6 +398,7 @@ export const DriveService = {
   /** Removes the "anyone with the link" permission (moderation: hide). */
   async makePrivate(fileId: string): Promise<void> {
     const res = await driveRequest(
+      creds,
       `${API_BASE}/files/${encodeURIComponent(fileId)}/permissions/anyoneWithLink`,
       { method: "DELETE" },
     );
@@ -328,7 +408,7 @@ export const DriveService = {
 
   /** Moves a file or folder to the Drive trash (recoverable for 30 days). */
   async trash(fileId: string): Promise<void> {
-    const res = await driveRequest(`${API_BASE}/files/${encodeURIComponent(fileId)}?fields=id`, {
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?fields=id`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify({ trashed: true }),
@@ -343,6 +423,7 @@ export const DriveService = {
    */
   async fetchThumbnail(fileId: string, size: number): Promise<Response | null> {
     const res = await driveRequest(
+      creds,
       `${API_BASE}/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent("thumbnailLink,hasThumbnail")}`,
     );
     if (res.status === 404) return null;
@@ -350,7 +431,7 @@ export const DriveService = {
     const json = (await res.json()) as { thumbnailLink?: string; hasThumbnail?: boolean };
     if (!json.thumbnailLink) return null;
     const link = json.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
-    const token = await getAccessToken(false);
+    const token = await getAccessToken(creds, false);
     const thumb = await fetch(link, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     return thumb.ok ? thumb : null;
   },
@@ -360,11 +441,29 @@ export const DriveService = {
    * The caller pipes `res.body` to the client without buffering it.
    */
   async openStream(fileId: string, range: string | null): Promise<Response> {
-    const res = await driveRequest(`${API_BASE}/files/${encodeURIComponent(fileId)}?alt=media`, {
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?alt=media`, {
       headers: range ? { Range: range } : {},
       retries: 1,
     });
     if (res.status === 416) return res;
     return ensureOk(res, "openStream");
   },
-};
+  };
+  return client;
+}
+
+export type DriveClient = ReturnType<typeof createDriveClient>;
+
+/**
+ * Moves a file/folder to the Drive trash after its database row is already
+ * gone. Failures are logged, not thrown: a leftover file in the event folder
+ * is harmless and recoverable, whereas a DB row pointing at a trashed file
+ * would show as a broken item.
+ */
+export async function trashBestEffort(drive: DriveClient, fileId: string, scope: string): Promise<void> {
+  try {
+    await drive.trash(fileId);
+  } catch (error) {
+    console.error(`[${scope}] Drive trash failed (row already deleted)`, { fileId, error });
+  }
+}

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { apiFetch, errorMessage } from "@/lib/client/api";
-import type { HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
+import type { BulkMediaResponse, HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
 
 type StatusFilter = "all" | MediaStatus;
 type KindFilter = "all" | "photo" | "video";
@@ -119,20 +119,29 @@ function MediaFeed({
     if (targets.length === 0) return;
     if (action === "delete" && !window.confirm(`${targets.length} dosya Drive çöp kutusuna taşınsın mı?`)) return;
     setWorking(true);
-    let failed = 0;
-    for (const item of targets) {
-      try {
-        if (action === "delete") await remove(item);
-        else await setStatus(item, action === "approve" ? "approved" : "hidden");
-      } catch {
-        failed += 1;
-      }
+    try {
+      const res = await apiFetch<BulkMediaResponse>(`/api/host/events/${event.id}/media/bulk`, {
+        method: "POST",
+        json: { ids: targets.map((m) => m.id), action },
+      });
+      const deleted = new Set(res.deletedIds);
+      const updated = new Map(res.updated.map((m) => [m.id, m]));
+      setItems((prev) =>
+        prev
+          .filter((m) => !deleted.has(m.id))
+          .map((m) => updated.get(m.id) ?? m)
+          .filter((m) => status === "all" || m.status === status),
+      );
+      const failed = res.failedIds.length;
+      onMessage(failed ? `${failed} öğe güncellenemedi, diğerleri tamamlandı.` : "İşlem tamamlandı.", failed ? "error" : "success");
+    } catch (error) {
+      onMessage(errorMessage(error), "error");
+    } finally {
+      setWorking(false);
+      setSelected(new Set());
+      setSelectMode(false);
+      onChanged();
     }
-    setWorking(false);
-    setSelected(new Set());
-    setSelectMode(false);
-    onChanged();
-    onMessage(failed ? `${failed} işlem başarısız oldu.` : "İşlem tamamlandı.", failed ? "error" : "success");
   };
 
   const toggle = (id: string) =>

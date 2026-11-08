@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { DriveConnectionCard } from "@/components/host/DriveConnectionCard";
 import { HostHeader } from "@/components/host/HostHeader";
 import { apiFetch, errorMessage } from "@/lib/client/api";
-import type { HostEventDto, HostEventListItem } from "@/types/domain";
+import type { DriveConnectionStatusDto, HostEventDto, HostEventListItem } from "@/types/domain";
 
 export function EventsDashboard() {
   const router = useRouter();
@@ -16,6 +17,25 @@ export function EventsDashboard() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: "", coupleNames: "", eventDate: "", slug: "" });
   const [formError, setFormError] = useState<string | null>(null);
+  const [drive, setDrive] = useState<DriveConnectionStatusDto | null>(null);
+  const [driveReload, setDriveReload] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch<DriveConnectionStatusDto>("/api/host/drive");
+        if (!cancelled) setDrive(res);
+      } catch (err) {
+        if (!cancelled) setError(errorMessage(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [driveReload]);
+
+  const needsDrive = drive !== null && !drive.connected && !drive.platformDriveAvailable;
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +80,7 @@ export function EventsDashboard() {
       <HostHeader />
       <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1fr_22rem]">
         <section>
+          <DriveConnectionCard status={drive} onChanged={() => setDriveReload((n) => n + 1)} />
           <h1 className="mb-4 font-serif text-3xl text-stone-900">Etkinliklerim</h1>
           {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
           {!events && !error && (
@@ -130,7 +151,10 @@ export function EventsDashboard() {
                 </div>
               </label>
               {formError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>}
-              <button type="submit" disabled={creating} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
+              {needsDrive && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">Etkinlik oluşturmak için önce “Google Drive depolama” kartından Drive’ınızı bağlayın.</p>
+              )}
+              <button type="submit" disabled={creating || needsDrive} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />} Oluştur
               </button>
             </div>

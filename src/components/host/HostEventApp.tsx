@@ -75,25 +75,12 @@ export function HostEventApp({ eventId }: { eventId: string }) {
 
   const toggleUploads = async (open: boolean) => {
     if (!data) return;
-    const e = data.event;
     try {
-      const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${e.id}`, {
+      const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${data.event.id}`, {
         method: "PATCH",
-        json: {
-          title: e.title,
-          coupleNames: e.coupleNames,
-          eventDate: e.eventDate,
-          welcomeMessage: e.welcomeMessage,
-          themeColor: e.themeColor,
-          categories: e.categories,
-          uploadsEnabled: open,
-          requireApproval: e.requireApproval,
-          galleryPublic: e.galleryPublic,
-          faceSearchEnabled: e.faceSearchEnabled,
-          guestbookEnabled: e.guestbookEnabled,
-        },
+        json: { uploadsEnabled: open },
       });
-      setData({ ...data, event: res.event });
+      setData((prev) => (prev ? { ...prev, event: res.event } : prev));
       onMessage(open ? "Yüklemeler açıldı." : "Yüklemeler kapatıldı.", "success");
     } catch (err) {
       onMessage(errorMessage(err), "error");

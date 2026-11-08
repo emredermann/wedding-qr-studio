@@ -1,5 +1,8 @@
 # Wedding QR Studio — Hata Analizi ve Çözüm Spesifikasyonu (Remediation Spec)
 
+> **Durum (2026-11-08):** Bu dokümandaki 7 görevin tamamı uygulanmıştır. Sonraki denetimde eklenenler: misafir/IP başına yükleme kotası ve Drive boş alan ön kontrolü, sahtelenemeyen istemci IP'si, kısmi `PATCH`, toplu moderasyon uç noktası, "önce DB sonra Drive" silme sırası, `getClaims()` ile yerel JWT doğrulama ve `tests/` altında `node:test` birim testleri (`npm test`).
+
+
 Bu doküman, **Wedding QR Studio** (`Next.js 16.4.5`, `React 19.3`, `Supabase PostgreSQL + pgvector`, `Google Drive API v3`) kod tabanında tespit edilen olası çalışma zamanı hatalarını, darboğazları ve kenar durumlarını (edge-cases) gidermek için hazırlanmış **uygulamaya hazır teknik spesifikasyondur**.
 
 ---

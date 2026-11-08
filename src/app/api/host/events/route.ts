@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { driveForNewEvent } from "@/lib/drive-accounts";
 import { slugify, toHostEventDto } from "@/lib/events";
 import { getHostUser } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
@@ -65,6 +65,8 @@ async function pickUniqueSlug(base: string, explicit: boolean): Promise<string |
 /**
  * POST /api/host/events — creates an event and its Drive folder hierarchy:
  *   <ROOT>/<Event_Title>_<slug>/{Photos,Videos,VoiceNotes}
+ * in the host's own connected Drive, or the platform Drive when the host has
+ * not connected one.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -82,7 +84,8 @@ export async function POST(request: NextRequest) {
     const slug = await pickUniqueSlug(base, Boolean(body.data.slug));
     if (!slug) return jsonError(409, "SLUG_TAKEN", "Bu bağlantı adresi kullanımda. Başka bir tane deneyin.");
 
-    const folders = await DriveService.createEventFolders(title, slug);
+    const { drive, account } = await driveForNewEvent(host.id);
+    const folders = await drive.createEventFolders(title, slug);
 
     const { data, error } = await getAdminDb()
       .from("events")
@@ -96,12 +99,13 @@ export async function POST(request: NextRequest) {
         drive_photos_folder_id: folders.photosId,
         drive_videos_folder_id: folders.videosId,
         drive_voice_folder_id: folders.voiceId,
+        drive_account: account,
       })
       .select("*")
       .single();
 
     if (error) {
-      await DriveService.trash(folders.rootId).catch(() => undefined);
+      await drive.trash(folders.rootId).catch(() => undefined);
       if (error.code === "23505") return jsonError(409, "SLUG_TAKEN", "Bu bağlantı adresi kullanımda.");
       throw new Error(error.message);
     }

@@ -1,38 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonError } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
+import { contentDisposition, parseRange } from "@/lib/http-range";
 import { authorizeMediaAccess } from "@/lib/media-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-/** Open-ended ranges are capped so one serverless invocation stays short. */
-const MAX_CHUNK_BYTES = 16 * 1024 * 1024;
-
-function parseRange(header: string | null, total: number): { start: number; end: number } | "invalid" | null {
-  if (!header) return null;
-  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
-  if (!match || (match[1] === "" && match[2] === "")) return "invalid";
-  let start: number;
-  let end: number;
-  if (match[1] === "") {
-    const suffix = Number(match[2]);
-    start = Math.max(0, total - suffix);
-    end = total - 1;
-  } else {
-    start = Number(match[1]);
-    end = match[2] === "" ? total - 1 : Math.min(Number(match[2]), total - 1);
-  }
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= total) return "invalid";
-  end = Math.min(end, start + MAX_CHUNK_BYTES - 1);
-  return { start, end };
-}
-
-function contentDisposition(kind: "inline" | "attachment", fileName: string): string {
-  const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
-  return `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 /**
  * GET /api/drive/stream/:fileId
@@ -53,7 +27,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ fil
       return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
     }
 
-    const upstream = await DriveService.openStream(
+    const drive = await driveForEvent(access.event);
+    const upstream = await drive.openStream(
       media.drive_file_id,
       range ? `bytes=${range.start}-${range.end}` : null,
     );

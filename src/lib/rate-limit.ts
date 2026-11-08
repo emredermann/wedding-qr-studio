@@ -3,12 +3,12 @@ import "server-only";
 import type { NextRequest, NextResponse } from "next/server";
 
 import { jsonError } from "@/lib/api/http";
+import { resolveClientIp } from "@/lib/client-ip";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { ApiErrorBody } from "@/types/domain";
 
 export function clientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return (forwarded || request.headers.get("x-real-ip")?.trim() || "unknown").slice(0, 64);
+  return resolveClientIp(request.headers);
 }
 
 /**

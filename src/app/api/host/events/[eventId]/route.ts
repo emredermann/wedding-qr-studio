@@ -1,11 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { DriveService } from "@/lib/drive";
+import { trashBestEffort } from "@/lib/drive";
+import { driveForEvent } from "@/lib/drive-accounts";
 import { fetchAllRows, toHostEventDto } from "@/lib/events";
 import { requireOwnedEvent } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
-import { eventSettingsSchema } from "@/lib/validation";
+import { eventSettingsPatchSchema, settingsPatchToColumns } from "@/lib/validation";
 import type { EventRow, EventStatsDto, HostEventDto, MediaItemRow } from "@/types/domain";
 
 export const runtime = "nodejs";
@@ -100,32 +101,19 @@ export async function GET(_request: NextRequest, context: Ctx) {
   }
 }
 
-/** PATCH /api/host/events/:eventId — update settings and moderation toggles. */
+/** PATCH /api/host/events/:eventId — partial update of settings and moderation toggles (only sent keys are written). */
 export async function PATCH(request: NextRequest, context: Ctx) {
   try {
     const { eventId } = await context.params;
     const owned = await requireOwnedEvent(eventId);
     if (!owned.ok) return owned.response;
 
-    const body = await parseJsonBody(request, eventSettingsSchema, 16 * 1024);
+    const body = await parseJsonBody(request, eventSettingsPatchSchema, 16 * 1024);
     if (!body.ok) return body.response;
-    const s = body.data;
 
     const { data, error } = await getAdminDb()
       .from("events")
-      .update({
-        title: s.title,
-        couple_names: s.coupleNames,
-        event_date: s.eventDate,
-        welcome_message: s.welcomeMessage,
-        theme_color: s.themeColor,
-        categories: s.categories,
-        uploads_enabled: s.uploadsEnabled,
-        require_approval: s.requireApproval,
-        gallery_public: s.galleryPublic,
-        face_search_enabled: s.faceSearchEnabled,
-        guestbook_enabled: s.guestbookEnabled,
-      })
+      .update(settingsPatchToColumns(body.data))
       .eq("id", owned.event.id)
       .select("*")
       .single();
@@ -142,9 +130,11 @@ export async function DELETE(_request: NextRequest, context: Ctx) {
     const { eventId } = await context.params;
     const owned = await requireOwnedEvent(eventId);
     if (!owned.ok) return owned.response;
-    await DriveService.trash(owned.event.drive_folder_id);
     const { error } = await getAdminDb().from("events").delete().eq("id", owned.event.id);
     if (error) throw new Error(error.message);
+    // The event is gone either way; if its Drive is no longer reachable the folder simply stays.
+    const drive = await driveForEvent(owned.event).catch(() => null);
+    if (drive) await trashBestEffort(drive, owned.event.drive_folder_id, "host:event:delete");
     return jsonOk({ deleted: true });
   } catch (error) {
     return handleRouteError("host:event:delete", error);

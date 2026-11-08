@@ -29,6 +29,7 @@ Video / ses / ZIP ─▶ /api/drive/stream/<fileId>  (Range destekli, 16 MB par�
 
 - Dosya baytları **asla** sunucudan geçmez (Vercel’in 4,5 MB gövde limiti ve RAM sınırı yok).
 - Drive kimliği: **OAuth2 refresh token** (Service Account değil — kişisel hesapta kotası 0 GB). Kapsam `drive.file`: uygulama yalnızca kendi oluşturduğu dosya/klasörleri görür.
+- **Her düğün sahibi kendi Drive’ını bağlar** (panelde “Google Drive’ı bağla”): medya o kişinin Drive’ına gider; token’lar veritabanında AES-256-GCM ile şifreli tutulur. İsteğe bağlı bir “platform Drive’ı” (env) Drive bağlamayanlar için yedek olarak kullanılabilir.
 - Her etkinlik için otomatik klasör: `<Kök>/<Etkinlik_Adı>_<slug>/{Photos,Videos,VoiceNotes}`.
 - Güvenlik: tüm tablolar RLS ile tarayıcıya kapalı; sunucu service-role ile yazar. Misafir kimliği imzalı HttpOnly çerez; yükleme onayı imzalı token + Drive `appProperties` + klasör + boyut + magic-byte kontrolü; Postgres tabanlı rate limit.
 
@@ -44,8 +45,9 @@ npm run drive:token     # Google refresh token + Drive kök klasörü üretir (.
 npm run dev             # http://localhost:3000
 npm run lint            # ESLint (0 uyarı)
 npm run typecheck       # next typegen + tsc --noEmit
+npm test                # birim testleri (node:test, bağımlılıksız)
 npm run build           # production build
-npm run check           # üçü birden
+npm run check           # lint + typecheck + test + build
 ```
 
 ## Klasör yapısı
