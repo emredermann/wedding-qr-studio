@@ -1,22 +1,5 @@
-<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="lumina-bg" cx="32" cy="32" r="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1C1917" />
-      <stop offset="100%" stop-color="#0A0908" />
-    </radialGradient>
-    <linearGradient id="lumina-gold" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FAF5EB" />
-      <stop offset="35%" stop-color="#E4C486" />
-      <stop offset="75%" stop-color="#C49944" />
-      <stop offset="100%" stop-color="#8D6727" />
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#lumina-bg)" />
-  <rect x="1.5" y="1.5" width="61" height="61" rx="14.5" stroke="url(#lumina-gold)" stroke-width="1" stroke-opacity="0.35" />
-  <circle cx="32" cy="32" r="23" stroke="url(#lumina-gold)" stroke-width="1.25" />
-  <circle cx="32" cy="32" r="20.5" stroke="url(#lumina-gold)" stroke-width="0.75" stroke-opacity="0.4" />
-  <path d="M32 13C32 23.4934 40.5066 32 51 32C40.5066 32 32 40.5066 32 51C32 40.5066 23.4934 32 13 32C23.4934 32 32 23.4934 32 13Z" fill="url(#lumina-gold)" />
-  <path d="M26.5 26.5L37.5 37.5M37.5 26.5L26.5 37.5" stroke="url(#lumina-gold)" stroke-width="1" stroke-opacity="0.65" stroke-linecap="round" />
-  <circle cx="32" cy="32" r="3.2" fill="#0E0C0B" />
-  <circle cx="32" cy="32" r="1.5" fill="url(#lumina-gold)" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1C1B18"/>
+  <circle cx="32" cy="32" r="16" fill="none" stroke="#F7F5F0" stroke-width="1.8"/>
+  <circle cx="43.3" cy="20.7" r="3.6" fill="#F7F5F0"/>
 </svg>

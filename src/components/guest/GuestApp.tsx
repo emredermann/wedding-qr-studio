@@ -8,6 +8,8 @@ import { GalleryPanel } from "@/components/guest/GalleryPanel";
 import { GuestbookPanel } from "@/components/guest/GuestbookPanel";
 import { UploadPanel } from "@/components/guest/UploadPanel";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
+import { BrandMark } from "@/components/brand/BrandMark";
+import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
@@ -132,6 +134,9 @@ export function GuestApp({ slug }: { slug: string }) {
               Başla
             </button>
             <p className="text-center text-[11px] text-stone-500">Uygulama yok, üyelik yok. Sadece adınız.</p>
+            <p className="flex items-center justify-center gap-1.5 pt-6 text-[10px] tracking-[0.2em] text-stone-400 uppercase">
+              <BrandMark className="h-4 w-4" /> {BRAND.name} ile
+            </p>
           </form>
         </div>
       </main>

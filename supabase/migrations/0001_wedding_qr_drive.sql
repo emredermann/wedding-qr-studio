@@ -27,7 +27,7 @@ create table if not exists public.events (
   couple_names            text check (couple_names is null or char_length(couple_names) <= 120),
   event_date              date,
   welcome_message         text check (welcome_message is null or char_length(welcome_message) <= 500),
-  theme_color             text not null default '#b45309' check (theme_color ~ '^#[0-9a-fA-F]{6}$'),
+  theme_color             text not null default '#1f1d1a' check (theme_color ~ '^#[0-9a-fA-F]{6}$'),
   categories              text[] not null default array['Hazırlık', 'Nikah', 'İlk Dans', 'Yemek', 'After Party']::text[]
                             check (cardinality(categories) <= 30),
   uploads_enabled         boolean not null default true,
@@ -44,6 +44,9 @@ create table if not exists public.events (
 );
 
 create index if not exists events_owner_id_idx on public.events (owner_id, created_at desc);
+
+-- Brand default accent (quiet ink) for new events.
+alter table public.events alter column theme_color set default '#1f1d1a';
 
 -- Which Google Drive stores the event: 'app' = platform Drive from the env
 -- (GOOGLE_REFRESH_TOKEN), 'host' = the owner's own connected Drive.

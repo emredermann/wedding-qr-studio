@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Generates GOOGLE_REFRESH_TOKEN (and, if needed, GOOGLE_DRIVE_ROOT_FOLDER_ID)
- * for the Wedding QR DriveService. No dependencies — Node 18+ only.
+ * for the Mira DriveService. No dependencies — Node 18+ only.
  *
  *   npm run drive:token            # print values to copy into .env.local
  *   npm run drive:token -- --write # also write them into .env.local
@@ -12,7 +12,7 @@
  *   - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local (or entered when asked)
  *
  * The scope is `drive.file`: the app can only see files/folders it created.
- * That is why this script also creates the root "Wedding QR" folder for you.
+ * That is why this script also creates the root "Mira" folder for you.
  */
 import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
@@ -25,7 +25,7 @@ const SCOPE = "https://www.googleapis.com/auth/drive.file";
 const PORT = Number(process.env.DRIVE_TOKEN_PORT || 53682);
 const REDIRECT_URI = `http://127.0.0.1:${PORT}/oauth2callback`;
 const ENV_FILE = path.join(process.cwd(), ".env.local");
-const ROOT_FOLDER_NAME = process.env.DRIVE_ROOT_FOLDER_NAME || "Wedding QR";
+const ROOT_FOLDER_NAME = process.env.DRIVE_ROOT_FOLDER_NAME || "Mira";
 const WRITE = process.argv.includes("--write");
 
 function parseEnvFile(filePath) {
@@ -104,7 +104,7 @@ async function waitForCode(rl, expectedState) {
         finish(reject, new Error(error || "Missing code or state mismatch"));
         return;
       }
-      res.end("<h2>Wedding QR yetkilendirildi ✔</h2><p>Bu sekmeyi kapatıp terminale dönebilirsiniz.</p>");
+      res.end("<h2>Mira yetkilendirildi ✔</h2><p>Bu sekmeyi kapatıp terminale dönebilirsiniz.</p>");
       finish(resolve, code);
     });
 
@@ -209,7 +209,7 @@ async function main() {
     code_challenge_method: "S256",
   }).toString();
 
-  console.log("\n=== Wedding QR — Google Drive yetkilendirme ===\n");
+  console.log("\n=== Mira — Google Drive yetkilendirme ===\n");
   console.log("1) Aşağıdaki adresi tarayıcıda açın ve Drive'ının kullanılacağı Google hesabıyla giriş yapın:\n");
   console.log(authUrl.toString());
 

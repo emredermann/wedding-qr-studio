@@ -12,6 +12,7 @@ import {
   OAUTH_CALLBACK_PATH,
   revokeGoogleToken,
 } from "@/lib/google-oauth";
+import { BRAND } from "@/lib/brand";
 import { getHostUser } from "@/lib/host-auth";
 import { verifyToken } from "@/lib/signing";
 import { getAdminDb } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ import { getAdminDb } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const ROOT_FOLDER_NAME = "Wedding QR";
+const ROOT_FOLDER_NAME = BRAND.driveFolderName;
 
 function finish(request: NextRequest, outcome: "connected" | "error", reason?: string): NextResponse {
   const target = new URL("/dashboard", appOrigin(request.nextUrl.origin));
@@ -33,7 +34,7 @@ function finish(request: NextRequest, outcome: "connected" | "error", reason?: s
 /**
  * GET /api/host/drive/callback — Google redirects here after consent.
  * Verifies state + nonce + PKCE, requires the drive.file scope, creates (or
- * reuses) the host's "Wedding QR" root folder and stores the encrypted
+ * reuses) the host's brand-named root folder and stores the encrypted
  * refresh token. Always redirects back to /dashboard with ?drive=…
  */
 export async function GET(request: NextRequest) {

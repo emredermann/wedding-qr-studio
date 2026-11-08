@@ -10,13 +10,13 @@ export async function register(): Promise<void> {
   const problems = describeServerEnvProblems();
   if (problems.length === 0) {
     if (!process.env.GOOGLE_REFRESH_TOKEN?.trim()) {
-      console.info("Wedding QR: no platform Drive configured — hosts must connect their own Google Drive before creating events.");
+      console.info("Mira: no platform Drive configured — hosts must connect their own Google Drive before creating events.");
     }
     return;
   }
 
   const lines = [
-    "Wedding QR: environment is NOT configured. API routes will answer 503 until fixed.",
+    "Mira: environment is NOT configured. API routes will answer 503 until fixed.",
     ...problems.map((p) => `  - ${p}`),
     "See .env.example and DEPLOYMENT.md.",
   ];

@@ -1,9 +1,10 @@
 "use client";
 
-import { Heart, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { BrandLogo } from "@/components/brand/BrandMark";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function HostHeader({ children }: { children?: React.ReactNode }) {
@@ -17,8 +18,7 @@ export function HostHeader({ children }: { children?: React.ReactNode }) {
     <header className="border-b border-stone-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/dashboard" className="flex items-center gap-2 text-stone-900">
-          <Heart className="h-5 w-5 fill-amber-600 text-amber-600" />
-          <span className="font-serif text-lg">Wedding QR</span>
+          <BrandLogo className="text-base" markClassName="h-8 w-8" />
         </Link>
         <div className="flex items-center gap-2">
           {children}

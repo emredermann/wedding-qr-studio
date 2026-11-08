@@ -1,9 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * Mira brand palette — quiet, monochrome, restrained.
+ * Components use Tailwind's `stone` (neutrals) and `amber` (accent) scales;
+ * redefining them here re-skins the whole product:
+ *   stone → warm ivory-to-ink greys, amber → a muted bronze used sparingly.
+ */
+@theme {
+  --color-stone-50: #f7f5f0;
+  --color-stone-100: #efece5;
+  --color-stone-200: #e2ded5;
+  --color-stone-300: #cbc6bb;
+  --color-stone-400: #a19c92;
+  --color-stone-500: #78736a;
+  --color-stone-600: #5a564f;
+  --color-stone-700: #44413b;
+  --color-stone-800: #2c2a26;
+  --color-stone-900: #1c1b18;
+  --color-stone-950: #111110;
+
+  --color-amber-50: #f8f6f1;
+  --color-amber-100: #efeae0;
+  --color-amber-200: #dfd5c3;
+  --color-amber-300: #c9ba9f;
+  --color-amber-400: #b09d7d;
+  --color-amber-500: #9a8565;
+  --color-amber-600: #7f6d51;
+  --color-amber-700: #675841;
+  --color-amber-800: #4f4433;
+  --color-amber-900: #3d3428;
+  --color-amber-950: #231e17;
+}
+
 :root {
-  --background: #faf8f5;
-  --foreground: #1c1917;
-  --event-primary: #b45309;
+  --background: #f7f5f0;
+  --foreground: #1c1b18;
+  --event-primary: #1f1d1a;
   --event-primary-fg: #ffffff;
   --event-primary-soft: rgba(180, 83, 9, 0.12);
   --event-primary-border: rgba(180, 83, 9, 0.24);
@@ -20,6 +52,25 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-display), "Instrument Serif", Georgia, "Times New Roman", serif;
+}
+
+::selection {
+  background: #e2ded5;
+  color: #1c1b18;
+}
+
+/* Display serif: a touch tighter, never bold — elegance comes from size and space. */
+.font-serif {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-feature-settings: "liga", "kern";
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 html,

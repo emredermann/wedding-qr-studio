@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
+import { BRAND } from "@/lib/brand";
 import type { DriveConnectionStatusDto } from "@/types/domain";
 
 const CONNECT_URL = "/api/host/drive/connect";
@@ -96,7 +97,7 @@ export function DriveConnectionCard({
           ) : status.connected ? (
             <p className="text-sm text-stone-600">
               Bağlı: <span className="font-medium text-stone-900">{status.email ?? "Google hesabınız"}</span>. Fotoğraf, video ve ses kayıtları
-              Drive’ınızdaki <span className="font-medium">“Wedding QR”</span> klasörüne kaydedilir.
+              Drive’ınızdaki <span className="font-medium">“{BRAND.driveFolderName}”</span> klasörüne kaydedilir.
             </p>
           ) : status.status === "revoked" ? (
             <p className="text-sm text-rose-700">

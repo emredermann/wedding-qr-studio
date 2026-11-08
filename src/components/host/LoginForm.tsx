@@ -1,10 +1,11 @@
 "use client";
 
-import { Eye, EyeOff, Heart, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { BrandLogo } from "@/components/brand/BrandMark";
 import { trackEvent } from "@/lib/client/analytics";
 import { isValidUsername, normaliseUsername, usernameToLoginEmail } from "@/lib/login-identity";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -68,8 +69,7 @@ export function LoginForm() {
     <main className="flex min-h-dvh items-center justify-center bg-stone-50 px-5 py-10">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-stone-900">
-          <Heart className="h-6 w-6 fill-amber-600 text-amber-600" />
-          <span className="font-serif text-2xl">Wedding QR</span>
+          <BrandLogo showTagline className="text-xl" markClassName="h-12 w-12" />
         </Link>
         <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
           <h1 className="mb-5 text-center font-serif text-xl text-stone-900">Event sahibi girişi</h1>

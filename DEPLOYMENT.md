@@ -55,7 +55,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 
 | Mod | Nasıl | Ne zaman |
 | --- | --- | --- |
-| **Her düğün sahibinin kendi Drive’ı** (önerilen) | Düğün sahibi panelde **“Google Drive’ı bağla”** düğmesine basar, kendi Google hesabıyla izin verir. Medya onun Drive’ındaki “Wedding QR” klasörüne gider. | Platformu başkaları da kullanacaksa. |
+| **Her düğün sahibinin kendi Drive’ı** (önerilen) | Düğün sahibi panelde **“Google Drive’ı bağla”** düğmesine basar, kendi Google hesabıyla izin verir. Medya onun Drive’ındaki “Mira” klasörüne gider. | Platformu başkaları da kullanacaksa. |
 | **Platform Drive’ı** (isteğe bağlı) | Siz bir kez `npm run drive:token -- --write` çalıştırırsınız; Drive bağlamamış düğün sahiplerinin etkinlikleri sizin Drive’ınıza gider. | Sadece kendi düğününüz/arkadaşlarınız için, ya da yedek olarak. |
 
 İkisi birlikte de çalışır: Drive’ını bağlayan düğün sahibinin **yeni** etkinlikleri kendi Drive’ına, bağlamayanınki platform Drive’ına gider. Platform Drive’ını hiç kurmazsanız (`GOOGLE_REFRESH_TOKEN` ve `GOOGLE_DRIVE_ROOT_FOLDER_ID` boş), her düğün sahibi etkinlik açmadan önce Drive’ını bağlamak zorundadır.
@@ -76,7 +76,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
      - `http://127.0.0.1:53682/oauth2callback` (yalnızca platform Drive’ı için `npm run drive:token` kullanacaksanız)
    - Çıkan **Client ID** ve **Client secret** değerlerini `.env.local` içindeki `GOOGLE_CLIENT_ID` ve `GOOGLE_CLIENT_SECRET` alanlarına yazın.
    - Daha önce *Desktop app* türünde istemci oluşturduysanız, yeni bir *Web application* istemcisi oluşturup `.env.local` ve Vercel’deki değerleri onunla değiştirin.
-5. **Kendi Drive’ınızı bağlama (önerilen):** Uygulamayı çalıştırın, `/dashboard` sayfasında **Google Drive’ı bağla** düğmesine basın, Google hesabınızı seçin ve izin ekranında **Google Drive kutucuğunun işaretli** olduğundan emin olun. Drive’ınızda “Wedding QR” klasörü otomatik oluşur. Bağlantı anahtarı veritabanında `APP_SECRET`’tan türetilen bir anahtarla AES-256-GCM ile şifrelenmiş olarak saklanır ve tarayıcıya hiç gönderilmez.
+5. **Kendi Drive’ınızı bağlama (önerilen):** Uygulamayı çalıştırın, `/dashboard` sayfasında **Google Drive’ı bağla** düğmesine basın, Google hesabınızı seçin ve izin ekranında **Google Drive kutucuğunun işaretli** olduğundan emin olun. Drive’ınızda “Mira” klasörü otomatik oluşur. Bağlantı anahtarı veritabanında `APP_SECRET`’tan türetilen bir anahtarla AES-256-GCM ile şifrelenmiş olarak saklanır ve tarayıcıya hiç gönderilmez.
 6. **Platform Drive’ı (isteğe bağlı):**
 
    ```bash
@@ -85,7 +85,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 
    - Terminal bir yetkilendirme adresi yazdırır; açıp medyanın saklanacağı Google hesabıyla izin verin.
    - Tarayıcı `127.0.0.1` adresine döner ve script kodu otomatik yakalar. Dönmezse adres çubuğundaki URL’yi veya `code` değerini terminale yapıştırın.
-   - Script Drive’da **“Wedding QR”** kök klasörünü oluşturur ve `GOOGLE_REFRESH_TOKEN` ile `GOOGLE_DRIVE_ROOT_FOLDER_ID` değerlerini `.env.local` dosyasına yazar.
+   - Script Drive’da **“Mira”** kök klasörünü oluşturur ve `GOOGLE_REFRESH_TOKEN` ile `GOOGLE_DRIVE_ROOT_FOLDER_ID` değerlerini `.env.local` dosyasına yazar.
    - `drive.file` kapsamı yalnızca uygulamanın **kendi oluşturduğu** klasörleri görür; Drive’da elle açtığınız bir klasörün ID’sini kullanmayın.
 
 > **Önemli:** `APP_SECRET` değiştirilirse kayıtlı Drive bağlantılarının şifresi çözülemez; düğün sahiplerinin Drive’larını yeniden bağlaması gerekir. Bu yüzden `APP_SECRET`’i sabit tutun.
@@ -111,7 +111,7 @@ npm run dev
 ```
 
 1. http://localhost:3000/login → hesap oluşturup giriş yapın.
-2. **Yeni etkinlik** oluşturun. Drive’daki `Wedding QR/` altında `<Etkinlik>_<slug>/Photos|Videos|VoiceNotes` klasörleri görünmeli.
+2. **Yeni etkinlik** oluşturun. Drive’daki `Mira/` altında `<Etkinlik>_<slug>/Photos|Videos|VoiceNotes` klasörleri görünmeli.
 3. Özet sekmesindeki misafir bağlantısını telefonda açın (aynı Wi-Fi’de `http://<bilgisayar-IP>:3000/e/<slug>`), isim girip bir fotoğraf yükleyin.
 4. Production build’i doğrulayın:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Wedding QR — host account management (accounts are created by the admin;
+ * Mira — host account management (accounts are created by the admin;
  * there is no public sign-up). Uses the Supabase Auth Admin API with
  * SUPABASE_SERVICE_ROLE_KEY from .env.local. Node 18+, no dependencies.
  *

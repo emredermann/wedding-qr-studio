@@ -1,4 +1,4 @@
-# Wedding QR
+# Mira
 
 Misafirler masadaki QR kodu okutur, adını yazar ve fotoğraf, video ya da sesli/görüntülü mesajlarını **uygulama indirmeden** paylaşır. Tüm medya **orijinal kalitede doğrudan çiftin kişisel Google Drive’ına** gider. Ücretli paket yok, kilitli özellik yok, sıfır altyapı maliyeti.
 

@@ -1,34 +1,46 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+
+import { BRAND } from "@/lib/brand";
+
 import "./globals.css";
 
+// latin-ext is required for Turkish letters (ğ, ş, İ, ı).
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
+});
+
+const display = Instrument_Serif({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "Wedding QR — Ücretsiz etkinlik fotoğraf paylaşımı",
-    template: "%s · Wedding QR",
+    default: `${BRAND.name} — ${BRAND.tagline}`,
+    template: `%s · ${BRAND.name}`,
   },
-  applicationName: "Wedding QR",
-  description:
-    "Misafirler QR kodu okutur, fotoğraf ve videolarını uygulama indirmeden orijinal kalitede etkinlik sahibinin Google Drive’ına yükler. Yüz tanıma, canlı ekran, anı defteri ve masa kartı tasarlayıcı — tamamen ücretsiz.",
+  applicationName: BRAND.name,
+  description: BRAND.description,
+  openGraph: { siteName: BRAND.name, title: `${BRAND.name} — ${BRAND.tagline}`, description: BRAND.description },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#141210",
+  themeColor: "#f7f5f0",
 };
 
 export default function RootLayout({
@@ -39,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col overflow-x-hidden">
         {children}

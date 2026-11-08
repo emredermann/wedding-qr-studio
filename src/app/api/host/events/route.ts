@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import type { NextRequest } from "next/server";
 
+import { BRAND } from "@/lib/brand";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { driveForNewEvent } from "@/lib/drive-accounts";
 import { slugify, toHostEventDto } from "@/lib/events";
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
         drive_videos_folder_id: folders.videosId,
         drive_voice_folder_id: folders.voiceId,
         drive_account: account,
+        theme_color: BRAND.defaultEventColor,
       })
       .select("*")
       .single();
