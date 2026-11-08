@@ -528,7 +528,7 @@ export function QrCardDesigner({
             <select value={center} onChange={(e) => setCenter(e.target.value as CenterMode)} className={field}>
               <option value="harfler">Baş harfler</option>
               <option value="kalp">Kalp</option>
-              <option value="foto">Çift fotoğrafı</option>
+              <option value="foto">Fotoğraf</option>
               <option value="yok">Boş</option>
             </select>
           </label>

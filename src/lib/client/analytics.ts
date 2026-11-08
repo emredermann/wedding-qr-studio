@@ -24,7 +24,6 @@ export interface AnalyticsEvents {
   zip_downloaded: { scope: "gallery" | "mine" | "faces" | "host"; files: number };
   // Host
   host_signed_in: Record<string, never>;
-  host_signed_up: Record<string, never>;
   drive_connect_started: Record<string, never>;
   drive_connected: Record<string, never>;
   event_created: { drive: "app" | "host" };

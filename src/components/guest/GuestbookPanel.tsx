@@ -115,13 +115,13 @@ export function GuestbookPanel({
     <div className="space-y-5">
       <form onSubmit={submitText} className="rounded-3xl border border-stone-200 bg-white p-4">
         <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-stone-800">
-          <Feather className="h-4 w-4" /> Çifte bir not bırakın
+          <Feather className="h-4 w-4" /> Etkinlik sahibine bir not bırakın
         </p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 1000))}
           rows={3}
-          placeholder="Tebrikler! Ömür boyu mutluluklar…"
+          placeholder="Harika bir gündü, her şey için teşekkürler…"
           className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none focus:border-stone-500"
         />
         <div className="mt-2 flex items-center justify-between">

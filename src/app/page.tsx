@@ -4,11 +4,11 @@ import Link from "next/link";
 const FEATURES = [
   { icon: Camera, title: "Uygulamasız yükleme", text: "Misafirler QR’ı okutur, adını yazar ve tek dokunuşla fotoğraf/video yükler. Hesap yok, indirme yok." },
   { icon: ScanFace, title: "Beni Bul (yapay zekâ)", text: "Misafir selfie çeker, sadece kendisinin olduğu fotoğrafları görür. Yüz analizi tarayıcıda yapılır." },
-  { icon: MonitorPlay, title: "Canlı düğün ekranı", text: "Yeni fotoğraflar ve mesajlar salondaki projeksiyonda sayfa yenilenmeden akar." },
+  { icon: MonitorPlay, title: "Canlı etkinlik ekranı", text: "Yeni fotoğraflar ve mesajlar salondaki projeksiyonda ya da ekranda sayfa yenilenmeden akar." },
   { icon: BookHeart, title: "Sesli & görüntülü anı defteri", text: "Misafirler tarayıcıdan sesli mesaj, video mesaj ya da yazılı not bırakır." },
-  { icon: QrCode, title: "QR & masa kartı tasarlayıcı", text: "Renk, çerçeve, baş harfler veya çift fotoğrafıyla 300 DPI PNG/PDF masa kartları." },
+  { icon: QrCode, title: "QR & masa kartı tasarlayıcı", text: "Renk, çerçeve, baş harfler, logo ya da fotoğrafla 300 DPI PNG/PDF masa ve davet kartları." },
   { icon: Download, title: "Orijinal kalitede indirme", text: "Sıkıştırma yok. Tek tıkla tüm albümü ZIP olarak indirin ya da Drive klasörünü açın." },
-  { icon: ShieldCheck, title: "Moderasyon paneli", text: "Onay modu, gizleme, silme, kategoriler (Nikah, İlk Dans, Masa 1…) ve istatistikler." },
+  { icon: ShieldCheck, title: "Moderasyon paneli", text: "Onay modu, gizleme, silme, kategoriler (Sahne, Masa 1, After Party…) ve istatistikler." },
   { icon: Heart, title: "Tamamen ücretsiz", text: "Ücretli paket yok, kilitli özellik yok. Tüm medya kendi Google Drive’ınızda saklanır." },
 ];
 
@@ -26,17 +26,14 @@ export default function HomePage() {
       </header>
 
       <section className="mx-auto max-w-4xl px-5 pt-12 pb-16 text-center">
-        <p className="text-xs font-semibold tracking-[0.3em] text-amber-700 uppercase">Düğün fotoğraf paylaşımı</p>
+        <p className="text-xs font-semibold tracking-[0.3em] text-amber-700 uppercase">Etkinlik fotoğraf paylaşımı</p>
         <h1 className="mt-4 font-serif text-5xl leading-tight sm:text-6xl">Her misafirin objektifinden, tek bir albüm.</h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-stone-600">
-          Masalara QR kart koyun; misafirler fotoğraf, video ve dileklerini anında paylaşsın. Hepsi orijinal kalitede doğrudan sizin Google Drive’ınıza.
+          Düğün, nişan, doğum günü, mezuniyet ya da şirket etkinliği — masalara QR kart koyun, misafirler fotoğraf, video ve mesajlarını anında paylaşsın. Hepsi orijinal kalitede doğrudan sizin Google Drive’ınıza.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/login" className="rounded-full bg-amber-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-900/20">
-            Ücretsiz etkinlik oluştur
-          </Link>
-          <Link href="/dashboard" className="rounded-full border border-stone-300 bg-white px-6 py-3 text-sm font-semibold">
-            Giriş yap
+            Event sahibi girişi
           </Link>
         </div>
       </section>

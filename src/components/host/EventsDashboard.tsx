@@ -93,7 +93,7 @@ export function EventsDashboard() {
           {events && events.length === 0 && (
             <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-10 text-center text-stone-600">
               <CalendarHeart className="mx-auto mb-3 h-8 w-8 text-stone-400" />
-              Henüz bir etkinlik yok. Sağdaki formdan ilk düğününüzü oluşturun.
+              Henüz bir etkinlik yok. Formdan ilk etkinliğinizi oluşturun.
             </div>
           )}
           <ul className="space-y-3">
@@ -129,10 +129,10 @@ export function EventsDashboard() {
             <div className="space-y-3">
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-stone-600">Etkinlik adı *</span>
-                <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ayşe & Mehmet Düğünü" className={field} />
+                <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="ör. Ayşe & Mehmet Düğünü, Şirket Yılbaşı Partisi" className={field} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-stone-600">Çiftin isimleri</span>
+                <span className="mb-1 block text-xs font-semibold text-stone-600">Başlıkta görünecek isim (isteğe bağlı)</span>
                 <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} placeholder="Ayşe & Mehmet" className={field} />
               </label>
               <label className="block">

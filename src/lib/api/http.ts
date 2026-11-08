@@ -94,7 +94,7 @@ export function handleRouteError(scope: string, error: unknown): NextResponse<Ap
     console.error(`[${scope}] Google Drive error`, { status: error.status, reason: error.reason, message: error.message });
     if (error.reason === "invalid_grant") {
       return error.account === "host"
-        ? jsonError(503, "DRIVE_AUTH_FAILED", "Düğün sahibinin Google Drive bağlantısı geçersiz. Düğün sahibi panelden Google Drive'ı yeniden bağlamalı.")
+        ? jsonError(503, "DRIVE_AUTH_FAILED", "Etkinlik sahibinin Google Drive bağlantısı geçersiz. Etkinlik sahibi panelden Google Drive'ı yeniden bağlamalı.")
         : jsonError(503, "DRIVE_AUTH_FAILED", "Google Drive yetkisi geçersiz. Yönetici `npm run drive:token` ile yeni token üretmeli.");
     }
     return jsonError(502, "DRIVE_ERROR", "Google Drive şu anda yanıt vermiyor. Lütfen tekrar deneyin.");

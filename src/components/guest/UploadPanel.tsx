@@ -132,7 +132,7 @@ export function UploadPanel({
     const remaining = queueRef.current.filter((i) => i.status === "queued" || i.status === "uploading").length;
     if (remaining === 0 && queueRef.current.some((i) => i.status === "done")) {
       const failed = queueRef.current.filter((i) => i.status === "error").length;
-      if (failed === 0) onMessage(event.requireApproval ? "Yüklendi! Düğün sahibi onayladıktan sonra galeride görünecek." : "Tüm dosyalar yüklendi. Teşekkürler! 💛", "success");
+      if (failed === 0) onMessage(event.requireApproval ? "Yüklendi! Etkinlik sahibi onayladıktan sonra galeride görünecek." : "Tüm dosyalar yüklendi. Teşekkürler! 💛", "success");
     }
   }
 
@@ -192,7 +192,7 @@ export function UploadPanel({
   if (!event.uploadsEnabled) {
     return (
       <div className="rounded-3xl border border-stone-200 bg-white/80 p-8 text-center text-stone-600">
-        Düğün sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.
+        Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.
       </div>
     );
   }
@@ -342,7 +342,7 @@ export function UploadPanel({
       )}
 
       <p className="text-center text-[11px] leading-relaxed text-stone-500">
-        Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan çiftin Google Drive arşivine yüklenir.
+        Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.
         {event.faceSearchEnabled && " “Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır."}
       </p>
     </div>

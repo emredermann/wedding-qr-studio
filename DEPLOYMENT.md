@@ -31,7 +31,17 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 4. **Authentication → URL Configuration**:
    - **Site URL**: şimdilik `http://localhost:3000` (yayına aldıktan sonra Vercel adresinizle değiştireceksiniz)
    - **Redirect URLs**: `http://localhost:3000/auth/callback` ekleyin
-5. *(İsteğe bağlı)* **Authentication → Providers → Email**: tek kullanıcı (siz) olacaksanız “Confirm email” ayarını kapatarak e-posta doğrulamasını atlayabilirsiniz.
+5. **Herkese açık kaydı kapatın — önemli:** Düğün sahibi hesaplarını yalnızca siz oluşturursunuz; giriş ekranında “üye ol” yoktur. Supabase’in kayıt API’si anon anahtarla dışarıdan da çağrılabildiği için **Authentication → Sign In / Providers → “Allow new users to sign up”** seçeneğini **kapatın**. E-posta doğrulaması ve SMTP gerekmez: hesaplar onaylanmış olarak oluşturulur ve hiçbir hesaba mail gönderilmez.
+6. **Düğün sahibi hesabı oluşturun** (proje klasöründe, `.env.local` dolu iken):
+
+   ```bash
+   npm run user -- create ayse.mehmet GucluBirSifre123   # kullanıcı adı + şifre
+   npm run user -- list                                   # hesapları listele
+   npm run user -- password ayse.mehmet YeniSifre456      # şifre değiştir
+   npm run user -- delete ayse.mehmet                     # hesabı sil
+   ```
+
+   Kullanıcı adı 3–32 karakter; küçük harf, rakam, nokta, tire, alt çizgi. Kişi `/login` sayfasında yalnızca bu kullanıcı adı ve şifreyle giriş yapar. (Arka planda Supabase Auth’ta `ayse.mehmet@kullanici.weddingqr.app` biçiminde bir iç kimlik kullanılır; kişi bunu görmez. Daha önce e-postayla açılmış hesaplar, kullanıcı adı alanına e-postanın tamamı yazılarak giriş yapmaya devam edebilir.)
 
 > **Neon veya Turso neden yok?** Düğün sahibi girişi için Supabase Auth kullanılıyor. Neon/Turso’da yerleşik bir kimlik doğrulama yok; Supabase’in ücretsiz katmanı Postgres + pgvector + Auth’u tek yerde veriyor.
 

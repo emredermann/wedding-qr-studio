@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       const name = event.couple_names || event.title;
       return {
         title: name,
-        description: `${name} düğününden fotoğraf, video ve anılarınızı paylaşın.`,
+        description: `${name} etkinliğinden fotoğraf, video ve anılarınızı paylaşın.`,
         robots: { index: false, follow: false },
         openGraph: { title: `${name} · Anılarımızı paylaşın`, description: "Uygulama indirmeden, tek dokunuşla yükleyin." },
       };
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } catch {
     // Metadata is best-effort; the page itself reports configuration errors.
   }
-  return { title: "Düğün Albümü", robots: { index: false, follow: false } };
+  return { title: "Etkinlik Albümü", robots: { index: false, follow: false } };
 }
 
 export default async function GuestPage({ params }: Props) {

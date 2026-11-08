@@ -123,7 +123,7 @@ export function FaceSearchPanel({
         </span>
         <h2 className="font-serif text-xl text-stone-900">Fotoğraflarımı Bul</h2>
         <p className="mx-auto mt-1 max-w-sm text-sm text-stone-600">
-          Bir selfie çekin; yapay zekâ düğündeki yüzlerle karşılaştırıp sizin olduğunuz fotoğrafları getirsin. Selfie’niz cihazınızdan çıkmaz.
+          Bir selfie çekin; yapay zekâ etkinlikteki yüzlerle karşılaştırıp sizin olduğunuz fotoğrafları getirsin. Selfie’niz cihazınızdan çıkmaz.
         </p>
 
         {phase === "camera" && (

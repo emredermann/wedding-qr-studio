@@ -34,7 +34,7 @@ export async function checkDriveSpace(drive: DriveClient, sizeBytes: number): Pr
     return jsonError(
       507,
       "DRIVE_FULL",
-      `Düğün sahibinin Google Drive alanı dolu (boş alan: ${formatBytes(Math.max(0, free))}). Lütfen düğün sahibine haber verin.`,
+      `Etkinlik sahibinin Google Drive alanı dolu (boş alan: ${formatBytes(Math.max(0, free))}). Lütfen etkinlik sahibine haber verin.`,
     );
   }
   return null;
@@ -74,7 +74,7 @@ export async function reserveUploadQuota(params: {
       429,
       "UPLOAD_QUOTA_EXCEEDED",
       row.reason === "ip"
-        ? "Bu ağdan bu etkinliğe yapılabilecek yükleme sınırına ulaşıldı. Düğün sahibiyle iletişime geçin."
+        ? "Bu ağdan bu etkinliğe yapılabilecek yükleme sınırına ulaşıldı. Etkinlik sahibiyle iletişime geçin."
         : `Bu etkinlik için kişi başı yükleme sınırına ulaştınız (${UPLOAD_QUOTA.sessionMaxFiles} dosya / ${formatBytes(UPLOAD_QUOTA.sessionMaxBytes)}).`,
     );
   }

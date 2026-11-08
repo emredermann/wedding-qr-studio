@@ -88,7 +88,7 @@ export function SettingsTab({
           <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={field} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Çiftin isimleri</span>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">Başlıkta görünecek isim</span>
           <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} className={field} />
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -128,7 +128,7 @@ export function SettingsTab({
                   addCategory();
                 }
               }}
-              placeholder="ör. Masa 1, Kına, Gelin Alma"
+              placeholder="ör. Masa 1, Sahne, Sunum, After Party"
               className={field}
             />
             <button type="button" onClick={addCategory} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-3 text-sm">

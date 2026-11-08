@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     const event = await findEventBySlug(eventSlug);
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
     if (isGuestbook ? !event.guestbook_enabled : !event.uploads_enabled) {
-      return jsonError(403, "UPLOADS_CLOSED", "Düğün sahibi şu anda yüklemeleri kapattı.");
+      return jsonError(403, "UPLOADS_CLOSED", "Etkinlik sahibi şu anda yüklemeleri kapattı.");
     }
 
     const drive = await driveForEvent(event);

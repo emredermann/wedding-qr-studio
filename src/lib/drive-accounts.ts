@@ -82,7 +82,7 @@ export async function driveForEvent(event: Pick<EventRow, "owner_id" | "drive_ac
     const connection = await loadDriveConnection(event.owner_id);
     if (!connection || connection.status !== "active") {
       throw new DriveNotConnectedError(
-        "Düğün sahibinin Google Drive bağlantısı kopmuş. Düğün sahibi panelden Google Drive'ı yeniden bağlamalı.",
+        "Etkinlik sahibinin Google Drive bağlantısı kopmuş. Etkinlik sahibi panelden Google Drive'ı yeniden bağlamalı.",
       );
     }
     return hostDriveClient(connection);

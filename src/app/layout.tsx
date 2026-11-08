@@ -16,12 +16,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wedding QR — Ücretsiz düğün fotoğraf paylaşımı",
+    default: "Wedding QR — Ücretsiz etkinlik fotoğraf paylaşımı",
     template: "%s · Wedding QR",
   },
   applicationName: "Wedding QR",
   description:
-    "Misafirler QR kodu okutur, fotoğraf ve videolarını uygulama indirmeden orijinal kalitede çiftin Google Drive’ına yükler. Yüz tanıma, canlı ekran, anı defteri ve masa kartı tasarlayıcı — tamamen ücretsiz.",
+    "Misafirler QR kodu okutur, fotoğraf ve videolarını uygulama indirmeden orijinal kalitede etkinlik sahibinin Google Drive’ına yükler. Yüz tanıma, canlı ekran, anı defteri ve masa kartı tasarlayıcı — tamamen ücretsiz.",
 };
 
 export const viewport: Viewport = {

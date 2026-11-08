@@ -68,7 +68,7 @@ export function OverviewTab({
               <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
                 {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />} Kopyala
               </button>
-              <a href={`https://wa.me/?text=${encodeURIComponent(`${event.coupleNames || event.title} düğününden fotoğraflarınızı buradan paylaşın: ${guestUrl}`)}`} target="_blank" rel="noreferrer" onClick={() => trackEvent("guest_link_shared", { method: "whatsapp" })} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
+              <a href={`https://wa.me/?text=${encodeURIComponent(`${event.coupleNames || event.title} etkinliğinden fotoğraflarınızı buradan paylaşın: ${guestUrl}`)}`} target="_blank" rel="noreferrer" onClick={() => trackEvent("guest_link_shared", { method: "whatsapp" })} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
                 <Share2 className="h-4 w-4" /> WhatsApp
               </a>
               <a href={guestUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-2 text-xs font-medium">
@@ -81,7 +81,7 @@ export function OverviewTab({
             <a href={liveUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl bg-stone-900 p-4 text-white">
               <MonitorPlay className="h-6 w-6 shrink-0" />
               <span>
-                <span className="block text-sm font-semibold">Canlı Düğün Ekranı</span>
+                <span className="block text-sm font-semibold">Canlı Etkinlik Ekranı</span>
                 <span className="block text-xs text-white/70">Projeksiyon / TV’de tam ekran açın</span>
               </span>
             </a>
