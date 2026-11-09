@@ -21,7 +21,7 @@
 | **JSONB İç Alanları & API Gövdeleri** | `camelCase` | `theme_config.primaryColor`, `flow_config.features.enablePhotoUpload`, `albumId`, `fileKey` |
 | **React Bileşenleri & Tipler** | `PascalCase` | `FaceScannerModal`, `QrCardBuilder`, `GuestEventPayload`, `EventThemeConfig` |
 | **Sabitler (Constants)** | `UPPER_SNAKE_CASE` | `MAX_CONCURRENT_UPLOADS`, `PRESIGN_TTL_SECONDS`, `GUEST_SESSION_COOKIE_NAME` |
-| **CSS Özel Özellikleri (Variables)** | `--event-*` / `wqr-*` | `--event-primary`, `--event-bg`, `.wqr-safe-top`, `.wqr-ambient-surface` |
+| **CSS Özel Özellikleri (Variables)** | `--event-*` / `eqr-*` | `--event-primary`, `--event-bg`, `.eqr-safe-top`, `.eqr-ambient-surface` |
 
 ---
 

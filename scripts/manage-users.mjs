@@ -10,13 +10,15 @@
  *   npm run user -- delete   <kullanici-adi>
  *
  * Usernames are mapped to the internal login identity
- * "<username>@<NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN or kullanici.weddingqr.app>",
+ * "<username>@<NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN or kullanici.eventqr.app>",
  * exactly like the login form does (src/lib/login-identity.ts).
  */
 import fs from "node:fs";
 import path from "node:path";
 
-const DEFAULT_DOMAIN = "kullanici.weddingqr.app";
+const DEFAULT_DOMAIN = "kullanici.eventqr.app";
+// Accounts created before the Event QR rename live under the old domain.
+const LEGACY_DOMAINS = ["kullanici.weddingqr.app"];
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])$/;
 
 function loadEnv() {
@@ -84,12 +86,15 @@ async function allUsers() {
 
 function usernameOf(user) {
   const email = (user.email || "").toLowerCase();
-  return email.endsWith(`@${DOMAIN}`) ? email.slice(0, -(DOMAIN.length + 1)) : email;
+  for (const domain of [DOMAIN, ...LEGACY_DOMAINS]) {
+    if (email.endsWith(`@${domain}`)) return email.slice(0, -(domain.length + 1));
+  }
+  return email;
 }
 
 async function findByUsername(username) {
-  const email = `${username}@${DOMAIN}`;
-  const user = (await allUsers()).find((u) => (u.email || "").toLowerCase() === email);
+  const emails = [DOMAIN, ...LEGACY_DOMAINS].map((domain) => `${username}@${domain}`);
+  const user = (await allUsers()).find((u) => emails.includes((u.email || "").toLowerCase()));
   if (!user) fail(`"${username}" kullanıcısı bulunamadı.`);
   return user;
 }
@@ -154,7 +159,7 @@ switch (command) {
   default:
     console.log(`
 Kullanım:
-  npm run user -- create   <kullanici-adi> <sifre>       Yeni düğün sahibi hesabı
+  npm run user -- create   <kullanici-adi> <sifre>       Yeni etkinlik sahibi hesabı
   npm run user -- password <kullanici-adi> <yeni-sifre>  Şifre değiştir
   npm run user -- list                                   Hesapları listele
   npm run user -- delete   <kullanici-adi>               Hesabı sil

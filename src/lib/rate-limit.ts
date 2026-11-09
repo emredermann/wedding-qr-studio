@@ -14,7 +14,7 @@ export function clientIp(request: NextRequest): string {
 /**
  * Fixed-window limiter backed by Postgres, so it works across serverless
  * instances. Fails open (allows) if the database call itself fails, because a
- * limiter outage must not take the wedding down.
+ * limiter outage must not take the event down.
  */
 export async function rateLimit(
   request: NextRequest,

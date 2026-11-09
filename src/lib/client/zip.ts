@@ -4,7 +4,7 @@
  * Minimal streaming-friendly ZIP writer (STORE method, no compression).
  * Photos/videos are already compressed, so STORE is as small as DEFLATE and
  * far cheaper on phones. Entries are kept as Blob parts, which browsers can
- * page to disk, so large weddings don't exhaust RAM. Each archive stays below
+ * page to disk, so large events don't exhaust RAM. Each archive stays below
  * the 4 GiB classic-ZIP limit; callers split into several parts beyond that.
  */
 

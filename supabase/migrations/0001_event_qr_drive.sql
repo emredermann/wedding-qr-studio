@@ -1,5 +1,5 @@
 -- =============================================================================
--- Wedding QR — Google Drive storage schema (Supabase / Neon PostgreSQL)
+-- Mira — Google Drive storage schema (Supabase / Neon PostgreSQL)
 -- =============================================================================
 -- Idempotent: safe to run more than once in the Supabase SQL editor.
 --
@@ -211,7 +211,7 @@ grant all on public.events, public.media_items, public.face_descriptors,
 -- -----------------------------------------------------------------------------
 -- RPC: match_event_faces — Euclidean distance search inside one event.
 -- face-api.js descriptors match the same person at distance < ~0.5–0.6.
--- Exact scan over one wedding's faces (a few thousand rows) is fast and
+-- Exact scan over one event's faces (a few thousand rows) is fast and
 -- complete; an ANN index would post-filter by event and drop matches.
 -- -----------------------------------------------------------------------------
 -- Functions returning TABLE cannot change their row type with CREATE OR REPLACE

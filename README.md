@@ -1,6 +1,6 @@
 # Mira
 
-Misafirler masadaki QR kodu okutur, adını yazar ve fotoğraf, video ya da sesli/görüntülü mesajlarını **uygulama indirmeden** paylaşır. Tüm medya **orijinal kalitede doğrudan çiftin kişisel Google Drive’ına** gider. Ücretli paket yok, kilitli özellik yok, sıfır altyapı maliyeti.
+Misafirler masadaki QR kodu okutur, adını yazar ve fotoğraf, video ya da sesli/görüntülü mesajlarını **uygulama indirmeden** paylaşır. Tüm medya **orijinal kalitede doğrudan etkinlik sahibinin kişisel Google Drive’ına** gider. Ücretli paket yok, kilitli özellik yok, sıfır altyapı maliyeti.
 
 ## Özellikler
 
@@ -8,9 +8,9 @@ Misafirler masadaki QR kodu okutur, adını yazar ve fotoğraf, video ya da sesl
 | --- | --- |
 | Sürtünmesiz yükleme | Hesap yok; isim/rumuz + kamera/galeri. Resumable (kesintide kaldığı yerden devam eden) yükleme, canlı ilerleme çubuğu, aynı anda 3 dosya. |
 | Beni Bul (yüz tanıma) | `@vladmandic/face-api` tarayıcıda 128 boyutlu yüz vektörü çıkarır; Postgres `pgvector` ile Öklid mesafesi (`<->`) eşleştirmesi. Selfie cihazdan çıkmaz. |
-| Canlı düğün ekranı | `/e/<slug>/live`: yeni fotoğraf/video ve notlar sayfa yenilenmeden akar, köşede QR, ekran uyanık kalır. |
+| Canlı etkinlik ekranı | `/e/<slug>/live`: yeni fotoğraf/video ve notlar sayfa yenilenmeden akar, köşede QR, ekran uyanık kalır. |
 | Dijital anı defteri | `MediaRecorder` ile sesli (≤3 dk) ve video (≤60 sn) mesaj, yazılı not. |
-| Albüm kategorileri | Hazırlık, Nikah, İlk Dans, Masa 1… düğün sahibi düzenler. |
+| Albüm kategorileri | Hazırlık, Nikah, İlk Dans, Masa 1… etkinlik sahibi düzenler. |
 | Moderasyon paneli | Onay modu, gizle/göster (Drive paylaşım izni de kaldırılır), sil (Drive çöp kutusu), toplu işlem, istatistikler, yüklemeleri aç/kapat. |
 | QR & masa kartı tasarlayıcı | 4 şablon, renkler, çerçeve, ortada baş harf/kalp/çift fotoğrafı, masa numarası aralığı → 300 DPI PNG ve çok sayfalı PDF (A6, A5, A4’e 4’lü). |
 | Orijinal kalitede toplu indirme | Tarayıcı içinde ZIP (sunucu RAM’i kullanılmaz, >3,5 GB’ta parçalara bölünür) + Drive klasör bağlantısı. |
@@ -29,7 +29,7 @@ Video / ses / ZIP ─▶ /api/drive/stream/<fileId>  (Range destekli, 16 MB par�
 
 - Dosya baytları **asla** sunucudan geçmez (Vercel’in 4,5 MB gövde limiti ve RAM sınırı yok).
 - Drive kimliği: **OAuth2 refresh token** (Service Account değil — kişisel hesapta kotası 0 GB). Kapsam `drive.file`: uygulama yalnızca kendi oluşturduğu dosya/klasörleri görür.
-- **Her düğün sahibi kendi Drive’ını bağlar** (panelde “Google Drive’ı bağla”): medya o kişinin Drive’ına gider; token’lar veritabanında AES-256-GCM ile şifreli tutulur. İsteğe bağlı bir “platform Drive’ı” (env) Drive bağlamayanlar için yedek olarak kullanılabilir.
+- **Her etkinlik sahibi kendi Drive’ını bağlar** (panelde “Google Drive’ı bağla”): medya o kişinin Drive’ına gider; token’lar veritabanında AES-256-GCM ile şifreli tutulur. İsteğe bağlı bir “platform Drive’ı” (env) Drive bağlamayanlar için yedek olarak kullanılabilir.
 - Her etkinlik için otomatik klasör: `<Kök>/<Etkinlik_Adı>_<slug>/{Photos,Videos,VoiceNotes}`.
 - Güvenlik: tüm tablolar RLS ile tarayıcıya kapalı; sunucu service-role ile yazar. Misafir kimliği imzalı HttpOnly çerez; yükleme onayı imzalı token + Drive `appProperties` + klasör + boyut + magic-byte kontrolü; Postgres tabanlı rate limit.
 
@@ -57,7 +57,7 @@ src/app/                 sayfalar ve API rotaları
   api/drive/             upload-session, stream/[fileId], thumb/[fileId]
   api/media/             confirm, [mediaId] (misafirin kendi silmesi)
   api/events/[slug]/     herkese açık etkinlik, galeri, anı defteri, yüz eşleştirme
-  api/host/              düğün sahibi: etkinlikler, moderasyon, dışa aktarma
+  api/host/              etkinlik sahibi: etkinlikler, moderasyon, dışa aktarma
   e/[slug]/              misafir sayfası  ·  e/[slug]/live  canlı ekran
   dashboard/             yönetim paneli  ·  login/  giriş
 src/lib/drive.ts         DriveService (OAuth2 + resumable + klasörler + izinler + stream)

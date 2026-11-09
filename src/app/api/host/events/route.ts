@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { title, coupleNames, eventDate } = body.data;
 
     let base = body.data.slug ?? slugify(coupleNames || title);
-    if (base.length < 3) base = `dugun-${randomBytes(3).toString("hex")}`;
+    if (base.length < 3) base = `etkinlik-${randomBytes(3).toString("hex")}`;
     const slug = await pickUniqueSlug(base, Boolean(body.data.slug));
     if (!slug) return jsonError(409, "SLUG_TAKEN", "Bu bağlantı adresi kullanımda. Başka bir tane deneyin.");
 

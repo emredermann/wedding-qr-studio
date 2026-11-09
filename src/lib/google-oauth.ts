@@ -10,7 +10,7 @@ const SCOPES = ["openid", "email", DRIVE_FILE_SCOPE];
 
 export const OAUTH_CALLBACK_PATH = "/api/host/drive/callback";
 /** HttpOnly cookie carrying the PKCE verifier + nonce between connect and callback. */
-export const DRIVE_OAUTH_COOKIE = "wqr_drive_oauth";
+export const DRIVE_OAUTH_COOKIE = "eqr_drive_oauth";
 
 /** Public origin of the app; must match the redirect URI registered in Google Cloud. */
 export function appOrigin(requestOrigin: string): string {

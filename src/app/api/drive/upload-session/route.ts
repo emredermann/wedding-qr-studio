@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
       sizeBytes,
       parentId: folderId,
       origin,
-      appProperties: { wqrUploadId: uploadId, wqrEventId: event.id },
+      appProperties: { eqrUploadId: uploadId, eqrEventId: event.id },
       description: guestName ? `Yükleyen: ${guestName}` : undefined,
     });
     drive.noteReservedBytes(sizeBytes);

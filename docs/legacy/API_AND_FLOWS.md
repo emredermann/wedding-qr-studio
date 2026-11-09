@@ -28,7 +28,7 @@ Tüm API rotaları `Cache-Control: no-store` başlığı ile yanıt döner.
    - `getAuthenticatedActor()`: `@supabase/ssr` çerezlerinden aktif kullanıcıyı (`auth.getUser()`) okur ve `profiles.is_super_admin` veya `user.app_metadata.is_super_admin` kontrolü yapar.
    - `verifyAlbumManagerAccess(albumId, actor)`: Kullanıcının `albums.owner_id === actor.userId`, `actor.isSuperAdmin === true` veya `co_hosts` tablosunda `email === actor.email` olup olmadığını doğrular.
 2. **Anonim Misafir (`src/lib/guest-session.ts`):**
-   - `resolveOrMintGuestSession(request)` / `getVerifiedGuestSession(request)`: `wqr_guest_session` (`HttpOnly`, `SameSite=Lax`, 90 gün ömürlü) çerezini veya `x-guest-session-token` başlığını `HMAC-SHA256` (`timingSafeEqual`) ile doğrular.
+   - `resolveOrMintGuestSession(request)` / `getVerifiedGuestSession(request)`: `eqr_guest_session` (`HttpOnly`, `SameSite=Lax`, 90 gün ömürlü) çerezini veya `x-guest-session-token` başlığını `HMAC-SHA256` (`timingSafeEqual`) ile doğrular.
 
 ### 2.2. Uç Nokta Bazlı Hız Sınırları (`src/lib/rate-limit.ts`)
 
@@ -54,7 +54,7 @@ Tüm API rotaları `Cache-Control: no-store` başlığı ile yanıt döner.
 
 #### `GET /api/events/[slug]`
 - **Dosya:** `src/app/api/events/[slug]/route.ts`
-- **Amaç:** Misafir QR sayfasını başlatır. Albümün genel ayarlarını (`PublicAlbum`), galeri kilit durumunu (`isGalleryLocked`, `lockReason: "private" | "disposable_camera" | null`) ve **yalnızca** doğrulanmış `wqr_guest_session` çerezine sahip misafirin kendi yüklediği medyaları (`myUploads` — her biri için `< 300s` imzalı GET URL'i üretilir) ve kayıt bilgilerini (`registration`) döner. Yanıta `wqr_guest_session` çerezini ekler.
+- **Amaç:** Misafir QR sayfasını başlatır. Albümün genel ayarlarını (`PublicAlbum`), galeri kilit durumunu (`isGalleryLocked`, `lockReason: "private" | "disposable_camera" | null`) ve **yalnızca** doğrulanmış `eqr_guest_session` çerezine sahip misafirin kendi yüklediği medyaları (`myUploads` — her biri için `< 300s` imzalı GET URL'i üretilir) ve kayıt bilgilerini (`registration`) döner. Yanıta `eqr_guest_session` çerezini ekler.
 
 #### `POST /api/events/[slug]`
 - **Dosya:** `src/app/api/events/[slug]/route.ts`
@@ -73,7 +73,7 @@ Tüm API rotaları `Cache-Control: no-store` başlığı ile yanıt döner.
 #### `DELETE /api/events/[slug]`
 - **Dosya:** `src/app/api/events/[slug]/route.ts`
 - **İstek Gövdesi:** `{ mediaId: UUID, guestSessionId?: string }`
-- **Güvenlik:** Yalnızca `wqr_guest_session` çerezindeki `sessionId` ile `media.guest_session_id` birebir eşleşirse hem R2 nesnesini hem de `public.media` satırını siler.
+- **Güvenlik:** Yalnızca `eqr_guest_session` çerezindeki `sessionId` ile `media.guest_session_id` birebir eşleşirse hem R2 nesnesini hem de `public.media` satırını siler.
 
 #### `POST /api/upload/presign`
 - **Dosya:** `src/app/api/upload/presign/route.ts`
@@ -128,7 +128,7 @@ Tüm API rotaları `Cache-Control: no-store` başlığı ile yanıt döner.
 - **Dosya:** `src/app/api/faces/index/route.ts`
 - **İstek Gövdesi (`128 KB` sınır):** `{ albumId: UUID, mediaId: UUID, embeddings: number[][] }` (1..25 adet 128-elemanlı sonlu sayı dizisi).
 - **Anti-Poisoning Korumaları:**
-  - Çağıran kişi ya fotoğrafı yükleyen `wqr_guest_session` sahibi olmalı **ve** fotoğraf son **15 dakika** (`MAX_INDEX_WINDOW_MS = 15 * 60 * 1000`) içinde yüklenmiş olmalı ya da albüm yöneticisi (`verifyAlbumManagerAccess`) olmalıdır.
+  - Çağıran kişi ya fotoğrafı yükleyen `eqr_guest_session` sahibi olmalı **ve** fotoğraf son **15 dakika** (`MAX_INDEX_WINDOW_MS = 15 * 60 * 1000`) içinde yüklenmiş olmalı ya da albüm yöneticisi (`verifyAlbumManagerAccess`) olmalıdır.
   - Aynı `mediaId` için `media_faces` tablosunda zaten kayıt varsa `409 CONFLICT` döner (tekrarlı vektör zehirlemesini önler).
   - Her vektör `toVectorString` (`src/lib/vector.ts`) ile L2-normalize edilerek kaydedilir.
 
@@ -162,7 +162,7 @@ Tüm API rotaları `Cache-Control: no-store` başlığı ile yanıt döner.
 | :--- | :--- | :--- | :--- |
 | `POST /api/checkout` | `src/app/api/checkout/route.ts` | Album Manager | `STRIPE_SECRET_KEY` varsa Stripe Checkout oturumu açar (`mode: "stripe"`). Yoksa imzalı bir `checkout.session.completed` olayını `/api/webhooks/payment`'a gönderir (`mode: "simulated_signed"`). |
 | `POST /api/webhooks/payment` | `src/app/api/webhooks/payment/route.ts` | `Stripe-Signature` veya `X-Webhook-Signature` (HMAC-SHA256, 300s pencere) | `albums.is_paid = true`, `plan_tier` ve `expires_at` (24 ay) alanlarını günceller. |
-| `POST /api/webhooks/process-media` | `src/app/api/webhooks/process-media/route.ts` | `X-Internal-Webhook-Signature` veya doğrulanmış `wqr_guest_session` | Hem doğrudan `{ mediaId, albumId, fileUrl, clientPhash }` yükünü hem de Supabase Database Webhook (`type: "INSERT", table: "media"`) yükünü destekler. SSRF'i önlemek için `fileUrl` yerine veritabanındaki kanonik `currentMedia.file_url` değerini kullanır, OpenAI `gpt-4o-mini` Vision ile kategorize eder ve `hammingDistance64 <= 10` ile kopya tespiti yapar. |
+| `POST /api/webhooks/process-media` | `src/app/api/webhooks/process-media/route.ts` | `X-Internal-Webhook-Signature` veya doğrulanmış `eqr_guest_session` | Hem doğrudan `{ mediaId, albumId, fileUrl, clientPhash }` yükünü hem de Supabase Database Webhook (`type: "INSERT", table: "media"`) yükünü destekler. SSRF'i önlemek için `fileUrl` yerine veritabanındaki kanonik `currentMedia.file_url` değerini kullanır, OpenAI `gpt-4o-mini` Vision ile kategorize eder ve `hammingDistance64 <= 10` ile kopya tespiti yapar. |
 | `PUT / GET /api/storage/[...fileKey]` | `src/app/api/storage/[...fileKey]/route.ts` | Query param HMAC-SHA256 (`exp`, `len`, `type`, `sig`) | Cloudflare R2 yapılandırılmadığında devreye giren yerel imzalı nesne depolama uç noktasıdır. |
 
 ---
@@ -183,7 +183,7 @@ sequenceDiagram
     Browser->>Browser: İlk 32 baytı oku (readFileMagicBytesHex)<br/>& detectMimeFromMagicBytes()
     Browser->>Next: POST /api/upload/presign {albumId, fileName, fileType, fileSize, magicBytesHex}
     Next->>Next: Rate limit + MIME beyaz liste + Magic-byte + Kota kontrolü
-    Next-->>Browser: 201 {uploadUrl, fileKey, headers, expiresIn: 240} (+ Set-Cookie: wqr_guest_session)
+    Next-->>Browser: 201 {uploadUrl, fileKey, headers, expiresIn: 240} (+ Set-Cookie: eqr_guest_session)
     Browser->>Browser: Fotoğrafsa 9x8 Canvas dHash hesapla (computeClientDifferenceHash)
     Browser->>R2: PUT uploadUrl (Binary File Stream, XHR progress)
     R2-->>Browser: 200 OK

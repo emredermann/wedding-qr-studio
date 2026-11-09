@@ -89,7 +89,7 @@ export function Lightbox({
         touchStart.current = null;
       }}
     >
-      <div className="wqr-safe-top flex items-center justify-between gap-2 px-3 py-2">
+      <div className="eqr-safe-top flex items-center justify-between gap-2 px-3 py-2">
         <div className="min-w-0 text-xs text-white/70">
           <p className="truncate font-medium text-white">{item.guestName ?? "Misafir"}</p>
           <p className="truncate">
@@ -143,7 +143,7 @@ export function Lightbox({
         )}
       </div>
 
-      <div className="wqr-safe-bottom px-4 pt-2 text-center text-sm text-white/80">
+      <div className="eqr-safe-bottom px-4 pt-2 text-center text-sm text-white/80">
         {item.note && <p className="mx-auto max-w-xl italic">“{item.note}”</p>}
         {footer?.(item)}
         <p className="mt-1 text-[11px] text-white/40">

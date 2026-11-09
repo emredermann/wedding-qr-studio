@@ -208,7 +208,7 @@ export function LiveWall({ slug }: { slug: string }) {
           src={driveImageUrl(previous.fileId, FULL_IMAGE_SIZE)}
           alt=""
           referrerPolicy="no-referrer"
-          className="absolute inset-0 h-full w-full animate-[wqrFadeOut_1.2s_ease_forwards] object-contain"
+          className="absolute inset-0 h-full w-full animate-[eqrFadeOut_1.2s_ease_forwards] object-contain"
         />
       )}
       {current && current.kind === "photo" && (
@@ -226,7 +226,7 @@ export function LiveWall({ slug }: { slug: string }) {
             src={driveImageUrl(current.fileId, FULL_IMAGE_SIZE)}
             alt={current.note ?? ""}
             referrerPolicy="no-referrer"
-            className="absolute inset-0 h-full w-full animate-[wqrKenBurns_8s_ease-out_forwards] object-contain"
+            className="absolute inset-0 h-full w-full animate-[eqrKenBurns_8s_ease-out_forwards] object-contain"
           />
         </>
       )}
@@ -266,7 +266,7 @@ export function LiveWall({ slug }: { slug: string }) {
 
       {/* Guestbook ticker */}
       {message && (
-        <div key={message.id} className="wqr-step-enter absolute bottom-8 left-8 max-w-[55vw] rounded-3xl bg-white/90 px-7 py-5 text-stone-900 shadow-2xl">
+        <div key={message.id} className="eqr-step-enter absolute bottom-8 left-8 max-w-[55vw] rounded-3xl bg-white/90 px-7 py-5 text-stone-900 shadow-2xl">
           <p className="line-clamp-4 font-serif text-2xl leading-snug">“{message.message}”</p>
           <p className="mt-2 text-base font-medium" style={{ color: accent }}>
             — {message.guestName}

@@ -62,7 +62,7 @@ export async function reserveUploadQuota(params: {
     // PGRST202 = function not found: the migration has not been re-run yet.
     // Allow the upload (Drive-space and rate limits still apply) but say so loudly.
     if (error.code === "PGRST202") {
-      console.error("[upload-quota] reserve_upload_quota missing — re-run supabase/migrations/0001_wedding_qr_drive.sql");
+      console.error("[upload-quota] reserve_upload_quota missing — re-run supabase/migrations/0001_event_qr_drive.sql");
       return null;
     }
     throw new Error(`[upload-quota] ${error.message}`);

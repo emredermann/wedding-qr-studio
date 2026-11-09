@@ -43,7 +43,7 @@
 | :--- | :--- | :--- |
 | **`@vladmandic/face-api`** | `^1.7.15` | `src/lib/faceRecognition.ts` içinde dinamik `import("@vladmandic/face-api")` ile yalnızca tarayıcıda yüklenir. `public/models/` altındaki 3 sinir ağını (`ssdMobilenetv1`, `faceLandmark68Net`, `faceRecognitionNet`) kullanarak 128-boyutlu `Float32Array` yüz vektörleri çıkarır. |
 | **PostgreSQL `pgvector`** | `vector(128)` + `hnsw` | `public.media_faces.embedding` sütununda 128-boyutlu L2-normalize vektörleri saklar. `match_guest_faces` RPC'si `<=>` (kosinüs mesafesi) operatörü ile `1 - (embedding <=> query_embedding) >= 0.82` eşleşmesi yapar. |
-| **OpenAI Vision API** | `gpt-4o-mini` | `src/app/api/webhooks/process-media/route.ts` (`classifyWeddingPhotoWithVision`) içinde `POST https://api.openai.com/v1/chat/completions` çağrısıyla (`detail: "low"`, `temperature: 0`, `max_tokens: 16`) fotoğrafları 5 kategoriden birine (`getting_ready`, `ceremony`, `reception`, `party`, `venue`) sınıflandırır. |
+| **OpenAI Vision API** | `gpt-4o-mini` | `src/app/api/webhooks/process-media/route.ts` (`classifyEventPhotoWithVision`) içinde `POST https://api.openai.com/v1/chat/completions` çağrısıyla (`detail: "low"`, `temperature: 0`, `max_tokens: 16`) fotoğrafları 5 kategoriden birine (`getting_ready`, `ceremony`, `reception`, `party`, `venue`) sınıflandırır. |
 | **Perceptual Hash (`dHash`)** | 64-bit (16 hex karakter) | İstemcide (`computeClientDifferenceHash` — `9×8` Canvas BT.601 parlaklık farkı) ve sunucu yedeğinde (`computeServerFallbackPhash` — 65 pencere örneklemesi) hesaplanır. `src/lib/phash.ts` (`hammingDistance64`, `groupDuplicateMediaByPhash`) ile Hamming mesafesi `<= 10` olan kopya fotoğraflar gruplanır. |
 
 ---

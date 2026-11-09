@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
     const authentic =
       file !== null &&
       !file.trashed &&
-      file.appProperties?.wqrUploadId === token.u &&
-      file.appProperties?.wqrEventId === token.e &&
+      (file.appProperties?.eqrUploadId ?? file.appProperties?.wqrUploadId) === token.u &&
+      (file.appProperties?.eqrEventId ?? file.appProperties?.wqrEventId) === token.e &&
       (file.parents ?? []).includes(token.f);
     if (!file || !authentic) {
       return jsonError(422, "UPLOAD_NOT_VERIFIED", "Yüklenen dosya doğrulanamadı.");

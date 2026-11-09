@@ -16,12 +16,13 @@ import type { MediaDto, PublicEventDto } from "@/types/domain";
 
 type Tab = "upload" | "gallery" | "find" | "guestbook";
 
-const NAME_KEY = "wqr:guest-name";
+const NAME_KEY = "eqr:guest-name";
+const LEGACY_NAME_KEY = "wqr:guest-name";
 
 function readStoredName(): string {
   if (typeof window === "undefined") return "";
   try {
-    return window.localStorage.getItem(NAME_KEY) ?? "";
+    return window.localStorage.getItem(NAME_KEY) || window.localStorage.getItem(LEGACY_NAME_KEY) || "";
   } catch {
     return "";
   }
@@ -101,7 +102,7 @@ export function GuestApp({ slug }: { slug: string }) {
 
   if (!guestName || editingName) {
     return (
-      <main style={accentStyle} className="wqr-safe-top flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
+      <main style={accentStyle} className="eqr-safe-top flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
         <div className="w-full max-w-sm text-center">
           <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: "var(--accent)" }}>
             <Heart className="h-7 w-7 fill-current" />
@@ -154,7 +155,7 @@ export function GuestApp({ slug }: { slug: string }) {
 
   return (
     <main style={accentStyle} className="min-h-dvh bg-stone-50 pb-28">
-      <header className="wqr-safe-top border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
+      <header className="eqr-safe-top border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <h1 className="truncate font-serif text-xl text-stone-900">{displayName}</h1>
@@ -192,7 +193,7 @@ export function GuestApp({ slug }: { slug: string }) {
         {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} onMessage={onMessage} />}
       </div>
 
-      <nav className="wqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 backdrop-blur-md">
+      <nav className="eqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 backdrop-blur-md">
         <ul className="mx-auto flex max-w-3xl">
           {visibleTabs.map(({ id, label, icon: Icon }) => {
             const active = id === activeTab;

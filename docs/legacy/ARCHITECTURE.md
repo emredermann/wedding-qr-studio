@@ -18,14 +18,14 @@ Lumina, **Next.js 16 App Router** üzerinde çalışan, sunucu tarafı yetkilend
    - WebGL tabanlı yüz tespiti (`ssdMobilenetv1`, `faceLandmark68Net`, `faceRecognitionNet`), istemci tarafı 9×8 gri tonlamalı `dHash` hesaplaması, 3-işçili eşzamanlı yükleme kuyruğu (`MAX_CONCURRENT_UPLOADS = 3`) ve 300-DPI HTML5 Canvas tabanlı QR kart çizimi tamamen tarayıcıda çalışır.
 5. **Veri ve Depolama Katmanı (`Supabase PostgreSQL + pgvector` & `Cloudflare R2`):**
    - PostgreSQL veritabanı yalnızca meta verileri, JSONB akış/tema yapılandırmalarını ve 128-boyutlu `vector(128)` yüz gömmelerini tutar.
-   - Medya baytları doğrudan Cloudflare R2'de (veya yerel `.local-storage/wedding-qr-media` dizininde) saklanır.
+   - Medya baytları doğrudan Cloudflare R2'de (veya yerel `.local-storage/event-qr-media` dizininde) saklanır.
 
 ---
 
 ## 2. Tam Dizin ve Dosya Yapısı
 
 ```text
-d:\Work\WeddingQR
+event-qr-studio/
 ├── .env.example                                  # Ortam değişkenleri şablonu
 ├── .github/workflows/deploy.yml                  # GitHub Pages statik dışa aktarım (export) CI/CD iş akışı
 ├── AGENTS.md                                     # Next.js 16 ajan kuralları (next dev tarafından yönetilir)
@@ -102,9 +102,9 @@ d:\Work\WeddingQR
     │   ├── env.public.ts                         # Tarayıcı güvenli ortam değişkenleri (getPublicEnv)
     │   ├── env.server.ts                         # Sunucu ortam değişkenleri Zod doğrulaması (getSupabaseServerEnv, isR2Configured)
     │   ├── faceRecognition.ts                    # loadFaceModels, extractAllFacesFromFile, extractSingleFaceFromSelfie, computeClientDifferenceHash
-    │   ├── guest-session.ts                      # wqr_guest_session HMAC-SHA256 çerez imzalama ve doğrulama
+    │   ├── guest-session.ts                      # eqr_guest_session HMAC-SHA256 çerez imzalama ve doğrulama
     │   ├── media-config.ts                       # MIME beyaz listesi, dosya boyutu sınırları, detectMimeFromMagicBytes
-    │   ├── payments.ts                           # PLAN_CATALOG, verifyWebhookSignature, computePostWeddingExpiration
+    │   ├── payments.ts                           # PLAN_CATALOG, verifyWebhookSignature, computePostEventExpiration
     │   ├── phash.ts                              # hammingDistance64 ve groupDuplicateMediaByPhash
     │   ├── r2.ts                                 # S3Client R2 işlemleri ve .local-storage HMAC yedekleme motoru
     │   ├── rate-limit.ts                         # Bellek içi (Map) sabit pencereli hız sınırlayıcı (checkRateLimit)
@@ -129,15 +129,15 @@ d:\Work\WeddingQR
 ### 3.1. Trusted Server Header & Dual-Privilege Supabase Pattern
 - **Dosyalar:** `src/lib/supabase/server.ts`, `supabase/migrations/0004_private_biometric_gallery.sql`
 - **Problem:** Geliştirici `.env.local` dosyasına `SUPABASE_SERVICE_ROLE_KEY` eklememiş olsa bile Next.js sunucusunun anonim istemcilerden (tarayıcılardan) ayırt edilerek RLS politikalarını güvenle geçebilmesi gerekir.
-- **Çözüm:** `getSupabaseAdminClient()` her isteğe `"x-wqr-server-key": env.SUPABASE_SERVER_RPC_SECRET` başlığını ekler. PostgreSQL tarafındaki `public.is_trusted_server()` fonksiyonu ya `auth.role() = 'service_role'` olup olmadığını ya da `request.headers` içindeki `x-wqr-server-key` değerinin SHA-256 özetinin `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` (`DEFAULT_SERVER_RPC_SECRET` özeti) ile eşleşip eşleşmediğini kontrol eder.
+- **Çözüm:** `getSupabaseAdminClient()` her isteğe `"x-eqr-server-key": env.SUPABASE_SERVER_RPC_SECRET` başlığını ekler. PostgreSQL tarafındaki `public.is_trusted_server()` fonksiyonu ya `auth.role() = 'service_role'` olup olmadığını ya da `request.headers` içindeki `x-eqr-server-key` değerinin SHA-256 özetinin `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` (`DEFAULT_SERVER_RPC_SECRET` özeti) ile eşleşip eşleşmediğini kontrol eder.
 
 ### 3.2. Dual-Backend Storage Strategy (R2 + Signed Local Filesystem Fallback)
 - **Dosyalar:** `src/lib/r2.ts`, `src/app/api/storage/[...fileKey]/route.ts`
-- **Çözüm:** `isR2Configured()` fonksiyonu Cloudflare R2 ortam değişkenlerini kontrol eder. Eğer R2 yapılandırılmışsa `@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner` kullanılır. Yapılandırılmamışsa aynı fonksiyonlar (`createPresignedPutUrl`, `createPresignedGetUrl`, `headR2Object`, `readR2ObjectMagicBytes`, `deleteR2Object`) yerel `.local-storage/wedding-qr-media` dizinini ve HMAC-SHA256 imzalı `/api/storage/[...fileKey]` uç noktasını kullanır. Üst katmandaki hiçbir API rotası hangi depolama motorunun çalıştığını bilmek zorunda değildir.
+- **Çözüm:** `isR2Configured()` fonksiyonu Cloudflare R2 ortam değişkenlerini kontrol eder. Eğer R2 yapılandırılmışsa `@aws-sdk/client-s3` ve `@aws-sdk/s3-request-presigner` kullanılır. Yapılandırılmamışsa aynı fonksiyonlar (`createPresignedPutUrl`, `createPresignedGetUrl`, `headR2Object`, `readR2ObjectMagicBytes`, `deleteR2Object`) yerel `.local-storage/event-qr-media` dizinini ve HMAC-SHA256 imzalı `/api/storage/[...fileKey]` uç noktasını kullanır. Üst katmandaki hiçbir API rotası hangi depolama motorunun çalıştığını bilmek zorunda değildir.
 
 ### 3.3. Stateless Cryptographic Guest Session Pattern
 - **Dosyalar:** `src/lib/guest-session.ts`
-- **Çözüm:** Misafirler için veritabanında bir `sessions` tablosu tutulmaz. Bunun yerine sunucu `randomUUID()` üretir, bunu `HMAC-SHA256("wqr-session:" + sessionId, secret)` ile imzalayarak `${sessionId}.${hmacHex}` formatında `wqr_guest_session` adlı `HttpOnly`, `SameSite=Lax` çereze (veya `x-guest-session-token` başlığına) yazar. Doğrulama sabit zamanlı `crypto.timingSafeEqual` ile yapılır; istemcinin JSON gövdesinde gönderdiği imzasız `guestSessionId` asla tek başına kabul edilmez.
+- **Çözüm:** Misafirler için veritabanında bir `sessions` tablosu tutulmaz. Bunun yerine sunucu `randomUUID()` üretir, bunu `HMAC-SHA256("eqr-session:" + sessionId, secret)` ile imzalayarak `${sessionId}.${hmacHex}` formatında `eqr_guest_session` adlı `HttpOnly`, `SameSite=Lax` çereze (veya `x-guest-session-token` başlığına) yazar. Doğrulama sabit zamanlı `crypto.timingSafeEqual` ile yapılır; istemcinin JSON gövdesinde gönderdiği imzasız `guestSessionId` asla tek başına kabul edilmez.
 
 ### 3.4. Concurrency-Bounded Worker Queue Pattern (Mobile Memory Guard)
 - **Dosyalar:** `src/app/e/[slug]/page.tsx` (`pumpUploadQueue`, `activeWorkersRef`, `MAX_CONCURRENT_UPLOADS = 3`)
@@ -157,10 +157,10 @@ d:\Work\WeddingQR
 
 | Kaynak | Hedef | Protokol / Mekanizma | Kimlik Doğrulama / Güvenlik |
 | :--- | :--- | :--- | :--- |
-| **Tarayıcı (Misafir)** | **Next.js API** | HTTPS REST (`JSON`) | `wqr_guest_session` (`HttpOnly` HMAC çerezi) + IP Rate Limit |
+| **Tarayıcı (Misafir)** | **Next.js API** | HTTPS REST (`JSON`) | `eqr_guest_session` (`HttpOnly` HMAC çerezi) + IP Rate Limit |
 | **Tarayıcı (Çift / Admin)** | **Next.js API** | HTTPS REST (`JSON`) | Supabase Auth SSR Cookie (`@supabase/ssr`) |
 | **Tarayıcı (Misafir)** | **Cloudflare R2** | HTTPS `PUT` (Binary Stream) | S3 Presigned URL (`X-Amz-Signature`, `< 240s` TTL, imzalı `Content-Type` ve `Content-Length`) |
-| **Next.js Server** | **Supabase PostgreSQL** | HTTPS PostgREST & RPC | `SUPABASE_SERVICE_ROLE_KEY` **veya** `x-wqr-server-key` (`is_trusted_server()`) |
+| **Next.js Server** | **Supabase PostgreSQL** | HTTPS PostgREST & RPC | `SUPABASE_SERVICE_ROLE_KEY` **veya** `x-eqr-server-key` (`is_trusted_server()`) |
 | **Next.js Server** | **Cloudflare R2** | HTTPS S3 API (`HEAD`, `GET Range`, `DELETE`) | AWS Signature V4 (`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`) |
 | **Next.js `complete` Route** | **Next.js `process-media` Route** | İç HTTPS `POST` (`next/server` `after()`) | `X-Internal-Webhook-Signature` (`t=...,v1=...` HMAC-SHA256, 300s replay korumalı) |
 | **Stripe / Local Checkout** | **Next.js `payment` Webhook** | HTTPS `POST` (`JSON`) | `Stripe-Signature` (`t=...,v1=...` HMAC-SHA256, `timingSafeEqual`) |
@@ -176,7 +176,7 @@ d:\Work\WeddingQR
    - `GITHUB_PAGES` ortam değişkeni `"true"` **değildir**.
    - `cacheComponents: true`, `partialPrefetching: true`, güvenlik başlıkları (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) ve tüm `/api/**` rotaları ile `src/proxy.ts` aktiftir.
 2. **GitHub Pages Statik Önizleme Modu (`GITHUB_PAGES="true"`):**
-   - `.github/workflows/deploy.yml` iş akışı derleme öncesinde `rm -rf src/app/api src/proxy.ts` komutunu çalıştırır ve `output: "export"`, `basePath: "/wedding-qr-studio"`, `images: { unoptimized: true }` ayarlarıyla statik HTML üretir.
+   - `.github/workflows/deploy.yml` iş akışı derleme öncesinde `rm -rf src/app/api src/proxy.ts` komutunu çalıştırır ve `output: "export"`, `basePath: "/event-qr-studio"`, `images: { unoptimized: true }` ayarlarıyla statik HTML üretir.
    - Dinamik rotaların (`[albumId]`, `[slug]`) statik derlemede hata vermemesi için şu üç `layout.tsx` dosyasında `generateStaticParams()` tanımlanmıştır:
      - `src/app/admin/events/[albumId]/builder/layout.tsx`
      - `src/app/dashboard/[albumId]/layout.tsx`

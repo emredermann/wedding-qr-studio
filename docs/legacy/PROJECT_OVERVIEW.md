@@ -1,7 +1,7 @@
-# PROJECT_OVERVIEW.md — Lumina (Wedding QR Studio)
+# PROJECT_OVERVIEW.md — Lumina (Mira'nın eski sürümü)
 
 ## 1. Proje Amacı ve Vizyonu
-**Lumina** (`wedding-qr-studio`), düğün, nişan ve özel davetlerde misafirlerin hiçbir mobil uygulama indirmeden veya hesap oluşturmadan masalardaki 300-DPI QR kartlarını okutarak **orijinal (sıkıştırmasız 4K) fotoğraf, video ve sesli mesaj (Voice Toast)** paylaşmasını sağlayan; aynı zamanda **cihaz içi (on-device WebGL) 128-boyutlu biyometrik yüz tanıma (`pgvector`)** ile her misafirin yalnızca kendisinin yer aldığı fotoğrafları keşfetmesine olanak tanıyan uçtan uca şifreli/imzalı bir bulut albüm platformudur.
+**Lumina** (`event-qr-studio`), düğün, nişan ve özel davetlerde misafirlerin hiçbir mobil uygulama indirmeden veya hesap oluşturmadan masalardaki 300-DPI QR kartlarını okutarak **orijinal (sıkıştırmasız 4K) fotoğraf, video ve sesli mesaj (Voice Toast)** paylaşmasını sağlayan; aynı zamanda **cihaz içi (on-device WebGL) 128-boyutlu biyometrik yüz tanıma (`pgvector`)** ile her misafirin yalnızca kendisinin yer aldığı fotoğrafları keşfetmesine olanak tanıyan uçtan uca şifreli/imzalı bir bulut albüm platformudur.
 
 ---
 
@@ -17,7 +17,7 @@
 2. **Yardımcı Ev Sahipleri (`Co-Host` — `public.co_hosts`):**
    - Albüm sahibi tarafından e-posta adresiyle davet edilir.
    - Doğrulanmış JWT e-postası (`auth.jwt() ->> 'email'`) eşleştiğinde `public.can_manage_album(album_id)` fonksiyonu üzerinden albümdeki medyaları görüntüleme, gizleme/onaylama, kategorize etme ve ZIP indirme yetkisine sahip olur (ancak başka co-host ekleyemez/çıkaramaz).
-3. **Misafir (`Guest` — Anonim + `wqr_guest_session` HttpOnly Cookie):**
+3. **Misafir (`Guest` — Anonim + `eqr_guest_session` HttpOnly Cookie):**
    - Masadaki QR kodu okutarak `/e/[slug]` (veya `/e/[slug]?table=12`) adresine gelir.
    - Etkinliğin `flow_config.steps` sırasına göre:
      1. `welcome_splash`: Karşılama ekranı.
@@ -30,12 +30,12 @@
 
 ### 2.2. Paket Kademeleri (`PlanTier`) ve Ödeme Modeli
 `src/lib/payments.ts` içindeki `PLAN_CATALOG` üç kademe tanımlar:
-- **`starter` ($29 — Starter Wedding Pass)**
+- **`starter` ($29 — Starter Event Pass)**
 - **`pro` ($69 — Pro Celebration Suite)**
 - **`unlimited` ($99 — Unlimited Multi-Event Bespoke)**
 
 > [!NOTE]
-> `src/lib/media-config.ts` içerisinde tüm paketlerde (`starter`, `pro`, `unlimited`) dosya başı boyut sınırları aynıdır (`photo`: 50 MiB, `video`: 2048 MiB, `audio`: 200 MiB) ve albüm kotaları 100.000 öğe / 1.000 GiB olarak kısıtlamasız tanımlanmıştır. Ödeme alındığında (`POST /api/webhooks/payment`) albümün `expires_at` süresi düğün tarihinden (`event_date` veya `now()`) itibaren **24 ay** uzatılır (`computePostWeddingExpiration`).
+> `src/lib/media-config.ts` içerisinde tüm paketlerde (`starter`, `pro`, `unlimited`) dosya başı boyut sınırları aynıdır (`photo`: 50 MiB, `video`: 2048 MiB, `audio`: 200 MiB) ve albüm kotaları 100.000 öğe / 1.000 GiB olarak kısıtlamasız tanımlanmıştır. Ödeme alındığında (`POST /api/webhooks/payment`) albümün `expires_at` süresi düğün tarihinden (`event_date` veya `now()`) itibaren **24 ay** uzatılır (`computePostEventExpiration`).
 
 ---
 
@@ -116,5 +116,5 @@ flowchart TB
 > **Demo Modu (Zero-Config Fallback) Davranışı:**
 > Proje, `.env.local` içinde Supabase, R2, Stripe veya OpenAI anahtarları tanımlanmamış olsa bile kırılmadan çalışacak şekilde tasarlanmıştır:
 > - Oturum açılamazsa `getAuthenticatedActor()` otomatik olarak `DEMO_OWNER_ID` (`00000000-0000-4000-8000-000000000099`, `isDemoFallback: true`) döner.
-> - Cloudflare R2 yapılandırılmamışsa (`isR2Configured() === false`), sistem otomatik olarak `.local-storage/wedding-qr-media` dizinini ve HMAC-SHA256 imzalı `/api/storage/[...fileKey]` rotalarını kullanır.
+> - Cloudflare R2 yapılandırılmamışsa (`isR2Configured() === false`), sistem otomatik olarak `.local-storage/event-qr-media` dizinini ve HMAC-SHA256 imzalı `/api/storage/[...fileKey]` rotalarını kullanır.
 > - Bu fallback mekanizmalarını "gereksiz mock kod" sanarak silmeyin; yerel geliştirme ve otomatik doğrulama testleri bu katmana bağlıdır.

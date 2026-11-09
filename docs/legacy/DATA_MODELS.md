@@ -148,7 +148,7 @@ erDiagram
 
 | Fonksiyon Adı | Argümanlar | Dönüş Tipi | Açıklama ve Erişim Kontrolü |
 | :--- | :--- | :--- | :--- |
-| **`is_trusted_server()`** | `()` | `boolean` | `auth.role() = 'service_role'` veya `request.headers->>'x-wqr-server-key'` SHA-256 özeti `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` ise `true` döner. |
+| **`is_trusted_server()`** | `()` | `boolean` | `auth.role() = 'service_role'` veya `request.headers->>'x-eqr-server-key'` SHA-256 özeti `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` ise `true` döner. |
 | **`is_super_admin()`** | `()` | `boolean` | JWT `app_metadata.is_super_admin` veya `public.profiles.is_super_admin` kontrolü yapar. |
 | **`is_album_owner(p_album_id)`** | `(uuid)` | `boolean` | `albums.owner_id = auth.uid()` kontrolü yapar. |
 | **`can_manage_album(p_album_id)`** | `(uuid)` | `boolean` | Süper admin, albüm sahibi veya e-postası `co_hosts` tablosunda eşleşen kullanıcılar için `true` döner. |
@@ -205,4 +205,4 @@ export interface EventFlowConfig {
 
 > [!IMPORTANT]
 > **`SUPABASE_SERVER_RPC_SECRET` ve SQL SHA-256 Özeti Senkronizasyonu:**
-> `0004_private_biometric_gallery.sql` içindeki `public.is_trusted_server()` fonksiyonu `x-wqr-server-key` başlığının SHA-256 özetini `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` ile karşılaştırır. Bu özet, `src/lib/env.server.ts` içindeki `DEFAULT_SERVER_RPC_SECRET` (`"wqr_srv_9f4e2a8c1d7b6e3f5a0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c"`) değerinin SHA-256 karşılığıdır. Eğer üretim ortamında `SUPABASE_SERVER_RPC_SECRET` değiştirilirse ve `SUPABASE_SERVICE_ROLE_KEY` kullanılmıyorsa, SQL fonksiyonundaki SHA-256 özetinin de güncellenmesi gerekir.
+> `0004_private_biometric_gallery.sql` içindeki `public.is_trusted_server()` fonksiyonu `x-eqr-server-key` başlığının SHA-256 özetini `'0d1226778c8a120ec5852b60f330eb8bd89518fcb758d6eba6d8766e0983c38e'` ile karşılaştırır. Bu özet, `src/lib/env.server.ts` içindeki `DEFAULT_SERVER_RPC_SECRET` (`"eqr_srv_9f4e2a8c1d7b6e3f5a0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c"`) değerinin SHA-256 karşılığıdır. Eğer üretim ortamında `SUPABASE_SERVER_RPC_SECRET` değiştirilirse ve `SUPABASE_SERVICE_ROLE_KEY` kullanılmıyorsa, SQL fonksiyonundaki SHA-256 özetinin de güncellenmesi gerekir.

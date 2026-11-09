@@ -86,7 +86,7 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-@keyframes wqrFadeUp {
+@keyframes eqrFadeUp {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -97,11 +97,11 @@ body {
   }
 }
 
-.wqr-step-enter {
-  animation: wqrFadeUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+.eqr-step-enter {
+  animation: eqrFadeUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.wqr-ambient-surface {
+.eqr-ambient-surface {
   background-color: var(--event-bg);
   color: var(--event-text);
   font-family: var(--event-font);
@@ -113,19 +113,19 @@ body {
 }
 
 /* iOS Safari & Android Chrome Safe-Area Inset Utilities */
-.wqr-safe-top {
+.eqr-safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-.wqr-safe-bottom {
+.eqr-safe-bottom {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-.wqr-safe-pb-bar {
+.eqr-safe-pb-bar {
   padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
 }
 
-@keyframes wqrFadeOut {
+@keyframes eqrFadeOut {
   from {
     opacity: 1;
   }
@@ -134,7 +134,7 @@ body {
   }
 }
 
-@keyframes wqrKenBurns {
+@keyframes eqrKenBurns {
   from {
     opacity: 0;
     transform: scale(1.04);

@@ -1,5 +1,5 @@
 -- =============================================================================
--- Wedding QR — OPTIONAL one-time cleanup of the OLD (R2 / "Lumina") schema.
+-- Mira — OPTIONAL one-time cleanup of the OLD (R2 / "Lumina") schema.
 -- =============================================================================
 -- Run this ONLY on a database that previously had the old migrations
 -- (albums / media / media_faces / profiles ...). It is NOT part of the normal

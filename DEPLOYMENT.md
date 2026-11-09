@@ -12,18 +12,18 @@ Bu rehber projeyi **GitHub → Vercel** (önerilen) veya **Render** üzerinde, v
 - Bir GitHub hesabı, bir Google hesabı (medyanın duracağı Drive), bir Supabase hesabı, bir Vercel hesabı
 
 ```bash
-git clone https://github.com/<kullanıcı>/wedding-qr-studio.git
-cd wedding-qr-studio
+git clone https://github.com/<kullanıcı>/event-qr-studio.git
+cd event-qr-studio
 npm install
 cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .env.local
 ```
 
 ---
 
-## 1. Supabase (veritabanı + düğün sahibi girişi)
+## 1. Supabase (veritabanı + etkinlik sahibi girişi)
 
 1. https://supabase.com → **New project**. Bölge olarak size en yakın olanı seçin (Türkiye için **Frankfurt (eu-central-1)**). Veritabanı şifresini bir yere not edin.
-2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_wedding_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir.
+2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_event_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir.
 3. **Project Settings → API** sayfasındaki değerleri `.env.local` dosyasına kopyalayın:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` / *publishable* key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -31,8 +31,8 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 4. **Authentication → URL Configuration**:
    - **Site URL**: şimdilik `http://localhost:3000` (yayına aldıktan sonra Vercel adresinizle değiştireceksiniz)
    - **Redirect URLs**: `http://localhost:3000/auth/callback` ekleyin
-5. **Herkese açık kaydı kapatın — önemli:** Düğün sahibi hesaplarını yalnızca siz oluşturursunuz; giriş ekranında “üye ol” yoktur. Supabase’in kayıt API’si anon anahtarla dışarıdan da çağrılabildiği için **Authentication → Sign In / Providers → “Allow new users to sign up”** seçeneğini **kapatın**. E-posta doğrulaması ve SMTP gerekmez: hesaplar onaylanmış olarak oluşturulur ve hiçbir hesaba mail gönderilmez.
-6. **Düğün sahibi hesabı oluşturun** (proje klasöründe, `.env.local` dolu iken):
+5. **Herkese açık kaydı kapatın — önemli:** Etkinlik sahibi hesaplarını yalnızca siz oluşturursunuz; giriş ekranında “üye ol” yoktur. Supabase’in kayıt API’si anon anahtarla dışarıdan da çağrılabildiği için **Authentication → Sign In / Providers → “Allow new users to sign up”** seçeneğini **kapatın**. E-posta doğrulaması ve SMTP gerekmez: hesaplar onaylanmış olarak oluşturulur ve hiçbir hesaba mail gönderilmez.
+6. **Etkinlik sahibi hesabı oluşturun** (proje klasöründe, `.env.local` dolu iken):
 
    ```bash
    npm run user -- create ayse.mehmet GucluBirSifre123   # kullanıcı adı + şifre
@@ -41,9 +41,9 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
    npm run user -- delete ayse.mehmet                     # hesabı sil
    ```
 
-   Kullanıcı adı 3–32 karakter; küçük harf, rakam, nokta, tire, alt çizgi. Kişi `/login` sayfasında yalnızca bu kullanıcı adı ve şifreyle giriş yapar. (Arka planda Supabase Auth’ta `ayse.mehmet@kullanici.weddingqr.app` biçiminde bir iç kimlik kullanılır; kişi bunu görmez. Daha önce e-postayla açılmış hesaplar, kullanıcı adı alanına e-postanın tamamı yazılarak giriş yapmaya devam edebilir.)
+   Kullanıcı adı 3–32 karakter; küçük harf, rakam, nokta, tire, alt çizgi. Kişi `/login` sayfasında yalnızca bu kullanıcı adı ve şifreyle giriş yapar. (Arka planda Supabase Auth’ta `ayse.mehmet@kullanici.eventqr.app` biçiminde bir iç kimlik kullanılır; kişi bunu görmez. Daha önce e-postayla açılmış hesaplar, kullanıcı adı alanına e-postanın tamamı yazılarak giriş yapmaya devam edebilir.)
 
-> **Neon veya Turso neden yok?** Düğün sahibi girişi için Supabase Auth kullanılıyor. Neon/Turso’da yerleşik bir kimlik doğrulama yok; Supabase’in ücretsiz katmanı Postgres + pgvector + Auth’u tek yerde veriyor.
+> **Neon veya Turso neden yok?** Etkinlik sahibi girişi için Supabase Auth kullanılıyor. Neon/Turso’da yerleşik bir kimlik doğrulama yok; Supabase’in ücretsiz katmanı Postgres + pgvector + Auth’u tek yerde veriyor.
 
 ---
 
@@ -55,14 +55,14 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 
 | Mod | Nasıl | Ne zaman |
 | --- | --- | --- |
-| **Her düğün sahibinin kendi Drive’ı** (önerilen) | Düğün sahibi panelde **“Google Drive’ı bağla”** düğmesine basar, kendi Google hesabıyla izin verir. Medya onun Drive’ındaki “Mira” klasörüne gider. | Platformu başkaları da kullanacaksa. |
-| **Platform Drive’ı** (isteğe bağlı) | Siz bir kez `npm run drive:token -- --write` çalıştırırsınız; Drive bağlamamış düğün sahiplerinin etkinlikleri sizin Drive’ınıza gider. | Sadece kendi düğününüz/arkadaşlarınız için, ya da yedek olarak. |
+| **Her etkinlik sahibinin kendi Drive’ı** (önerilen) | Etkinlik sahibi panelde **“Google Drive’ı bağla”** düğmesine basar, kendi Google hesabıyla izin verir. Medya onun Drive’ındaki “Mira” klasörüne gider. | Platformu başkaları da kullanacaksa. |
+| **Platform Drive’ı** (isteğe bağlı) | Siz bir kez `npm run drive:token -- --write` çalıştırırsınız; Drive bağlamamış etkinlik sahiplerinin etkinlikleri sizin Drive’ınıza gider. | Sadece kendi etkinliğiniz/arkadaşlarınız için, ya da yedek olarak. |
 
-İkisi birlikte de çalışır: Drive’ını bağlayan düğün sahibinin **yeni** etkinlikleri kendi Drive’ına, bağlamayanınki platform Drive’ına gider. Platform Drive’ını hiç kurmazsanız (`GOOGLE_REFRESH_TOKEN` ve `GOOGLE_DRIVE_ROOT_FOLDER_ID` boş), her düğün sahibi etkinlik açmadan önce Drive’ını bağlamak zorundadır.
+İkisi birlikte de çalışır: Drive’ını bağlayan etkinlik sahibinin **yeni** etkinlikleri kendi Drive’ına, bağlamayanınki platform Drive’ına gider. Platform Drive’ını hiç kurmazsanız (`GOOGLE_REFRESH_TOKEN` ve `GOOGLE_DRIVE_ROOT_FOLDER_ID` boş), her etkinlik sahibi etkinlik açmadan önce Drive’ını bağlamak zorundadır.
 
 ### Adımlar
 
-1. https://console.cloud.google.com → üstten **yeni proje** oluşturun (ör. `wedding-qr`).
+1. https://console.cloud.google.com → üstten **yeni proje** oluşturun (ör. `event-qr`).
 2. **APIs & Services → Library** → “**Google Drive API**” → **Enable**.
 3. **Google Auth Platform → Branding / Audience / Data access** (eski arayüzde *OAuth consent screen*):
    - User type: **External** → uygulama adı, destek e-postası ve (yayına alınca) ana sayfa adresinizi girin.
@@ -72,7 +72,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
    - Application type: **Web application** (Drive bağlama akışı tarayıcıdan bir web adresine döndüğü için *Desktop app* bu akışla çalışmaz).
    - **Authorized redirect URIs** listesine şunları ekleyin:
      - `http://localhost:3000/api/host/drive/callback` (yerel geliştirme)
-     - `https://<alan-adınız>/api/host/drive/callback` (yayın — ör. `https://wedding-qr.vercel.app/api/host/drive/callback`)
+     - `https://<alan-adınız>/api/host/drive/callback` (yayın — ör. `https://event-qr.vercel.app/api/host/drive/callback`)
      - `http://127.0.0.1:53682/oauth2callback` (yalnızca platform Drive’ı için `npm run drive:token` kullanacaksanız)
    - Çıkan **Client ID** ve **Client secret** değerlerini `.env.local` içindeki `GOOGLE_CLIENT_ID` ve `GOOGLE_CLIENT_SECRET` alanlarına yazın.
    - Daha önce *Desktop app* türünde istemci oluşturduysanız, yeni bir *Web application* istemcisi oluşturup `.env.local` ve Vercel’deki değerleri onunla değiştirin.
@@ -88,7 +88,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
    - Script Drive’da **“Mira”** kök klasörünü oluşturur ve `GOOGLE_REFRESH_TOKEN` ile `GOOGLE_DRIVE_ROOT_FOLDER_ID` değerlerini `.env.local` dosyasına yazar.
    - `drive.file` kapsamı yalnızca uygulamanın **kendi oluşturduğu** klasörleri görür; Drive’da elle açtığınız bir klasörün ID’sini kullanmayın.
 
-> **Önemli:** `APP_SECRET` değiştirilirse kayıtlı Drive bağlantılarının şifresi çözülemez; düğün sahiplerinin Drive’larını yeniden bağlaması gerekir. Bu yüzden `APP_SECRET`’i sabit tutun.
+> **Önemli:** `APP_SECRET` değiştirilirse kayıtlı Drive bağlantılarının şifresi çözülemez; etkinlik sahiplerinin Drive’larını yeniden bağlaması gerekir. Bu yüzden `APP_SECRET`’i sabit tutun.
 
 ---
 
@@ -171,18 +171,18 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 3. Environment bölümüne 6. adımdaki değişkenlerin aynısını ekleyin.
 4. Supabase’deki Site URL ve Redirect URL’leri Render adresinizle güncelleyin.
 
-> Render’ın ücretsiz planı 15 dakika işlem olmazsa uykuya geçer; ilk istek 30–60 sn sürebilir. Düğün günü için Vercel daha uygundur.
+> Render’ın ücretsiz planı 15 dakika işlem olmazsa uykuya geçer; ilk istek 30–60 sn sürebilir. Etkinlik günü için Vercel daha uygundur.
 
 > **Cloudflare Pages önerilmez:** API rotaları Node.js çalışma zamanı (`node:crypto`, akış proxy’si) kullanır. Cloudflare’in Next.js adaptörü Edge çalışma zamanı gerektirdiği için bu proje Vercel veya Render ile çalıştırılmalıdır.
 
 ---
 
-## 8. Düğün günü kullanım
+## 8. Etkinlik günü kullanım
 
 1. **QR & Masa Kartı** sekmesinde şablonu seçin, masa numarası aralığını girin (ör. 1–20) ve **PDF (baskı)** indirin. Yazdırırken “Gerçek boyut / %100” seçin ve QR’ı bir telefonla test edin.
-2. Salondaki projeksiyon bilgisayarında **Canlı Düğün Ekranı** bağlantısını açın ve tam ekran düğmesine basın.
+2. Salondaki projeksiyon bilgisayarında **Canlı Etkinlik Ekranı** bağlantısını açın ve tam ekran düğmesine basın.
 3. Gerekirse **Ayarlar → Yayından önce onay iste** seçeneğini açın; yeni içerikler siz onaylayana kadar galeride ve canlı ekranda görünmez.
-4. Düğünden sonra **Özet → Tüm medyayı indir (ZIP)** ile her şeyi orijinal kalitede indirin veya doğrudan **Google Drive klasörü**nü açın.
+4. Etkinlikten sonra **Özet → Tüm medyayı indir (ZIP)** ile her şeyi orijinal kalitede indirin veya doğrudan **Google Drive klasörü**nü açın.
 
 ---
 
@@ -191,7 +191,7 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 | Belirti | Neden / Çözüm |
 | --- | --- |
 | API `503 SERVER_MISCONFIGURED` | Bir ortam değişkeni eksik veya hatalı. Yanıttaki `details.env` listesi hangisi olduğunu söyler; Vercel’de değişkeni ekleyip **Redeploy** edin. |
-| `409 DRIVE_NOT_CONNECTED` | Etkinliğin medyasını sakladığı Drive kullanılamıyor: düğün sahibi Drive bağlantısını kopardı/iptal etti ya da platform Drive’ı yapılandırılmadı. Düğün sahibi panelde **Yeniden bağla**’ya (aynı Google hesabıyla) basmalı. |
+| `409 DRIVE_NOT_CONNECTED` | Etkinliğin medyasını sakladığı Drive kullanılamıyor: etkinlik sahibi Drive bağlantısını kopardı/iptal etti ya da platform Drive’ı yapılandırılmadı. Etkinlik sahibi panelde **Yeniden bağla**’ya (aynı Google hesabıyla) basmalı. |
 | Drive bağlarken `redirect_uri_mismatch` | Google Cloud’daki *Web application* istemcisine `https://<alan-adınız>/api/host/drive/callback` adresini ekleyin. Özel alan adı kullanıyorsanız `NEXT_PUBLIC_APP_URL` de aynı adres olmalı. |
 | `503 DRIVE_AUTH_FAILED` / `invalid_grant` | Refresh token iptal edilmiş veya süresi dolmuş (çoğunlukla OAuth ekranı “Testing” durumunda kaldığı için). Uygulamayı **In production** yapın, `npm run drive:token -- --write` komutunu tekrar çalıştırın ve yeni token’ı Vercel’e girin. |
 | Yükleme `507 DRIVE_FULL` | Drive'da yeterli boş alan yok; yükleme başlamadan reddedildi. Google One ile alan ekleyin veya eski dosyaları silin. |
@@ -205,13 +205,13 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 
 ---
 
-> **Şemayı güncellediyseniz:** `supabase/migrations/0001_wedding_qr_drive.sql` yeniden çalıştırılabilir (idempotent). Yükleme kotası (`upload_quota`, `reserve_upload_quota`) ve istatistik (`event_media_stats`) fonksiyonları bu dosyadadır; eski bir kurulumda dosyayı SQL Editor'da bir kez daha çalıştırın.
+> **Şemayı güncellediyseniz:** `supabase/migrations/0001_event_qr_drive.sql` yeniden çalıştırılabilir (idempotent). Yükleme kotası (`upload_quota`, `reserve_upload_quota`) ve istatistik (`event_media_stats`) fonksiyonları bu dosyadadır; eski bir kurulumda dosyayı SQL Editor'da bir kez daha çalıştırın.
 
 ## 10. Güvenlik özeti
 
 - Tarayıcı veritabanına hiçbir zaman doğrudan erişmez: tüm tablolarda RLS açıktır ve `anon`/`authenticated` rollerine izin verilmez. Sunucu `SUPABASE_SERVICE_ROLE_KEY` ile çalışır ve sahiplik kontrolünü API katmanında yapar.
 - Misafirler hesapsızdır; kimlikleri `APP_SECRET` ile imzalanmış HttpOnly bir çerezde tutulur. Her misafir yalnızca kendi yüklemelerini silebilir.
-- `/api/media/confirm` şu kontrolleri yapar: imzalı token (24 saat) ve oturum eşleşmesi, Drive `appProperties.wqrUploadId`, hedef klasör, birebir boyut ve dosyanın ilk 64 baytındaki magic-byte imzası. Uyuşmayan dosya Drive çöp kutusuna taşınır.
-- Stream ve küçük resim proxy’leri yalnızca veritabanında kayıtlı dosyaları sunar; onaylanmamış dosyalara yalnızca yükleyen misafir veya düğün sahibi erişebilir.
+- `/api/media/confirm` şu kontrolleri yapar: imzalı token (24 saat) ve oturum eşleşmesi, Drive `appProperties.eqrUploadId`, hedef klasör, birebir boyut ve dosyanın ilk 64 baytındaki magic-byte imzası. Uyuşmayan dosya Drive çöp kutusuna taşınır.
+- Stream ve küçük resim proxy’leri yalnızca veritabanında kayıtlı dosyaları sunar; onaylanmamış dosyalara yalnızca yükleyen misafir veya etkinlik sahibi erişebilir.
 - Moderasyonda “Gizle”, Drive’daki “bağlantıya sahip herkes” iznini de kaldırır.
 - Postgres tabanlı rate limit tüm serverless örneklerinde ortak çalışır.

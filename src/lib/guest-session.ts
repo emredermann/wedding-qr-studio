@@ -9,7 +9,9 @@ import { signToken, verifyToken } from "@/lib/signing";
  * Anonymous guest identity: no account, no app. A random ID in a signed,
  * HttpOnly cookie lets guests see and manage their own uploads.
  */
-export const GUEST_COOKIE = "wqr_guest";
+export const GUEST_COOKIE = "eqr_guest";
+/** Cookie name used before the Event QR rename; still read so existing guests keep their uploads. */
+const LEGACY_GUEST_COOKIE = "wqr_guest";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 
 interface GuestPayload {
@@ -23,7 +25,7 @@ export interface GuestSession {
 }
 
 export function readGuestSession(request: NextRequest): GuestSession | null {
-  const token = request.cookies.get(GUEST_COOKIE)?.value;
+  const token = request.cookies.get(GUEST_COOKIE)?.value ?? request.cookies.get(LEGACY_GUEST_COOKIE)?.value;
   const payload = verifyToken<GuestPayload>("guest", token);
   if (!payload || typeof payload.sid !== "string" || !/^[0-9a-f-]{36}$/.test(payload.sid) || !token) {
     return null;

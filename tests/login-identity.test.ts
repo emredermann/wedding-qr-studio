@@ -3,11 +3,11 @@ import { describe, it } from "node:test";
 
 import { isValidUsername, loginEmailToUsername, normaliseUsername, usernameToLoginEmail } from "../src/lib/login-identity.ts";
 
-const DOMAIN = "kullanici.weddingqr.app";
+const DOMAIN = "kullanici.eventqr.app";
 
 describe("login identity", () => {
   it("maps a username to the internal login e-mail", () => {
-    assert.equal(usernameToLoginEmail("Ayşe.Mehmet ", DOMAIN), "ayse.mehmet@kullanici.weddingqr.app");
+    assert.equal(usernameToLoginEmail("Ayşe.Mehmet ", DOMAIN), "ayse.mehmet@kullanici.eventqr.app");
   });
 
   it("lets legacy e-mail accounts log in unchanged", () => {
@@ -15,6 +15,7 @@ describe("login identity", () => {
   });
 
   it("maps the internal e-mail back to the username", () => {
+    assert.equal(loginEmailToUsername("ayse@kullanici.eventqr.app", DOMAIN), "ayse");
     assert.equal(loginEmailToUsername("ayse@kullanici.weddingqr.app", DOMAIN), "ayse");
     assert.equal(loginEmailToUsername("eski@ornek.com", DOMAIN), "eski@ornek.com");
     assert.equal(loginEmailToUsername(null, DOMAIN), null);

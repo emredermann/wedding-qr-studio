@@ -1,9 +1,9 @@
-# Wedding QR Studio — Hata Analizi ve Çözüm Spesifikasyonu (Remediation Spec)
+# Mira — Hata Analizi ve Çözüm Spesifikasyonu (Remediation Spec)
 
 > **Durum (2026-11-08):** Bu dokümandaki 7 görevin tamamı uygulanmıştır. Sonraki denetimde eklenenler: misafir/IP başına yükleme kotası ve Drive boş alan ön kontrolü, sahtelenemeyen istemci IP'si, kısmi `PATCH`, toplu moderasyon uç noktası, "önce DB sonra Drive" silme sırası, `getClaims()` ile yerel JWT doğrulama ve `tests/` altında `node:test` birim testleri (`npm test`).
 
 
-Bu doküman, **Wedding QR Studio** (`Next.js 16.4.5`, `React 19.3`, `Supabase PostgreSQL + pgvector`, `Google Drive API v3`) kod tabanında tespit edilen olası çalışma zamanı hatalarını, darboğazları ve kenar durumlarını (edge-cases) gidermek için hazırlanmış **uygulamaya hazır teknik spesifikasyondur**.
+Bu doküman, **Mira** (`Next.js 16.4.5`, `React 19.3`, `Supabase PostgreSQL + pgvector`, `Google Drive API v3`) kod tabanında tespit edilen olası çalışma zamanı hatalarını, darboğazları ve kenar durumlarını (edge-cases) gidermek için hazırlanmış **uygulamaya hazır teknik spesifikasyondur**.
 
 ---
 
@@ -126,7 +126,7 @@ Bu doküman, **Wedding QR Studio** (`Next.js 16.4.5`, `React 19.3`, `Supabase Po
 * **Öncelik:** Orta (P1)
 * **Etkilenen Dosyalar:**
   * `src/app/api/host/events/[eventId]/route.ts` (Satır 15–43)
-  * `supabase/migrations/0001_wedding_qr_drive.sql`
+  * `supabase/migrations/0001_event_qr_drive.sql`
   * `src/app/api/events/[slug]/media/route.ts` (Satır 83–90)
   * `src/app/api/host/events/[eventId]/media/route.ts` (Satır 31–39)
 * **Kök Neden:**

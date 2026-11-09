@@ -5,7 +5,7 @@
 - **Paket Yöneticisi:** `npm` (`package-lock.json` mevcuttur)
 - **İsteğe Bağlı Bulut Hesapları:**
   - **Supabase Projesi:** PostgreSQL + Auth + `pgvector` eklentisi (yapılandırılmazsa uygulama deterministik Demo Modunda çalışır).
-  - **Cloudflare R2 Bucket:** S3 uyumlu medya depolama (yapılandırılmazsa uygulama otomatik olarak `.local-storage/wedding-qr-media` altında HMAC-SHA256 imzalı yerel depolama motorunu kullanır).
+  - **Cloudflare R2 Bucket:** S3 uyumlu medya depolama (yapılandırılmazsa uygulama otomatik olarak `.local-storage/event-qr-media` altında HMAC-SHA256 imzalı yerel depolama motorunu kullanır).
   - **OpenAI API Key:** `gpt-4o-mini` Vision fotoğraf sınıflandırması için (yapılandırılmazsa deterministik URL/dosya adı sınıflandırma yedeği devreye girer).
   - **Stripe Hesabı:** Canlı ödeme oturumları için (yapılandırılmazsa HMAC imzalı yerel ödeme simülasyonu devreye girer).
 
@@ -19,19 +19,19 @@
 | :--- | :--- | :--- | :--- |
 | **`NEXT_PUBLIC_SUPABASE_URL`** | Public (Browser + Server) | Zorunlu (`z.url()`) | Supabase proje URL'i (`https://<ref>.supabase.co`). `src/lib/env.public.ts` içinde literal `process.env.NEXT_PUBLIC_SUPABASE_URL` olarak okunur. |
 | **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** | Public (Browser + Server) | Zorunlu (`min(20)`) | Supabase anon/publishable anahtarı. RLS kurallarına tabidir. |
-| **`SUPABASE_SERVICE_ROLE_KEY`** | Server-Only | Opsiyonel (`min(20)`) | Supabase `service_role` gizli anahtarı. Tanımlanmazsa `getSupabaseAdminClient()` otomatik olarak `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `x-wqr-server-key` başlığına (`is_trusted_server()`) düşer. |
-| **`SUPABASE_SERVER_RPC_SECRET`** | Server-Only | Opsiyonel (`min(32)`) | Varsayılan: `"wqr_srv_9f4e2a8c1d7b6e3f5a0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c"`. `x-wqr-server-key` başlığında gönderilir ve `0004_private_biometric_gallery.sql` içindeki `public.is_trusted_server()` fonksiyonundaki SHA-256 özetiyle doğrulanır. |
+| **`SUPABASE_SERVICE_ROLE_KEY`** | Server-Only | Opsiyonel (`min(20)`) | Supabase `service_role` gizli anahtarı. Tanımlanmazsa `getSupabaseAdminClient()` otomatik olarak `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `x-eqr-server-key` başlığına (`is_trusted_server()`) düşer. |
+| **`SUPABASE_SERVER_RPC_SECRET`** | Server-Only | Opsiyonel (`min(32)`) | Varsayılan: `"eqr_srv_9f4e2a8c1d7b6e3f5a0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c"`. `x-eqr-server-key` başlığında gönderilir ve `0004_private_biometric_gallery.sql` içindeki `public.is_trusted_server()` fonksiyonundaki SHA-256 özetiyle doğrulanır. |
 | **`R2_ACCOUNT_ID`** | Server-Only | Opsiyonel (R2 için zorunlu) | `^[a-f0-9]{32}$` formatında 32 karakterlik Cloudflare hesap kimliği. |
 | **`R2_ACCESS_KEY_ID`** | Server-Only | Opsiyonel (`min(16)`) | Cloudflare R2 S3 API Access Key ID. |
 | **`R2_SECRET_ACCESS_KEY`** | Server-Only | Opsiyonel (`min(32)`) | Cloudflare R2 S3 API Secret Access Key. |
-| **`R2_BUCKET`** | Server-Only | Opsiyonel | Varsayılan: `"wedding-qr-media"`. `^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$` formatında bucket adı. |
+| **`R2_BUCKET`** | Server-Only | Opsiyonel | Varsayılan: `"event-qr-media"`. `^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$` formatında bucket adı. |
 | **`R2_PUBLIC_URL`** | Server-Only | Opsiyonel (R2 için zorunlu) | `https://...` (veya `http://localhost...`) ile başlayan R2 genel erişim taban URL'i (sondaki `/` otomatik temizlenir). |
-| **`GUEST_SESSION_SECRET`** | Server-Only | Opsiyonel | `wqr_guest_session` çerezi ve yerel depolama URL'lerini imzalamak için kullanılan HMAC sırrı. Tanımlanmazsa sırasıyla `SUPABASE_SERVICE_ROLE_KEY` -> `R2_SECRET_ACCESS_KEY` -> `STRIPE_WEBHOOK_SECRET` -> yerleşik sabite düşer. |
+| **`GUEST_SESSION_SECRET`** | Server-Only | Opsiyonel | `eqr_guest_session` çerezi ve yerel depolama URL'lerini imzalamak için kullanılan HMAC sırrı. Tanımlanmazsa sırasıyla `SUPABASE_SERVICE_ROLE_KEY` -> `R2_SECRET_ACCESS_KEY` -> `STRIPE_WEBHOOK_SECRET` -> yerleşik sabite düşer. |
 | **`OPENAI_API_KEY`** | Server-Only | Opsiyonel | `POST /api/webhooks/process-media` içindeki `gpt-4o-mini` Vision fotoğraf kategorizasyonu için kullanılır. |
 | **`STRIPE_SECRET_KEY`** | Server-Only | Opsiyonel | `POST /api/checkout` içinde gerçek Stripe Checkout oturumu oluşturmak için kullanılır. |
 | **`STRIPE_WEBHOOK_SECRET`** | Server-Only | Opsiyonel | `POST /api/webhooks/payment` içinde `Stripe-Signature` HMAC doğrulaması için kullanılır. |
 | **`GITHUB_PAGES`** | Build-Time | Opsiyonel (`"true"`) | Yalnızca GitHub Pages statik dışa aktarım (`output: "export"`) derlemesinde `"true"` yapılır. Yerel geliştirmede veya Vercel/Railway'de **tanımlanmamalıdır**. |
-| **`NEXT_PUBLIC_BASE_PATH`** | Build-Time | Opsiyonel | `GITHUB_PAGES="true"` olduğunda varsayılan olarak `"/wedding-qr-studio"` değerini alır. |
+| **`NEXT_PUBLIC_BASE_PATH`** | Build-Time | Opsiyonel | `GITHUB_PAGES="true"` olduğunda varsayılan olarak `"/event-qr-studio"` değerini alır. |
 
 ---
 
@@ -62,7 +62,7 @@ npm run setup
 `scripts/setup.mjs` betiği şunları otomatik olarak yapar:
 1. Supabase bağlantısını, `get_public_album` RPC'sini ve `0004` göçündeki `is_trusted_server()` yetkisini test eder.
 2. Eğer Cloudflare R2 anahtarları `.env.local` içinde tanımlıysa bucket erişimini (`HeadBucketCommand`) doğrular ve `infra/r2-cors.json` içindeki CORS kurallarını (`PutBucketCorsCommand`) otomatik olarak bucket'a uygular.
-3. Eğer R2 anahtarları tanımlı değilse `.local-storage/wedding-qr-media` dizinini oluşturarak HMAC imzalı yerel depolama motorunu hazırlar.
+3. Eğer R2 anahtarları tanımlı değilse `.local-storage/event-qr-media` dizinini oluşturarak HMAC imzalı yerel depolama motorunu hazırlar.
 
 ### Adım 5: Geliştirme Sunucusunu Başlatın
 ```bash
@@ -75,7 +75,7 @@ Uygulama `http://localhost:3000` adresinde açılır:
 - Demo Albüm Stüdyosu: `http://localhost:3000/dashboard/00000000-0000-4000-8000-000000000001`
 - Master Super-Admin Paneli: `http://localhost:3000/admin`
 - Görsel Akış ve Tema Stüdyosu: `http://localhost:3000/admin/events/00000000-0000-4000-8000-000000000001/builder`
-- Misafir QR Deneyimi (Demo): `http://localhost:3000/e/demo-wedding`
+- Misafir QR Deneyimi (Demo): `http://localhost:3000/e/demo-event`
 
 ---
 

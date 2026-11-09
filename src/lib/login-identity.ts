@@ -9,7 +9,8 @@
  * Shared by the browser (login form) and the admin script — keep it
  * dependency-free.
  */
-export const DEFAULT_LOGIN_EMAIL_DOMAIN = "kullanici.weddingqr.app";
+export const DEFAULT_LOGIN_EMAIL_DOMAIN = "kullanici.eventqr.app";
+const LEGACY_LOGIN_EMAIL_DOMAINS = ["kullanici.weddingqr.app"] as const;
 
 export const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])$/;
 
@@ -30,7 +31,7 @@ export function isValidUsername(username: string): boolean {
   return USERNAME_PATTERN.test(username);
 }
 
-/** "ayse" → "ayse@kullanici.weddingqr.app". Full e-mails (legacy accounts) pass through unchanged. */
+/** "ayse" → "ayse@kullanici.eventqr.app". Full e-mails (legacy accounts) pass through unchanged. */
 export function usernameToLoginEmail(input: string, domain: string = loginEmailDomain()): string {
   const value = normaliseUsername(input);
   return value.includes("@") ? value : `${value}@${domain}`;
@@ -39,6 +40,10 @@ export function usernameToLoginEmail(input: string, domain: string = loginEmailD
 /** Display name for a signed-in host: the username part of internal identities, else the e-mail. */
 export function loginEmailToUsername(email: string | null | undefined, domain: string = loginEmailDomain()): string | null {
   if (!email) return null;
-  const suffix = `@${domain}`;
-  return email.toLowerCase().endsWith(suffix) ? email.slice(0, -suffix.length) : email;
+  const lower = email.toLowerCase();
+  for (const d of [domain, ...LEGACY_LOGIN_EMAIL_DOMAINS]) {
+    const suffix = `@${d}`;
+    if (lower.endsWith(suffix)) return email.slice(0, -suffix.length);
+  }
+  return email;
 }

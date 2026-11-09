@@ -48,7 +48,7 @@ export function ToastRegion({
     <div
       aria-live="polite"
       aria-atomic="false"
-      className="wqr-safe-bottom pointer-events-none fixed right-4 bottom-4 left-4 z-[70] flex flex-col items-end gap-2 sm:left-auto sm:w-96"
+      className="eqr-safe-bottom pointer-events-none fixed right-4 bottom-4 left-4 z-[70] flex flex-col items-end gap-2 sm:left-auto sm:w-96"
     >
       {toasts.map((toast) => (
         <div
