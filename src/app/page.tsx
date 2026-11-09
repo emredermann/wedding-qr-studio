@@ -11,92 +11,92 @@ const NAV = [
   { href: "#nasil-calisir", label: "Nasıl çalışır" },
   { href: "#ozellikler", label: "Özellikler" },
   { href: "#karsilastirma", label: "Karşılaştırma" },
-  { href: "#sss", label: "SSS" },
+  { href: "#sss", label: "Sorular" },
 ];
 
 const STEPS = [
-  { title: "Kartlar masada", text: "Paneldeki atölyede QR kartınızı tasarlayın, yazdırın ve masalara bırakın." },
-  { title: "Misafir okutur", text: "Telefon kamerasıyla okutup adını yazar, fotoğraf ve videolarını seçer." },
-  { title: "Albüm dolar", text: "Her kare orijinal kalitede, doğrudan sizin Google Drive’ınıza düşer." },
+  { title: "Kartlar masada", text: "Kartınızı panelde birkaç dakikada tasarlayın, yazdırın ve masalara yerleştirin." },
+  { title: "Misafir okutur", text: "Telefonunun kamerasını karta tutar, adını yazar ve karelerini seçer." },
+  { title: "Albüm kendiliğinden dolar", text: "Her kare, çekildiği kalitede doğrudan sizin Google Drive’ınıza ulaşır." },
 ];
 
 const CALLOUTS = [
-  { icon: Smartphone, title: "Uygulama yok", text: "İndirme, hesap ya da şifre gerekmez." },
-  { icon: ScanLine, title: "Her telefonda", text: "iPhone ve Android’in kendi kamerası yeter." },
-  { icon: Timer, title: "Saniyeler içinde", text: "Okut, seç, gönder. Hepsi bu kadar." },
+  { icon: Smartphone, title: "Uygulama yok", text: "İndirme, üyelik, şifre… Hiçbiri gerekmez." },
+  { icon: ScanLine, title: "Her telefonda", text: "iPhone ya da Android; telefonun kendi kamerası yeterli." },
+  { icon: Timer, title: "Birkaç saniye", text: "Okut, seç, gönder. Bu kadar." },
 ];
 
 const GUEST_JOURNEY = [
-  { title: "Kartı görür", text: "Masada sade bir kart ve kısa bir davet: “Anılarınızı bizimle paylaşın.”" },
-  { title: "QR kodu okutur", text: "Kamera açılır, bağlantıya dokunur. Etkinliğin sayfası anında gelir." },
-  { title: "Adını yazar", text: "Kayıt yok. Yalnızca kim olduğunu bilmeniz için bir isim." },
-  { title: "Seçer ve gönderir", text: "Galeriden ya da o an çekerek; fotoğraf, video, sesli mesaj." },
-  { title: "Albüme bakar", text: "Diğer misafirlerin karelerini görür, selfie ile kendini bulur." },
+  { title: "Kartı fark eder", text: "Masada zarif bir kart ve tek cümlelik bir davet: “Bu günün karelerini bizimle paylaşın.”" },
+  { title: "Kodu okutur", text: "Kamerayı karta tutması yeterli; etkinliğinizin sayfası tek dokunuşla açılır." },
+  { title: "Adını yazar", text: "Üyelik yok. Sadece hangi karenin kimden geldiğini bilesiniz diye bir isim." },
+  { title: "Paylaşır", text: "Galeriden seçer ya da o an çeker: fotoğraf, video, sesli bir not." },
+  { title: "Albümde kendini bulur", text: "Diğer misafirlerin karelerine göz atar, bir selfie ile yer aldığı fotoğrafları bulur." },
 ];
 
 const CARD_OPTIONS = [
-  { title: "Kart atölyesi", text: "Renk, çerçeve, monogram ve yazıyı seçin; önizleme anında güncellenir.", note: "Panelde, ücretsiz" },
-  { title: "Baskıya hazır", text: "A6, A5 ya da A4’e dört kart; 300 DPI PNG veya PDF. Evde ya da matbaada basın.", note: "PNG · PDF" },
-  { title: "Kendi tasarımınız", text: "QR kodu indirin, davetiyenize ya da kendi kartınıza yerleştirin.", note: "Tam serbestlik" },
+  { title: "Kart atölyesi", text: "Rengi, çerçeveyi, monogramı ve yazıyı seçin; önizleme siz değiştirdikçe güncellenir.", note: "Panelde · ücretsiz" },
+  { title: "Baskıya hazır", text: "A6, A5 ya da bir A4’e dört kart; 300 DPI PNG veya PDF. İster evde, ister matbaada basın.", note: "PNG · PDF" },
+  { title: "Kendi tasarımınız", text: "Yalnızca QR kodu indirin; davetiyenize ya da kendi kartınıza dilediğiniz gibi yerleştirin.", note: "Tamamen size ait" },
 ];
 
 const FEATURES = [
-  { title: "Orijinal kalite", text: "Sıkıştırma yok. Tüm albümü tek dokunuşla ZIP olarak indirin." },
-  { title: "Video desteği", text: "Fotoğrafın yanında videolar da tam çözünürlükte yüklenir." },
-  { title: "Beni bul", text: "Bir selfie ile yalnızca kişinin yer aldığı kareler. Analiz cihazda yapılır." },
-  { title: "Canlı ekran", text: "Yeni kareler ve mesajlar salondaki ekranda sessizce belirir." },
-  { title: "Anı defteri", text: "Sesli, görüntülü ya da yazılı mesajlar — doğrudan tarayıcıdan." },
-  { title: "Kategoriler", text: "Hazırlık, tören, parti… Misafir yüklerken seçer, siz düzenli bulursunuz." },
-  { title: "Onay modu", text: "İsterseniz her kare siz onaylamadan albümde görünmez." },
-  { title: "Gizleme ve silme", text: "İstemediğiniz içerik tek dokunuşla albümden kalkar." },
-  { title: "Sizin Drive’ınız", text: "Medya kendi Google hesabınızda, sizin klasörünüzde durur." },
-  { title: "İstatistikler", text: "Kaç misafir, kaç kare, kaç mesaj — bir bakışta." },
-  { title: "Gizlilik", text: "Albüm yalnızca bağlantıya sahip olanlara açıktır." },
-  { title: "Uygulamasız", text: "Her şey tarayıcıda; misafirden hiçbir şey kurması istenmez." },
+  { title: "Orijinal kalite", text: "Hiçbir kare sıkıştırılmaz. Tüm albümü tek dokunuşla indirin." },
+  { title: "Videolar da", text: "Fotoğrafların yanında videolar da tam çözünürlükte gelir." },
+  { title: "Beni bul", text: "Bir selfie yeterli; misafir yalnızca yer aldığı kareleri görür. Eşleştirme telefonda yapılır." },
+  { title: "Canlı ekran", text: "Yeni kareler ve mesajlar, salondaki ekranda usulca belirir." },
+  { title: "Anı defteri", text: "Yazılı, sesli ya da görüntülü mesajlar; doğrudan tarayıcıdan." },
+  { title: "Kategoriler", text: "Hazırlık, tören, parti… Misafir yüklerken seçer, albüm kendiliğinden düzenlenir." },
+  { title: "Onay modu", text: "Dilerseniz hiçbir kare, siz onaylamadan albümde görünmez." },
+  { title: "Tek dokunuşla kaldırın", text: "İstemediğiniz bir kareyi gizleyin ya da silin; albümden hemen kalkar." },
+  { title: "Sizin Drive’ınız", text: "Tüm dosyalar kendi Google hesabınızda, kendi klasörünüzde durur." },
+  { title: "İstatistikler", text: "Kaç misafir, kaç kare, kaç mesaj; hepsi bir bakışta." },
+  { title: "Gizlilik", text: "Albümü yalnızca bağlantıya sahip olanlar görebilir." },
+  { title: "Kurulum yok", text: "Her şey tarayıcıda; misafirlerinizden hiçbir şey indirmeleri istenmez." },
 ];
 
 type Cell = boolean | string;
 const COMPARISON: { label: string; mira: Cell; apps: Cell; shared: Cell }[] = [
-  { label: "Misafir için uygulama", mira: "Gerekmez", apps: "Gerekir", shared: "Çoğu zaman gerekir" },
-  { label: "Hesap / giriş", mira: "Gerekmez", apps: "Gerekir", shared: "Gerekir" },
+  { label: "Misafirin uygulama indirmesi", mira: "Gerekmez", apps: "Gerekir", shared: "Çoğu zaman gerekir" },
+  { label: "Hesap açma", mira: "Gerekmez", apps: "Gerekir", shared: "Gerekir" },
   { label: "Her telefonda çalışır", mira: true, apps: "Mağazaya bağlı", shared: "Platforma bağlı" },
   { label: "Orijinal çözünürlük", mira: true, apps: "Değişken", shared: "Çoğu zaman sıkıştırılır" },
   { label: "Video", mira: true, apps: true, shared: "Sınırlı" },
   { label: "QR masa kartı", mira: true, apps: false, shared: false },
-  { label: "Medya kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
+  { label: "Dosyalar kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
   { label: "Ücret", mira: "Ücretsiz", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
 ];
 
 const INCLUDED = [
-  "Sınırsız misafir ve yükleme",
+  "Sınırsız misafir, Drive’ınız kadar yer",
   "Orijinal kalitede fotoğraf ve video",
   "Selfie ile kendini bulma",
   "Canlı ekran ve anı defteri",
   "QR kart atölyesi (PNG · PDF)",
   "Onay modu ve kategoriler",
-  "Tüm albümü ZIP olarak indirme",
+  "Tüm albümü tek seferde indirme",
   "Depolama kendi Google Drive’ınızda",
 ];
 
 const FAQ = [
   {
     q: "Nasıl çalışıyor?",
-    a: "Etkinliğinizi oluşturur, kendi Google Drive’ınızı bağlarsınız. Size özel bir QR kod ve bağlantı oluşur. Misafirler kodu okutup yükledikçe her şey Drive’ınızdaki etkinlik klasörüne düşer ve albümde görünür.",
+    a: "Etkinliğinizi oluşturup Google Drive’ınızı bağlarsınız; size özel bir QR kod ve bağlantı hazırlanır. Misafirleriniz kodu okutup paylaştıkça her kare Drive’ınızdaki etkinlik klasörüne düşer ve albümde belirir.",
   },
-  { q: "Misafirlerin uygulama indirmesi gerekiyor mu?", a: "Hayır. Her şey telefonun tarayıcısında çalışır. Hesap ya da şifre de gerekmez; yalnızca bir isim yazmaları istenir." },
-  { q: "Kurulum ne kadar sürer?", a: "Birkaç dakika. Giriş yapın, etkinliği oluşturun, Drive’ı bağlayın ve kartı indirin." },
+  { q: "Misafirlerin uygulama indirmesi gerekiyor mu?", a: "Hayır. Her şey telefonun tarayıcısında çalışır; hesap ya da şifre de yok. Yalnızca adlarını yazmaları istenir." },
+  { q: "Kurulum ne kadar sürer?", a: "Birkaç dakika. Giriş yapın, etkinliğinizi oluşturun, Drive’ınızı bağlayın ve kartınızı indirin." },
   {
     q: "Fotoğraflar nerede saklanıyor?",
-    a: "Sizin Google Drive hesabınızda, otomatik oluşturulan bir klasörde. Fotoğraflar, videolar ve sesli mesajlar ayrı alt klasörlere ayrılır. Dosyalar her zaman sizindir.",
+    a: "Kendi Google Drive hesabınızda, sizin için açılan bir klasörde. Fotoğraflar, videolar ve sesli mesajlar ayrı klasörlerde durur. Dosyalar her zaman sizindir.",
   },
-  { q: "Kalite düşüyor mu?", a: "Hayır. Dosyalar sıkıştırılmadan, telefondan çıktığı haliyle yüklenir. İndirirken de orijinal dosyaları alırsınız." },
-  { q: "Video yüklenebiliyor mu?", a: "Evet. Büyük dosyalar parça parça yüklenir; bir sorun olursa tek dokunuşla yeniden denenebilir." },
+  { q: "Kalite düşüyor mu?", a: "Hayır. Her dosya telefondan çıktığı haliyle, sıkıştırılmadan yüklenir; indirdiğinizde de aslını alırsınız." },
+  { q: "Video yüklenebiliyor mu?", a: "Evet. Büyük videolar parça parça yüklenir; bağlantı koparsa tek dokunuşla yeniden denenebilir." },
   {
     q: "“Beni bul” nasıl çalışıyor, güvenli mi?",
-    a: "Misafir bir selfie çeker; yüz eşleştirmesi tamamen kendi telefonunda yapılır. Selfie hiçbir yere yüklenmez ve saklanmaz.",
+    a: "Misafir bir selfie çeker; eşleştirme tamamen kendi telefonunda yapılır. Selfie hiçbir yere gönderilmez, saklanmaz.",
   },
-  { q: "İstemediğim bir fotoğraf yüklenirse?", a: "Panelden tek dokunuşla gizleyebilir ya da silebilirsiniz. Onay modunu açarsanız hiçbir kare siz onaylamadan görünmez." },
-  { q: "Ücreti ne kadar?", a: "Ücretsiz. Depolama kendi Google Drive’ınızda olduğu için ek bir maliyet yoktur; Drive’ınızın kotası kadar alanınız olur." },
+  { q: "İstemediğim bir fotoğraf yüklenirse?", a: "Panelden tek dokunuşla gizleyebilir ya da silebilirsiniz. Onay modunu açarsanız, siz onaylamadıkça hiçbir kare görünmez." },
+  { q: "Ücreti ne kadar?", a: "Ücretsiz. Dosyalar kendi Google Drive’ınızda durduğu için ek bir maliyet de yok; alanınız Drive kotanız kadardır." },
 ];
 
 /* --------------------------------------------------------------- primitives */
@@ -115,7 +115,7 @@ function SectionHead({ index, label, title, text }: { index: string; label: stri
   );
 }
 
-function PrimaryCta({ children = "Albümünü oluştur" }: { children?: ReactNode }) {
+function PrimaryCta({ children = "Albümünüzü oluşturun" }: { children?: ReactNode }) {
   return (
     <Link
       href="/login"
@@ -238,13 +238,13 @@ export default function HomePage() {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl items-center gap-16 px-6 pt-20 pb-24 md:grid-cols-[1.15fr_1fr] md:pt-28 md:pb-32">
         <div>
-          <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">QR ile etkinlik albümü</p>
+          <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">QR ile ortak etkinlik albümü</p>
           <h1 className="mt-8 font-serif text-5xl leading-[1.04] sm:text-7xl">
-            Her misafirin objektifinden, <span className="italic text-amber-700">tek</span> bir albüm.
+            Herkesin çektiği kareler, <span className="italic text-amber-700">tek</span> bir albümde.
           </h1>
           <p className="mt-8 max-w-lg text-base leading-relaxed text-stone-600 sm:text-lg">
-            Masaya bir QR kart bırakın. Misafirleriniz uygulama indirmeden fotoğraf, video ve mesajlarını paylaşsın; hepsi orijinal kalitede
-            sizin Google Drive’ınızda toplansın.
+            Masaya küçük bir QR kart bırakın, gerisini misafirleriniz halletsin. Uygulama indirmeden fotoğraf, video ve mesajlarını
+            paylaşsınlar; hepsi orijinal kalitesiyle sizin Google Drive’ınızda buluşsun.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-6">
             <PrimaryCta />
@@ -306,7 +306,7 @@ export default function HomePage() {
           index="02"
           label="Misafir deneyimi"
           title={<>Misafiriniz için <span className="italic">otuz saniye.</span></>}
-          text="Kartı gördüğü andan albüme baktığı ana kadar hiçbir engel yok."
+          text="Kartı gördüğü andan albümü açtığı ana kadar her şey akıp gider."
         />
         <div className="grid gap-16 md:grid-cols-[1fr_1fr]">
           <ol className="border-t border-stone-200">
@@ -322,8 +322,8 @@ export default function HomePage() {
           </ol>
           <figure className="flex flex-col justify-center md:pl-8">
             <blockquote className="font-serif text-3xl leading-snug text-stone-800 sm:text-4xl">
-              “En güzel kareler misafirlerin telefonunda kalır. Onlara ulaşmanın tek yolu, paylaşmayı <span className="italic">zahmetsiz</span>{" "}
-              kılmaktır.”
+              “En güzel kareler çoğu zaman misafirlerin telefonunda kalır. Onlara ulaşmanın yolu, paylaşmayı{" "}
+              <span className="italic">zahmetsiz</span> kılmaktan geçer.”
             </blockquote>
             <figcaption className="mt-6 text-xs tracking-[0.25em] text-stone-500 uppercase">{BRAND.name} ilkesi</figcaption>
           </figure>
@@ -337,7 +337,7 @@ export default function HomePage() {
             index="03"
             label="Masa kartları"
             title={<>Masada <span className="italic">sessiz</span> bir davet.</>}
-            text="Kartınızı paneldeki atölyede tasarlayın; etkinliğinizin diline uyan sade, baskıya hazır bir QR kart."
+            text="Kartınızı paneldeki atölyede tasarlayın: etkinliğinizin havasına uyan, sade ve baskıya hazır bir QR kart."
           />
           <div className="mx-auto grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
             <TableCard variant="classic" />
@@ -378,7 +378,7 @@ export default function HomePage() {
             index="05"
             label="Karşılaştırma"
             title={<>Neden <span className="italic">{BRAND.name}?</span></>}
-            text="Paylaşım ne kadar kolaysa, o kadar çok kare toplanır. Farkı engelleri kaldırmak yaratır."
+            text="Paylaşmak ne kadar kolaysa, albüm o kadar dolu olur. Farkı yaratan, aradaki engelleri kaldırmak."
           />
           <div className="-mx-6 overflow-x-auto px-6">
             <table className="w-full min-w-[640px] text-left text-sm">
@@ -421,10 +421,10 @@ export default function HomePage() {
             <div>
               <p className="text-[10px] tracking-[0.25em] text-stone-500 uppercase">Her şey dahil</p>
               <p className="mt-6 font-serif text-7xl">0 ₺</p>
-              <p className="mt-3 text-sm text-stone-600">Abonelik yok, kilitli özellik yok. Depolama kendi Google Drive’ınızda.</p>
+              <p className="mt-3 text-sm text-stone-600">Abonelik yok, gizli ücret yok, kilitli özellik yok. Dosyalarınız kendi Google Drive’ınızda.</p>
             </div>
             <div>
-              <PrimaryCta>Hemen başla</PrimaryCta>
+              <PrimaryCta>Hemen başlayın</PrimaryCta>
             </div>
           </div>
           <ul className="grid content-center gap-x-8 gap-y-4 p-10 sm:grid-cols-2">
@@ -441,7 +441,7 @@ export default function HomePage() {
       {/* FAQ */}
       <section id="sss" className="scroll-mt-20 border-t border-stone-200 bg-white">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 sm:py-32 md:grid-cols-[1fr_1.6fr]">
-          <SectionHead index="07" label="SSS" title={<>Sıkça <span className="italic">sorulanlar.</span></>} />
+          <SectionHead index="07" label="Sorular" title={<>Merak <span className="italic">edilenler.</span></>} />
           <div className="border-t border-stone-200">
             {FAQ.map((f) => (
               <details key={f.q} className="group border-b border-stone-200">
@@ -468,7 +468,7 @@ export default function HomePage() {
             href="/login"
             className="mt-12 inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
           >
-            Albümünü oluştur
+            Albümünüzü oluşturun
             <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
           </Link>
         </div>
@@ -485,7 +485,7 @@ export default function HomePage() {
               </a>
             ))}
           </nav>
-          <span>Medyalarınız yalnızca sizin Google Drive’ınızda saklanır.</span>
+          <span>Fotoğraf ve videolarınız yalnızca sizin Google Drive’ınızda durur.</span>
         </div>
       </footer>
     </main>
