@@ -4,6 +4,7 @@ import { Feather, Loader2, Mic, Send, Video } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Recorder, type Recording } from "@/components/guest/Recorder";
+import { AudioPlayer } from "@/components/media/AudioPlayer";
 import { StatusBadge } from "@/components/media/MediaThumb";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
@@ -180,7 +181,7 @@ export function GuestbookPanel({
               ) : (
                 <li key={`m-${entry.media.id}`} className="rounded-2xl bg-white p-3 shadow-sm">
                   {entry.media.kind === "audio" ? (
-                    <audio src={streamUrl(entry.media.fileId)} controls preload="none" className="w-full" />
+                    <AudioPlayer src={streamUrl(entry.media.fileId)} className="w-full" />
                   ) : (
                     <video src={streamUrl(entry.media.fileId)} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
                   )}

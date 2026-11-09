@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, Download, Loader2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AudioPlayer } from "@/components/media/AudioPlayer";
 import { trackEvent } from "@/lib/client/analytics";
 import { downloadOriginal } from "@/lib/client/download";
 import { formatBytes } from "@/lib/media-config";
@@ -128,7 +129,7 @@ export function Lightbox({
         {item.kind === "audio" && (
           <div className="w-full max-w-md rounded-2xl bg-white/10 p-6 text-center">
             <p className="mb-4 font-serif text-lg">{item.guestName ?? "Misafir"} bir sesli mesaj bıraktı</p>
-            <audio key={item.id} src={streamUrl(item.fileId)} controls autoPlay className="w-full" />
+            <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay className="w-full" />
           </div>
         )}
         {items.length > 1 && (

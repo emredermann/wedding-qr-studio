@@ -81,7 +81,7 @@ const EXTENSION_BY_MIME: Readonly<Record<string, string>> = {
   "video/quicktime": "mov",
   "video/webm": "webm",
   "video/3gpp": "3gp",
-  "audio/webm": "weba",
+  "audio/webm": "webm",
   "audio/mp4": "m4a",
   "audio/ogg": "ogg",
   "audio/mpeg": "mp3",

@@ -3,6 +3,7 @@
 import { Check, EyeOff, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { AudioPlayer } from "@/components/media/AudioPlayer";
 import { StatusBadge } from "@/components/media/MediaThumb";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { streamUrl } from "@/lib/media-urls";
@@ -137,7 +138,7 @@ export function GuestbookModerationTab({
             {media.map((item) => (
               <li key={item.id} className="rounded-2xl border border-stone-200 bg-white p-3">
                 {item.kind === "audio" ? (
-                  <audio src={streamUrl(item.fileId)} controls preload="none" className="w-full" />
+                  <AudioPlayer src={streamUrl(item.fileId)} className="w-full" />
                 ) : (
                   <video src={streamUrl(item.fileId)} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
                 )}

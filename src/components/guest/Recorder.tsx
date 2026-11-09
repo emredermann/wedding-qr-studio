@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { MAX_AUDIO_RECORDING_SECONDS, MAX_VIDEO_RECORDING_SECONDS } from "@/lib/media-config";
 
-const AUDIO_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
+// MP4/AAC first: it plays everywhere (iPhone, Google Drive preview) and carries its
+// duration. Chrome's WebM recordings have no duration, so Drive shows 0:00 and
+// cannot play them; WebM/Ogg remain as fallbacks for browsers without MP4 support.
+const AUDIO_TYPES = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/webm"];
 const VIDEO_TYPES = ["video/mp4;codecs=avc1,mp4a", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/mp4", "video/webm"];
 
 function pickMimeType(candidates: string[]): string | undefined {
@@ -16,7 +19,7 @@ function pickMimeType(candidates: string[]): string | undefined {
 function extensionFor(mime: string): string {
   if (mime.includes("mp4")) return mime.startsWith("audio") ? "m4a" : "mp4";
   if (mime.includes("ogg")) return "ogg";
-  return mime.startsWith("audio") ? "weba" : "webm";
+  return "webm";
 }
 
 export interface Recording {
