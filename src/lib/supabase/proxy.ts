@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeNextPath } from "@/lib/safe-redirect";
+
 const PROTECTED_PREFIXES = ["/dashboard"] as const;
 
 function isProtected(pathname: string): boolean {
@@ -58,8 +60,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (userId && pathname === "/login") {
-    const rawNext = request.nextUrl.searchParams.get("next");
-    const target = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+    const target = safeNextPath(request.nextUrl.searchParams.get("next"));
     const redirect = NextResponse.redirect(new URL(target, request.url));
     for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
     return redirect;

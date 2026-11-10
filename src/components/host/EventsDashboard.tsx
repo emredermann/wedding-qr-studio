@@ -151,6 +151,7 @@ export function EventsDashboard() {
                     className="w-full rounded-r-xl bg-transparent px-1 py-2.5 outline-none"
                   />
                 </div>
+                <span className="mt-1 block text-[11px] text-stone-500">Boş bırakırsanız tahmin edilemeyen bir adres oluşturulur (önerilir).</span>
               </label>
               {formError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>}
               {needsDrive && (

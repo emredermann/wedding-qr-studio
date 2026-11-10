@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { resolveClientIp } from "../src/lib/client-ip.ts";
 import { mapSettledLimit } from "../src/lib/concurrency.ts";
 import { encodeMediaCursor, mediaCursorFilter, parseMediaCursor } from "../src/lib/pagination.ts";
-import { slugify } from "../src/lib/slug.ts";
+import { randomSlugSuffix, slugify } from "../src/lib/slug.ts";
 import { bulkMediaSchema, eventSettingsPatchSchema, settingsPatchToColumns } from "../src/lib/validation.ts";
 
 const headers = (init: Record<string, string>) => new Headers(init);
@@ -65,6 +65,19 @@ describe("slugify", () => {
     const slug = slugify(`${"uzun ".repeat(30)}son`);
     assert.ok(slug.length <= 48);
     assert.ok(!slug.endsWith("-"));
+  });
+});
+
+describe("randomSlugSuffix", () => {
+  it("produces 6 unambiguous slug-safe characters", () => {
+    for (let i = 0; i < 200; i += 1) assert.match(randomSlugSuffix(), /^[a-km-np-z2-9]{6}$/);
+  });
+
+  it("is random and keeps auto slugs valid", () => {
+    const seen = new Set(Array.from({ length: 500 }, () => randomSlugSuffix()));
+    assert.ok(seen.size > 495);
+    const slug = `${slugify(`${"uzun ".repeat(30)}son`)}-${randomSlugSuffix()}`;
+    assert.match(slug, /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])$/);
   });
 });
 

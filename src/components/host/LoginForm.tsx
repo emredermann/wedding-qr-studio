@@ -8,6 +8,7 @@ import { useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandMark";
 import { trackEvent } from "@/lib/client/analytics";
 import { isValidUsername, normaliseUsername, usernameToLoginEmail } from "@/lib/login-identity";
+import { safeNextPath } from "@/lib/safe-redirect";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function authErrorMessage(err: unknown): string {
@@ -32,8 +33,7 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(params.get("error") ? "Oturum bağlantısı geçersiz veya süresi dolmuş. Tekrar giriş yapın." : null);
 
-  const rawNext = params.get("next");
-  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  const next = safeNextPath(params.get("next"));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

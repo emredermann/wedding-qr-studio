@@ -147,7 +147,8 @@ export function GuestApp({ slug }: { slug: string }) {
   const tabs: Array<{ id: Tab; label: string; icon: typeof Camera; show: boolean }> = [
     { id: "upload", label: "Yükle", icon: Camera, show: event.uploadsEnabled },
     { id: "gallery", label: "Galeri", icon: Images, show: true },
-    { id: "find", label: "Beni Bul", icon: ScanFace, show: event.faceSearchEnabled },
+    // "Beni Bul" is only offered when the gallery is public (server enforces this too).
+    { id: "find", label: "Beni Bul", icon: ScanFace, show: event.faceSearchEnabled && event.galleryPublic },
     { id: "guestbook", label: "Anı Defteri", icon: BookHeart, show: event.guestbookEnabled },
   ];
   const visibleTabs = tabs.filter((t) => t.show);

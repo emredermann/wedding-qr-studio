@@ -182,7 +182,7 @@ export function GalleryPanel({
     <div className="space-y-4">
       {!event.galleryPublic && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          Bu galeri gizli: yalnızca kendi yüklediklerinizi ve “Beni Bul” ile bulunan fotoğraflarınızı görebilirsiniz.
+          Bu galeri gizli: yalnızca kendi yüklediklerinizi görebilirsiniz.
         </p>
       )}
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">

@@ -111,7 +111,7 @@ export function FaceSearchPanel({
     }
   }
 
-  if (!event.faceSearchEnabled) {
+  if (!event.faceSearchEnabled || !event.galleryPublic) {
     return <p className="rounded-3xl bg-white/80 p-8 text-center text-stone-600">Yüz arama bu etkinlikte kapalı.</p>;
   }
 

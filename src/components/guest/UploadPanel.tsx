@@ -343,7 +343,7 @@ export function UploadPanel({
 
       <p className="text-center text-[11px] leading-relaxed text-stone-500">
         Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.
-        {event.faceSearchEnabled && " “Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır."}
+        {event.faceSearchEnabled && event.galleryPublic && " “Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır."}
       </p>
     </div>
   );

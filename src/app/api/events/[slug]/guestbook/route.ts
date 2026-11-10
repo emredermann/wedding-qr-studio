@@ -54,6 +54,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     const guest = resolveGuestSession(request);
     const limited = await rateLimit(request, "guestbook-write", 10, 300, guest.sessionId);
     if (limited) return limited;
+    // A fresh guest cookie resets the per-session limit above, so also cap per IP.
+    // The ceiling is high on purpose: many guests share the venue Wi-Fi (one IP).
+    const limitedIp = await rateLimit(request, "guestbook-write-ip", 150, 600);
+    if (limitedIp) return limitedIp;
 
     const body = await parseJsonBody(request, postSchema, 8 * 1024);
     if (!body.ok) return body.response;

@@ -34,12 +34,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     const event = await findEventBySlug(slug);
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
     if (!event.face_search_enabled) return jsonError(403, "FACE_SEARCH_DISABLED", "Yüz arama bu etkinlikte kapalı.");
+    // Private gallery: "Beni Bul" is off. Faces are still indexed on upload, so it
+    // works for every photo again if the host makes the gallery public later.
+    if (!event.gallery_public) return jsonError(403, "FACE_SEARCH_DISABLED", "Yüz arama bu etkinlikte kapalı.");
 
     const db = getAdminDb();
     const match = await db.rpc("match_event_faces", {
       p_event_id: event.id,
       p_descriptor: `[${body.data.descriptor.join(",")}]`,
-      p_max_distance: body.data.maxDistance,
+      // The app never sends maxDistance (default 0.5). Capping it here keeps the app
+      // identical while stopping hand-crafted requests from loosening the match.
+      p_max_distance: Math.min(body.data.maxDistance, 0.5),
       p_limit: 200,
     });
     if (match.error) throw new Error(match.error.message);

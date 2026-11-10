@@ -74,8 +74,8 @@ export function SettingsTab({
   const toggles: Array<[keyof typeof form, string, string]> = [
     ["uploadsEnabled", "Misafir yüklemeleri açık", "Kapatırsanız misafirler sadece galeriyi görür."],
     ["requireApproval", "Yayından önce onay iste", "Yeni fotoğraf ve mesajlar siz onaylayana kadar gizli kalır."],
-    ["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini ve yüz eşleşmelerini görür."],
-    ["faceSearchEnabled", "“Beni Bul” yüz arama", "Yüz vektörleri misafirin tarayıcısında çıkarılır; fotoğraf sunucuya gitmez."],
+    ["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini görür ve “Beni Bul” kapanır."],
+    ["faceSearchEnabled", "“Beni Bul” yüz arama", "Yalnızca galeri misafirlere açıkken kullanılır. Yüz vektörleri misafirin tarayıcısında çıkarılır; fotoğraf sunucuya gitmez."],
     ["guestbookEnabled", "Dijital anı defteri", "Yazılı, sesli ve video mesajlar."],
   ];
 

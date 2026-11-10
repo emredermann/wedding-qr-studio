@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { safeNextPath } from "@/lib/safe-redirect";
 import { createAuthClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -23,8 +24,7 @@ function loginWithError(request: NextRequest, reason: string): NextResponse {
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const rawNext = params.get("next");
-  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  const next = safeNextPath(params.get("next"));
 
   // Supabase forwards verification failures (e.g. expired link) as query params.
   const supabaseError = params.get("error_code") ?? params.get("error");
