@@ -28,7 +28,8 @@ const display = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: `${BRAND.name} — ${BRAND.tagline}`,
+    // Browser tab shows only the brand name; the tagline stays in social previews.
+    default: BRAND.name,
     template: `%s · ${BRAND.name}`,
   },
   applicationName: BRAND.name,
@@ -53,7 +54,7 @@ export default function RootLayout({
       lang="tr"
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden">
+      <body className="min-h-full flex flex-col overflow-x-clip">
         {children}
         {/* Vercel Web Analytics (page views) + Speed Insights (Core Web Vitals).
             Both are no-ops outside Vercel and send no data in development. */}

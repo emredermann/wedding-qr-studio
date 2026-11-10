@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo, BrandMark } from "@/components/brand/BrandMark";
+import { HeroFlyThrough } from "@/components/landing/HeroFlyThrough";
 import { BRAND } from "@/lib/brand";
 
 /* ------------------------------------------------------------------ content */
@@ -101,16 +102,11 @@ const FAQ = [
 
 /* --------------------------------------------------------------- primitives */
 
-function SectionHead({ index, label, title, text }: { index: string; label: string; title: ReactNode; text?: string }) {
+function SectionHead({ title, text, dark = false }: { title: ReactNode; text?: string; dark?: boolean }) {
   return (
     <div className="mb-14 max-w-2xl">
-      <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">
-        <span className="font-mono text-stone-400">{index}</span>
-        <span className="mx-3 inline-block h-px w-8 bg-stone-300 align-middle" />
-        {label}
-      </p>
-      <h2 className="mt-6 font-serif text-4xl leading-[1.1] sm:text-5xl">{title}</h2>
-      {text && <p className="mt-5 leading-relaxed text-stone-600">{text}</p>}
+      <h2 className="font-serif text-5xl leading-[1.04] sm:text-6xl">{title}</h2>
+      {text && <p className={`mt-5 max-w-xl leading-relaxed ${dark ? "text-stone-400" : "text-stone-600"}`}>{text}</p>}
     </div>
   );
 }
@@ -216,83 +212,72 @@ function CompareCell({ value, strong = false }: { value: Cell; strong?: boolean 
 export default function HomePage() {
   return (
     <main className="min-h-dvh bg-stone-50 text-stone-900">
-      {/* Navigation */}
-      <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-stone-50/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+      {/* Navigation: fixed, blends with whatever is beneath it (ivory page or ink letters). */}
+      <header className="fixed inset-x-0 top-0 z-30 text-stone-50 mix-blend-difference">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-5">
           <Link href="/" aria-label={BRAND.name}>
             <BrandLogo className="text-base" markClassName="h-6 w-6" />
           </Link>
-          <nav className="hidden items-center gap-8 text-sm text-stone-600 md:flex">
+          <nav className="hidden items-center gap-8 text-sm md:flex">
             {NAV.map((n) => (
-              <a key={n.href} href={n.href} className="transition hover:text-stone-900">
+              <a key={n.href} href={n.href} className="opacity-80 transition hover:opacity-100">
                 {n.label}
               </a>
             ))}
           </nav>
-          <Link href="/login" className="rounded-full border border-stone-300 px-4 py-1.5 text-sm text-stone-800 transition hover:border-stone-900">
+          <Link href="/login" className="rounded-full border border-current px-4 py-1.5 text-sm transition hover:bg-stone-50 hover:text-stone-900">
             Giriş
           </Link>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto grid max-w-6xl items-center gap-16 px-6 pt-20 pb-24 md:grid-cols-[1.15fr_1fr] md:pt-28 md:pb-32">
-        <div>
-          <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">QR ile ortak etkinlik albümü</p>
-          <h1 className="mt-8 font-serif text-5xl leading-[1.04] sm:text-7xl">
-            Herkesin çektiği kareler, <span className="italic text-amber-700">tek</span> bir albümde.
-          </h1>
-          <p className="mt-8 max-w-lg text-base leading-relaxed text-stone-600 sm:text-lg">
-            Masaya küçük bir QR kart bırakın, gerisini misafirleriniz halletsin. Uygulama indirmeden fotoğraf, video ve mesajlarını
-            paylaşsınlar; hepsi orijinal kalitesiyle sizin Google Drive’ınızda buluşsun.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center gap-6">
-            <PrimaryCta />
-            <a href="#nasil-calisir" className="text-sm text-stone-600 underline-offset-4 transition hover:text-stone-900 hover:underline">
-              Nasıl çalışır?
-            </a>
-          </div>
-          <dl className="mt-16 grid max-w-md grid-cols-3 border-t border-stone-200 pt-6">
-            {[
-              ["0", "uygulama"],
-              ["%100", "orijinal kalite"],
-              ["0 ₺", "ücret"],
-            ].map(([v, l]) => (
-              <div key={l}>
-                <dt className="font-serif text-3xl">{v}</dt>
-                <dd className="mt-1 text-xs text-stone-500">{l}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div className="relative">
-          <PhoneMock />
-          <div className="absolute -bottom-8 -left-2 hidden w-36 rotate-[-6deg] sm:block md:-left-6">
-            <TableCard variant="classic" />
+      {/* Hero: pinned stage; scrolling flies into the "i" of the wordmark. */}
+      <HeroFlyThrough>
+        <div className="mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pt-24 pb-12">
+          <h1 className="sr-only">{BRAND.name}</h1>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            {/* The meaning of the name: one quiet, hairline-weight line. */}
+            <p className="text-[12.5px] leading-relaxed font-light tracking-[0.02em] opacity-70 sm:whitespace-nowrap">
+              <span className="font-normal">mīrus / mīra</span>
+              <span className="mx-2.5 opacity-60">:</span>
+              hayranlık uyandıran, harika, olağanüstü ve mucizevi
+            </p>
+            <div className="flex flex-wrap items-center gap-6">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-black transition hover:opacity-85"
+              >
+                Albümünüzü oluşturun
+                <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+              </Link>
+              <a href="#nasil-calisir" className="text-sm underline-offset-4 hover:underline">
+                Nasıl çalışır?
+              </a>
+            </div>
           </div>
         </div>
-      </section>
+      </HeroFlyThrough>
 
       {/* How it works */}
-      <section id="nasil-calisir" className="scroll-mt-20 border-t border-stone-200 bg-white">
+      <section id="nasil-calisir" className="scroll-mt-20 bg-stone-900 text-stone-50">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-          <SectionHead index="01" label="Nasıl çalışır" title={<>Üç adım. <span className="italic">Hepsi bu.</span></>} />
-          <ol className="grid gap-px overflow-hidden border border-stone-200 bg-stone-200 md:grid-cols-3">
+          <SectionHead title="Üç adım. Hepsi bu." dark />
+          <ol className="grid gap-px overflow-hidden border border-stone-700 bg-stone-700 md:grid-cols-3">
             {STEPS.map((s, i) => (
-              <li key={s.title} className="bg-white p-8">
-                <p className="font-serif text-6xl text-stone-300">{i + 1}</p>
+              <li key={s.title} className="bg-stone-900 p-8">
+                <p className="font-serif text-7xl text-stone-500">{i + 1}</p>
                 <h3 className="mt-8 font-serif text-2xl">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600">{s.text}</p>
+                <p className="mt-2 text-sm leading-relaxed text-stone-400">{s.text}</p>
               </li>
             ))}
           </ol>
           <div className="mt-14 grid gap-10 sm:grid-cols-3">
             {CALLOUTS.map(({ icon: Icon, title, text }) => (
               <div key={title} className="flex gap-4">
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-stone-500" strokeWidth={1.4} />
+                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.4} />
                 <div>
-                  <p className="text-sm text-stone-900">{title}</p>
-                  <p className="mt-1 text-sm text-stone-500">{text}</p>
+                  <p className="text-sm text-stone-50">{title}</p>
+                  <p className="mt-1 text-sm text-stone-400">{text}</p>
                 </div>
               </div>
             ))}
@@ -302,17 +287,14 @@ export default function HomePage() {
 
       {/* Guest experience */}
       <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <SectionHead
-          index="02"
-          label="Misafir deneyimi"
-          title={<>Misafiriniz için <span className="italic">otuz saniye.</span></>}
+        <SectionHead title="Misafiriniz için otuz saniye."
           text="Kartı gördüğü andan albümü açtığı ana kadar her şey akıp gider."
         />
         <div className="grid gap-16 md:grid-cols-[1fr_1fr]">
           <ol className="border-t border-stone-200">
             {GUEST_JOURNEY.map((s, i) => (
               <li key={s.title} className="flex gap-6 border-b border-stone-200 py-6">
-                <span className="w-6 shrink-0 pt-1.5 font-mono text-xs text-stone-400">{String(i + 1).padStart(2, "0")}</span>
+                <span className="w-6 shrink-0 pt-1 text-sm text-stone-400 tabular-nums">{i + 1}</span>
                 <div>
                   <h3 className="font-serif text-xl">{s.title}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-stone-600">{s.text}</p>
@@ -320,12 +302,13 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
-          <figure className="flex flex-col justify-center md:pl-8">
+          <figure className="flex flex-col justify-center gap-12 md:pl-8">
+            <PhoneMock />
             <blockquote className="font-serif text-3xl leading-snug text-stone-800 sm:text-4xl">
               “En güzel kareler çoğu zaman misafirlerin telefonunda kalır. Onlara ulaşmanın yolu, paylaşmayı{" "}
-              <span className="italic">zahmetsiz</span> kılmaktan geçer.”
+              zahmetsiz kılmaktan geçer.”
             </blockquote>
-            <figcaption className="mt-6 text-xs tracking-[0.25em] text-stone-500 uppercase">{BRAND.name} ilkesi</figcaption>
+            <figcaption className="-mt-6 text-sm text-stone-500">{BRAND.name} ilkesi</figcaption>
           </figure>
         </div>
       </section>
@@ -333,10 +316,7 @@ export default function HomePage() {
       {/* Cards */}
       <section className="border-t border-stone-200 bg-stone-100/60">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-          <SectionHead
-            index="03"
-            label="Masa kartları"
-            title={<>Masada <span className="italic">sessiz</span> bir davet.</>}
+          <SectionHead title="Masada sessiz bir davet."
             text="Kartınızı paneldeki atölyede tasarlayın: etkinliğinizin havasına uyan, sade ve baskıya hazır bir QR kart."
           />
           <div className="mx-auto grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
@@ -349,7 +329,7 @@ export default function HomePage() {
           <div className="mt-20 grid gap-px overflow-hidden border border-stone-200 bg-stone-200 md:grid-cols-3">
             {CARD_OPTIONS.map((o) => (
               <div key={o.title} className="bg-stone-50 p-8">
-                <p className="text-[10px] tracking-[0.25em] text-stone-500 uppercase">{o.note}</p>
+                <p className="text-xs text-stone-500">{o.note}</p>
                 <h3 className="mt-4 font-serif text-2xl">{o.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600">{o.text}</p>
               </div>
@@ -360,7 +340,7 @@ export default function HomePage() {
 
       {/* Features */}
       <section id="ozellikler" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24 sm:py-32">
-        <SectionHead index="04" label="Özellikler" title={<>Gereken her şey, <span className="italic">fazlası değil.</span></>} />
+        <SectionHead title="Gereken her şey, fazlası değil." />
         <div className="grid gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="border-t border-stone-200 py-6">
@@ -374,10 +354,7 @@ export default function HomePage() {
       {/* Comparison */}
       <section id="karsilastirma" className="scroll-mt-20 border-t border-stone-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-          <SectionHead
-            index="05"
-            label="Karşılaştırma"
-            title={<>Neden <span className="italic">{BRAND.name}?</span></>}
+          <SectionHead title={`Neden ${BRAND.name}?`}
             text="Paylaşmak ne kadar kolaysa, albüm o kadar dolu olur. Farkı yaratan, aradaki engelleri kaldırmak."
           />
           <div className="-mx-6 overflow-x-auto px-6">
@@ -415,11 +392,11 @@ export default function HomePage() {
 
       {/* Pricing */}
       <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <SectionHead index="06" label="Ücret" title={<>Tek paket. <span className="italic">Ücretsiz.</span></>} />
+        <SectionHead title="Tek paket. Ücretsiz." />
         <div className="grid overflow-hidden border border-stone-200 bg-white md:grid-cols-[1fr_1.4fr]">
           <div className="flex flex-col justify-between gap-10 border-b border-stone-200 p-10 md:border-r md:border-b-0">
             <div>
-              <p className="text-[10px] tracking-[0.25em] text-stone-500 uppercase">Her şey dahil</p>
+              <p className="text-sm text-stone-500">Her şey dahil</p>
               <p className="mt-6 font-serif text-7xl">0 ₺</p>
               <p className="mt-3 text-sm text-stone-600">Abonelik yok, gizli ücret yok, kilitli özellik yok. Dosyalarınız kendi Google Drive’ınızda.</p>
             </div>
@@ -441,7 +418,7 @@ export default function HomePage() {
       {/* FAQ */}
       <section id="sss" className="scroll-mt-20 border-t border-stone-200 bg-white">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 sm:py-32 md:grid-cols-[1fr_1.6fr]">
-          <SectionHead index="07" label="Sorular" title={<>Merak <span className="italic">edilenler.</span></>} />
+          <SectionHead title="Merak edilenler." />
           <div className="border-t border-stone-200">
             {FAQ.map((f) => (
               <details key={f.q} className="group border-b border-stone-200">
@@ -461,7 +438,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-28 text-center sm:py-36">
           <BrandMark className="h-8 w-8 text-stone-500" />
           <h2 className="mt-10 font-serif text-5xl leading-[1.05] sm:text-6xl">
-            Hiçbir an <span className="italic text-amber-300">kaybolmasın.</span>
+            Hiçbir an kaybolmasın.
           </h2>
           <p className="mt-6 max-w-md text-stone-400">Albümünüzü dakikalar içinde kurun; gerisini misafirleriniz tamamlasın.</p>
           <Link
