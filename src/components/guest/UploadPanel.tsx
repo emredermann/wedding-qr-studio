@@ -33,6 +33,13 @@ interface QueueItem {
 
 let faceLock: Promise<unknown> = Promise.resolve();
 
+/**
+ * Files whose bytes are already on Drive but still wait for face analysis /
+ * confirm do not hold a transfer slot. This caps how many items can be in
+ * flight in total (transferring + finishing), bounding memory on phones.
+ */
+const MAX_UPLOADS_IN_FLIGHT = MAX_CONCURRENT_UPLOADS * 3;
+
 /** Face detection is GPU/CPU heavy: run one photo at a time. */
 function analyzeSerially(file: File, withFaces: boolean) {
   const run = faceLock.then(() => analyzePhoto(file, withFaces));
@@ -61,6 +68,8 @@ export function UploadPanel({
   const [note, setNote] = useState("");
   const queueRef = useRef<QueueItem[]>([]);
   const startedRef = useRef<Set<string>>(new Set());
+  /** Items whose bytes reached Drive; they stay "uploading" until confirmed. */
+  const bytesDoneRef = useRef<Set<string>>(new Set());
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +114,11 @@ export function UploadPanel({
         category: item.category,
         extras,
         onProgress: (fraction) => patch(item.id, { progress: fraction }),
+        onBytesUploaded: () => {
+          // Free the transfer slot now; face analysis + confirm finish in the background.
+          bytesDoneRef.current.add(item.id);
+          pump();
+        },
       });
       patch(item.id, { status: "done", progress: 1 });
       trackEvent("upload_completed", { kind: item.kind });
@@ -114,13 +128,15 @@ export function UploadPanel({
       trackEvent("upload_failed", { kind: item.kind });
       patch(item.id, { status: "error", error: errorMessage(error) });
     } finally {
+      bytesDoneRef.current.delete(item.id);
       pump();
     }
   }
 
   function pump() {
-    const active = queueRef.current.filter((item) => item.status === "uploading").length;
-    const free = MAX_CONCURRENT_UPLOADS - active;
+    const inFlight = queueRef.current.filter((item) => item.status === "uploading");
+    const transferring = inFlight.filter((item) => !bytesDoneRef.current.has(item.id)).length;
+    const free = Math.min(MAX_CONCURRENT_UPLOADS - transferring, MAX_UPLOADS_IN_FLIGHT - inFlight.length);
     if (free <= 0) return;
     const next = queueRef.current
       .filter((item) => item.status === "queued" && !startedRef.current.has(item.id))

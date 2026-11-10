@@ -34,7 +34,7 @@ export function BrandLogo({ className = "", markClassName = "h-6 w-6", showTagli
       <BrandMark className={markClassName} />
       <span className="flex flex-col leading-none">
         <span className="font-serif text-[1.6em] tracking-[0.01em]">{BRAND.name}</span>
-        {showTagline && <span className="mt-1.5 text-[0.62em] tracking-[0.22em] text-stone-500 uppercase">{BRAND.tagline}</span>}
+        {showTagline && <span className="mt-1.5 max-w-[15rem] text-[0.62em] leading-snug tracking-[0.02em] text-stone-500">{BRAND.tagline}</span>}
       </span>
     </span>
   );

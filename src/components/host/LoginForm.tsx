@@ -72,7 +72,6 @@ export function LoginForm() {
           <BrandLogo showTagline className="text-xl" markClassName="h-12 w-12" />
         </Link>
         <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h1 className="mb-5 text-center font-serif text-xl text-stone-900">Event sahibi girişi</h1>
           <form onSubmit={submit} className="space-y-4" noValidate>
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-stone-600">Kullanıcı adı</span>

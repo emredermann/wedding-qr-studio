@@ -31,7 +31,8 @@ const PAGE_SIZE = 60;
 export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const limited = await rateLimit(request, "gallery", 300, 60);
+    // Per-IP: all guests on one venue Wi-Fi share an IP; sized for ~500 guests (load-tested).
+    const limited = await rateLimit(request, "gallery", 2000, 60);
     if (limited) return limited;
 
     const event = await findEventBySlug(slug);

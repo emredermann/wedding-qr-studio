@@ -12,7 +12,10 @@ import type { MediaDto, UploadSessionResponse } from "@/types/domain";
  * The Next.js server never receives the file bytes.
  */
 
-const CHUNK_SIZE = 8 * 1024 * 1024; // multiple of 256 KiB, as Drive requires
+// Multiple of 256 KiB, as Drive requires. 16 MiB halves the round trips of
+// 8 MiB on mobile networks while keeping a failed chunk cheap to resend
+// (a resumed upload restarts from the last byte Drive confirmed).
+const CHUNK_SIZE = 16 * 1024 * 1024;
 const SINGLE_PUT_LIMIT = 16 * 1024 * 1024;
 const MAX_RETRIES = 6;
 /** Total confirm attempts and the exponential back-off between them. */
@@ -36,6 +39,12 @@ export interface UploadOptions {
   /** Resolved in parallel with the byte upload (e.g. face descriptors). */
   extras?: Promise<UploadExtras>;
   onProgress?: (fraction: number) => void;
+  /**
+   * Called once the bytes are on Drive, before waiting for `extras` and the
+   * confirm call. Lets a caller start the next transfer while face analysis
+   * and confirmation of this file finish in the background.
+   */
+  onBytesUploaded?: () => void;
   signal?: AbortSignal;
 }
 
@@ -165,7 +174,7 @@ async function readMagicHex(file: Blob): Promise<string | undefined> {
 }
 
 export async function uploadToDrive(options: UploadOptions): Promise<MediaDto> {
-  const { file, fileName, eventSlug, guestName, note, category, isGuestbook = false, extras, onProgress, signal } = options;
+  const { file, fileName, eventSlug, guestName, note, category, isGuestbook = false, extras, onProgress, onBytesUploaded, signal } = options;
   const report = onProgress ?? (() => undefined);
 
   const session = await apiFetch<UploadSessionResponse>("/api/drive/upload-session", {
@@ -183,10 +192,11 @@ export async function uploadToDrive(options: UploadOptions): Promise<MediaDto> {
   });
 
   const noExtras: UploadExtras = {};
-  const [driveFile, extra] = await Promise.all([
-    putResumable(session.uploadUrl, file, session.mimeType, report, signal),
-    (extras ?? Promise.resolve(noExtras)).catch(() => noExtras),
-  ]);
+  // Extras (face analysis) keep running in parallel with the byte transfer.
+  const extrasReady = (extras ?? Promise.resolve(noExtras)).catch(() => noExtras);
+  const driveFile = await putResumable(session.uploadUrl, file, session.mimeType, report, signal);
+  onBytesUploaded?.();
+  const extra = await extrasReady;
 
   const confirm = () =>
     apiFetch<{ media: MediaDto }>("/api/media/confirm", {

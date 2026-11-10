@@ -1,7 +1,7 @@
 /** Single source of truth for the product's name, voice and brand colours. */
 export const BRAND = {
   name: "Mira",
-  tagline: "Anların zarif arşivi.",
+  tagline: "mīrus / mīra : Hayranlık uyandıran, harika, olağanüstü ve mucizevi.",
   description:
     "Misafirleriniz QR kodu okutur; fotoğraf, video ve mesajlarını uygulama indirmeden orijinal kalitede sizin Google Drive’ınıza bırakır. Yüz tanıma, canlı ekran, sesli anı defteri ve masa kartı tasarlayıcı — hepsi ücretsiz.",
   colors: {
