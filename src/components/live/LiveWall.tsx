@@ -2,12 +2,12 @@
 
 import { Expand, Heart, Shrink } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
-import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
+import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto, RecentHeartsDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
 import { tClient, translateLoose } from "@/lib/i18n/translate";
 
@@ -15,6 +15,20 @@ const PHOTO_MS = 7000;
 const VIDEO_MAX_MS = 25000;
 const MESSAGE_MS = 9000;
 const POLL_MS = 6000;
+const HEART_POLL_MS = 4000;
+/** At most this many hearts float at once (a busy dance floor shouldn't flood the screen). */
+const MAX_FLOATING_HEARTS = 40;
+
+interface FloatingHeart {
+  id: number;
+  left: number;
+  size: number;
+  drift: number;
+  duration: number;
+  delay: number;
+}
+
+let floatingHeartId = 0;
 
 interface SlideState {
   pool: MediaDto[];
@@ -72,6 +86,8 @@ export function LiveWall({ slug }: { slug: string }) {
   const [newestMedia, setNewestMedia] = useState<string | null>(null);
   const [newestMessage, setNewestMessage] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [floating, setFloating] = useState<FloatingHeart[]>([]);
+  const currentIdRef = useRef<string | null>(null);
 
   const base = `/api/events/${encodeURIComponent(slug)}`;
 
@@ -135,7 +151,46 @@ export function LiveWall({ slug }: { slug: string }) {
     return () => window.clearInterval(timer);
   }, [base, newestMedia, newestMessage]);
 
+  // Floating hearts: ask for hearts given since the last poll and let them rise.
+  useEffect(() => {
+    let cursor: string | null = null;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await apiFetch<RecentHeartsDto>(`${base}/hearts${cursor ? `?since=${encodeURIComponent(cursor)}` : ""}`);
+        if (cancelled) return;
+        const isFirst = cursor === null;
+        cursor = res.cursor;
+        if (isFirst || res.hearts.length === 0) return;
+        const spawned = res.hearts.slice(-12).map((heart, i): FloatingHeart => {
+          // Hearts for the photo on screen right now are bigger.
+          const onScreen = heart.mediaId === currentIdRef.current;
+          return {
+            id: (floatingHeartId += 1),
+            left: 8 + Math.random() * 84,
+            size: (onScreen ? 56 : 34) + Math.random() * 18,
+            drift: (Math.random() - 0.5) * 160,
+            duration: 4200 + Math.random() * 1800,
+            delay: i * 280,
+          };
+        });
+        setFloating((prev) => [...prev, ...spawned].slice(-MAX_FLOATING_HEARTS));
+      } catch {
+        // transient network error: try again next tick
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, HEART_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [base]);
+
   const current = slides.pool.find((m) => m.id === slides.currentId) ?? null;
+  useEffect(() => {
+    currentIdRef.current = current?.id ?? null;
+  }, [current]);
   const previous = slides.pool.find((m) => m.id === slides.previousId) ?? null;
 
   const advance = useCallback(() => dispatch({ type: "advance" }), []);
@@ -255,7 +310,7 @@ export function LiveWall({ slug }: { slug: string }) {
       )}
 
       {/* Caption */}
-      {current && (current.guestName || current.note) && (
+      {current && (current.guestName || current.note || current.tableNo !== null) && (
         <div className="absolute top-8 left-8 max-w-[45vw] rounded-2xl bg-black/45 px-5 py-3 backdrop-blur-md">
           {isNew && (
             <span className="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold tracking-wider uppercase" style={{ backgroundColor: accent }}>
@@ -263,6 +318,7 @@ export function LiveWall({ slug }: { slug: string }) {
             </span>
           )}
           {current.guestName && <p className="text-lg font-semibold">{current.guestName}</p>}
+          {current.tableNo !== null && <p className="text-sm text-white/70">🪑 {t("Masa {n}", { n: current.tableNo })}</p>}
           {current.note && <p className="text-base text-white/85 italic">“{current.note}”</p>}
         </div>
       )}
@@ -290,6 +346,28 @@ export function LiveWall({ slug }: { slug: string }) {
         <button type="button" onClick={toggleFullscreen} className="cursor-pointer rounded-full bg-black/45 p-2.5 backdrop-blur-md hover:bg-black/60" aria-label={t("Tam ekran")}>
           {fullscreen ? <Shrink className="h-5 w-5" /> : <Expand className="h-5 w-5" />}
         </button>
+      </div>
+      {/* Floating hearts (hidden for viewers who prefer reduced motion). */}
+      <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden motion-reduce:hidden" aria-hidden>
+        {floating.map((h) => (
+          <span
+            key={h.id}
+            onAnimationEnd={() => setFloating((prev) => prev.filter((x) => x.id !== h.id))}
+            className="absolute bottom-0 opacity-0 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]"
+            style={
+              {
+                left: `${h.left}%`,
+                width: h.size,
+                height: h.size,
+                color: accent,
+                "--eqr-drift": `${h.drift}px`,
+                animation: `eqrHeartFloat ${h.duration}ms ease-out ${h.delay}ms forwards`,
+              } as React.CSSProperties
+            }
+          >
+            <Heart className="h-full w-full fill-current" strokeWidth={1.5} />
+          </span>
+        ))}
       </div>
     </main>
   );

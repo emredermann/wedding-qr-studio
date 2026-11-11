@@ -43,6 +43,8 @@ export interface EventRow {
   challenges?: unknown;
   /** Hosts may see heart names (0003 migration); absent on old schemas = anonymous. */
   hearts_named?: boolean;
+  /** One QR per table (0004 migration); absent on old schemas = single QR. */
+  table_numbers?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,8 @@ export interface MediaItemRow {
   challenge_id?: string | null;
   /** Denormalised heart total (0002 migration), maintained by toggle_media_heart(). */
   heart_count?: number;
+  /** Table the guest scanned (0004 migration); absent on old schemas. */
+  table_no?: number | null;
   published_at: string | null;
   created_at: string;
 }
@@ -101,6 +105,8 @@ export interface PublicEventDto {
   schedule: ScheduleItem[];
   /** Optional photo challenges guests can join while uploading. */
   challenges: Challenge[];
+  /** Table cards carry their own QR (?table=N) and uploads are tagged with the table. */
+  tableNumbers: boolean;
 }
 
 /** Host-facing event info (includes Drive links and stats). */
@@ -114,6 +120,38 @@ export interface HostEventDto extends PublicEventDto {
   heartsNamed: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One guest in the host's guest list (host-only; no session IDs). */
+export interface GuestSummaryDto {
+  /** Opaque row id, only stable within one response. */
+  id: string;
+  /** Last name the guest used ("" if unknown). */
+  name: string;
+  tableNo: number | null;
+  photos: number;
+  videos: number;
+  /** Written notes + voice/video guestbook messages. */
+  messages: number;
+  /** Hearts given; null while the event keeps hearts anonymous. */
+  hearts: number | null;
+  totalBytes: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface GuestListDto {
+  guests: GuestSummaryDto[];
+  heartsNamed: boolean;
+  tableNumbers: boolean;
+}
+
+/** Live wall: hearts given since the last poll (approved items only; never who gave them). */
+export interface RecentHeartsDto {
+  /** Oldest first. */
+  hearts: Array<{ mediaId: string; at: string }>;
+  /** Pass back as `since` on the next poll (server clock, so device clocks don't matter). */
+  cursor: string;
 }
 
 /** Who hearted one item, as the host sees it (names only when allowed). */
@@ -162,6 +200,8 @@ export interface MediaDto {
   note: string | null;
   category: string | null;
   challengeId: string | null;
+  /** Table number from the guest's QR card, if known. */
+  tableNo: number | null;
   isGuestbook: boolean;
   status: MediaStatus;
   width: number | null;

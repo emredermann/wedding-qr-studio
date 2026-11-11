@@ -5,7 +5,6 @@ import { EXTRA_ID_PATTERN } from "@/lib/event-extras";
 import {
   encodeMediaCursor,
   findEventBySlug,
-  MEDIA_COLUMNS,
   mediaCursorFilter,
   parseCursor,
   parseMediaCursor,
@@ -17,6 +16,7 @@ import { eventRoleFor, getHostUser } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { MEDIA_KINDS, type MediaItemRow, type MediaKind, type MediaPage } from "@/types/domain";
+import { hasTableNoColumn, mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
@@ -26,12 +26,13 @@ const PAGE_SIZE = 60;
  * GET /api/events/:slug/media
  *
  * Query: cursor (`<created_at>~<id>`, older-than) | since (ISO published_at, newer-than — live wall),
- *        category, kind, mine=1, guestbook=1, limit.
+ *        category, kind, table, mine=1, guestbook=1, limit.
  * Guests see approved items when the gallery is public, plus their own uploads
  * (any status). If the gallery is private they see only their own uploads.
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
+    const columns = await mediaColumns();
     const { slug } = await context.params;
     // Per-IP: all guests on one venue Wi-Fi share an IP; sized for ~500 guests (load-tested).
     const limited = await rateLimit(request, "gallery", 2000, 60);
@@ -54,6 +55,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     const since = parseCursor(params.get("since"));
     const limit = Math.min(Math.max(Number(params.get("limit")) || PAGE_SIZE, 1), 100);
     const popular = params.get("sort") === "popular";
+    const tableParam = params.get("table");
+    const table = tableParam && /^\d{1,4}$/.test(tableParam) && (await hasTableNoColumn()) ? Number(tableParam) : null;
 
     let canSeeAll = event.gallery_public;
     if (!canSeeAll && !mineOnly) {
@@ -63,7 +66,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
 
     let query = getAdminDb()
       .from("media_items")
-      .select(MEDIA_COLUMNS)
+      .select(columns)
       .eq("event_id", event.id)
       .eq("is_guestbook", guestbook);
 
@@ -72,7 +75,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       if (!canSeeAll) return jsonOk<MediaPage>({ items: [], nextCursor: null });
       let live = getAdminDb()
         .from("media_items")
-        .select(MEDIA_COLUMNS)
+        .select(columns)
         .eq("event_id", event.id)
         .eq("is_guestbook", guestbook)
         .eq("status", "approved")
@@ -92,6 +95,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       }
       if (category) top = top.eq("category", category);
       if (challenge) top = top.eq("challenge_id", challenge);
+      if (table !== null) top = top.eq("table_no", table);
       if (kind) top = top.eq("kind", kind);
       const { data, error } = await top
         .order("heart_count", { ascending: false })
@@ -112,6 +116,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     }
     if (category) query = query.eq("category", category);
     if (challenge) query = query.eq("challenge_id", challenge);
+    if (table !== null) query = query.eq("table_no", table);
     if (kind) query = query.eq("kind", kind);
 
     if (cursor) {

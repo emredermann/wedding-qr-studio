@@ -2,11 +2,12 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { findEventBySlug, MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
+import { findEventBySlug, toMediaDto } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { MediaDto, MediaItemRow } from "@/types/domain";
+import { mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,7 @@ const schema = z.object({
  */
 export async function POST(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
+    const columns = await mediaColumns();
     const { slug } = await context.params;
     const guest = readGuestSession(request);
     const limited = await rateLimit(request, "face-match", 20, 60, guest?.sessionId);
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     const distanceById = new Map(matches.map((m) => [m.media_id, m.distance]));
     const { data, error } = await db
       .from("media_items")
-      .select(MEDIA_COLUMNS)
+      .select(columns)
       .in("id", [...distanceById.keys()])
       .eq("status", "approved");
     if (error) throw new Error(error.message);

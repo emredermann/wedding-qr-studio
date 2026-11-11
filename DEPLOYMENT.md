@@ -23,7 +23,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 ## 1. Supabase (veritabanı + etkinlik sahibi girişi)
 
 1. https://supabase.com → **New project**. Bölge olarak size en yakın olanı seçin (Türkiye için **Frankfurt (eu-central-1)**). Veritabanı şifresini bir yere not edin.
-2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_event_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir. Ardından aynı şekilde `supabase/migrations/0002_engagement_features.sql` dosyasını çalıştırın (program akışı, fotoğraf görevleri, kalpler ve ortak yöneticiler). Son olarak `supabase/migrations/0003_heart_names.sql` dosyasını çalıştırın (beğenenlerin adları ve “Beğenenlerin adını göster” ayarı).
+2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_event_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir. Ardından aynı şekilde `supabase/migrations/0002_engagement_features.sql` dosyasını çalıştırın (program akışı, fotoğraf görevleri, kalpler ve ortak yöneticiler). Ardından `supabase/migrations/0003_heart_names.sql` (beğenenlerin adları ve “Beğenenlerin adını göster” ayarı) ve son olarak `supabase/migrations/0004_tables_and_live_hearts.sql` dosyasını çalıştırın (masa numaraları ve canlı ekrandaki kalpler).
 3. **Project Settings → API** sayfasındaki değerleri `.env.local` dosyasına kopyalayın:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` / *publishable* key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`

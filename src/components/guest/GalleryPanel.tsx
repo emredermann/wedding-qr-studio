@@ -26,6 +26,7 @@ function GalleryFeed({
   challenge,
   popular,
   mineOnly,
+  table,
   extraItems,
   guestName,
   onMessage,
@@ -36,6 +37,8 @@ function GalleryFeed({
   challenge: string | null;
   popular: boolean;
   mineOnly: boolean;
+  /** Only this table's uploads (null = all tables). */
+  table: number | null;
   extraItems: MediaDto[];
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
@@ -47,7 +50,8 @@ function GalleryFeed({
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const baseUrl = `/api/events/${encodeURIComponent(event.slug)}/media`;
-  const filters = { category, challenge, mine: mineOnly ? "1" : null };
+  const tableParam = table === null ? null : String(table);
+  const filters = { category, challenge, mine: mineOnly ? "1" : null, table: tableParam };
   const [heartPatches, setHeartPatches] = useState<Record<string, Pick<MediaDto, "heartCount" | "heartedByMe">>>({});
   const onHeart = (id: string, patch: Pick<MediaDto, "heartCount" | "heartedByMe">) =>
     setHeartPatches((prev) => ({ ...prev, [id]: patch }));
@@ -57,7 +61,7 @@ function GalleryFeed({
     (async () => {
       try {
         const page = await apiFetch<MediaPage>(
-          `${baseUrl}${buildQuery({ category, challenge, mine: mineOnly ? "1" : null, sort: popular ? "popular" : null })}`,
+          `${baseUrl}${buildQuery({ category, challenge, mine: mineOnly ? "1" : null, table: tableParam, sort: popular ? "popular" : null })}`,
         );
         if (cancelled) return;
         setItems(page.items);
@@ -71,7 +75,7 @@ function GalleryFeed({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, category, challenge, mineOnly, popular, onMessage]);
+  }, [baseUrl, category, challenge, mineOnly, tableParam, popular, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -93,6 +97,7 @@ function GalleryFeed({
         !items.some((i) => i.id === x.id) &&
         (!category || x.category === category) &&
         (!challenge || x.challengeId === challenge) &&
+        (table === null || x.tableNo === table) &&
         !x.isGuestbook,
     ),
     ...items,
@@ -203,16 +208,21 @@ export function GalleryPanel({
   event,
   recentUploads,
   guestName,
+  guestTable,
   onMessage,
 }: {
   event: PublicEventDto;
   recentUploads: MediaDto[];
   guestName: string;
+  /** Table from the guest's QR card, if any (offers a "my table" filter). */
+  guestTable: number | null;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
   const [category, setCategory] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(!event.galleryPublic);
+  const [tableOnly, setTableOnly] = useState(false);
+  const table = tableOnly ? guestTable : null;
   const [challenge, setChallenge] = useState<string | null>(null);
   const [popular, setPopular] = useState(false);
 
@@ -254,6 +264,18 @@ export function GalleryPanel({
             {t("Yüklediklerim")}
           </button>
         )}
+        {event.galleryPublic && guestTable !== null && (
+          <button
+            type="button"
+            aria-pressed={tableOnly}
+            onClick={() => setTableOnly((v) => !v)}
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+              tableOnly ? "border-transparent bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"
+            }`}
+          >
+            🪑 {t("Masa {n}", { n: guestTable })}
+          </button>
+        )}
         {[null, ...event.categories].map((cat) => (
           <button
             key={cat ?? "_all"}
@@ -289,12 +311,13 @@ export function GalleryPanel({
       )}
       <GalleryFeed
         guestName={guestName}
-        key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}:${popular}`}
+        key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}:${table ?? "_"}:${popular}`}
         event={event}
         category={category}
         challenge={challenge}
         popular={popular}
         mineOnly={mineOnly}
+        table={table}
         extraItems={recentUploads}
         onMessage={onMessage}
       />

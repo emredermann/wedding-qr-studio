@@ -148,3 +148,18 @@ body {
     transform: scale(1);
   }
 }
+
+/* Live wall: hearts float up from the bottom when guests leave one. */
+@keyframes eqrHeartFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--eqr-drift, 0px), -70vh, 0) scale(1.15);
+    opacity: 0;
+  }
+}

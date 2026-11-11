@@ -35,6 +35,8 @@ export const eventSettingsSchema = z.object({
   guestbookEnabled: z.boolean(),
   /** Hosts may see who hearted what (0003 migration). Only sent when changed. */
   heartsNamed: z.boolean(),
+  /** One QR per table (0004 migration). Only sent when changed. */
+  tableNumbers: z.boolean(),
   schedule: scheduleSchema,
   challenges: challengesSchema,
 });
@@ -66,6 +68,7 @@ export function settingsPatchToColumns(patch: EventSettingsPatch): Record<string
     faceSearchEnabled: "face_search_enabled",
     guestbookEnabled: "guestbook_enabled",
     heartsNamed: "hearts_named",
+    tableNumbers: "table_numbers",
     schedule: "schedule",
     challenges: "challenges",
   };

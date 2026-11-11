@@ -584,4 +584,35 @@ export const EN = {
   "Google Drive şu anda yanıt vermiyor. Lütfen tekrar deneyin.": "Google Drive isn't responding right now. Please try again.",
   "Veritabanı şeması eksik veya eski. Supabase SQL Editor'da supabase/migrations klasöründeki dosyaları sırayla (0001, 0002, …) çalıştırın.": "The database schema is missing or outdated. Run the files in supabase/migrations in order (0001, 0002, …) in the Supabase SQL Editor.",
   "Beklenmeyen bir sunucu hatası oluştu.": "An unexpected server error occurred.",
+  // ── tables
+  "Masa {n}": "Table {n}",
+  "Masa {n} · yüklemeleriniz bu masayla işaretlenir": "Table {n} · your uploads are tagged with this table",
+  // ── tables
+  "Masa numaraları": "Table numbers",
+  "Açıksa her masanın kartına o masanın numarasını taşıyan ayrı bir QR basılır; yüklemeler masa numarasıyla kaydedilir ve galeride masaya göre filtrelenebilir. Kapalıysa tüm kartlarda aynı QR kullanılır.": "If on, each table card gets its own QR code carrying the table number; uploads are tagged with the table and the gallery can be filtered by table. If off, all cards use the same QR code.",
+  // ── tables
+  "Masa numaraları açık: her kartın QR kodu kendi masasını taşır. Masa no aralığını girin.": "Table numbers are on: each card's QR code carries its own table. Enter the table number range.",
+  "Tüm kartlarda aynı QR kodu kullanılır. Masaya özel QR için Ayarlar’da “Masa numaraları”nı açın.": "All cards use the same QR code. Turn on “Table numbers” in Settings for a QR code per table.",
+  // ── tables
+  "Masa no": "Table no.",
+  "Tüm masalar": "All tables",
+  // ── host: guest list
+  "Misafirler": "Guests",
+  "İsimsiz misafir": "Unnamed guest",
+  "Mesaj": "Messages",
+  "İlk": "First",
+  "Son": "Last",
+  "misafirler": "guests",
+  "{n} misafir katıldı": "{n} {n|guest|guests} took part",
+  "{uploads} yükleme · {messages} mesaj": "{uploads} {uploads|upload|uploads} · {messages} {messages|message|messages}",
+  "Bu listeyi yalnızca siz ve ortak yöneticiler görebilirsiniz.": "Only you and your co-hosts can see this list.",
+  "CSV indir": "Download CSV",
+  "İsimle ara": "Search by name",
+  "Son etkinliğe göre": "Most recent activity",
+  "En çok yükleyen": "Most uploads",
+  "İsme göre (A–Z)": "By name (A–Z)",
+  "Beğeniler anonim olduğu için kalp sayıları gösterilmiyor.": "Heart counts are hidden because hearts are anonymous.",
+  "Henüz katılan misafir yok.": "No guests have taken part yet.",
+  "Aramayla eşleşen misafir yok.": "No guests match your search.",
+  "Son etkinlik": "Last activity",
 } as const;

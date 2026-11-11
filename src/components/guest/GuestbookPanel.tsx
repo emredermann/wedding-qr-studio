@@ -20,10 +20,12 @@ type Entry =
 export function GuestbookPanel({
   event,
   guestName,
+  tableNo,
   onMessage,
 }: {
   event: PublicEventDto;
   guestName: string;
+  tableNo: number | null;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
@@ -93,6 +95,7 @@ export function GuestbookPanel({
         fileName: recording.fileName,
         eventSlug: event.slug,
         guestName,
+        tableNo,
         isGuestbook: true,
         onProgress: setUploadProgress,
       });

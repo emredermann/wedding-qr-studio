@@ -1,10 +1,11 @@
 "use client";
 
-import { BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings } from "lucide-react";
+import { BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GuestbookModerationTab } from "@/components/host/GuestbookModerationTab";
+import { GuestsTab } from "@/components/host/GuestsTab";
 import { HostHeader } from "@/components/host/HostHeader";
 import { MediaModerationTab } from "@/components/host/MediaModerationTab";
 import { OverviewTab } from "@/components/host/OverviewTab";
@@ -18,12 +19,13 @@ import type { MsgKey } from "@/lib/i18n/translate";
 
 const STATS_REFRESH_DEBOUNCE_MS = 1500;
 
-type Tab = "overview" | "media" | "guestbook" | "qr" | "settings";
+type Tab = "overview" | "media" | "guestbook" | "guests" | "qr" | "settings";
 
 const TABS: Array<{ id: Tab; label: MsgKey; icon: typeof Images }> = [
   { id: "overview", label: "Özet", icon: LayoutDashboard },
   { id: "media", label: "Medya", icon: Images },
   { id: "guestbook", label: "Anı Defteri", icon: BookHeart },
+  { id: "guests", label: "Misafirler", icon: Users },
   { id: "qr", label: "QR & Masa Kartı", icon: QrCode },
   { id: "settings", label: "Ayarlar", icon: Settings },
 ];
@@ -158,8 +160,9 @@ export function HostEventApp({ eventId }: { eventId: string }) {
         {tab === "overview" && <OverviewTab event={event} stats={stats} guestUrl={guestUrl} onToggleUploads={toggleUploads} onMessage={onMessage} />}
         {tab === "media" && <MediaModerationTab event={event} pendingCount={stats.pending} onMessage={onMessage} onChanged={refresh} />}
         {tab === "guestbook" && <GuestbookModerationTab event={event} onMessage={onMessage} />}
+        {tab === "guests" && <GuestsTab event={event} onMessage={onMessage} />}
         {tab === "qr" && (
-          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} />
+          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} />
         )}
         {tab === "settings" && <SettingsTab key={event.updatedAt} event={event} onSaved={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
       </main>

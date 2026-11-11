@@ -4,12 +4,13 @@ import { handleRouteError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { mapSettledLimit } from "@/lib/concurrency";
 import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
-import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
+import { toMediaDto } from "@/lib/events";
 import { requireEventAccess } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { bulkMediaSchema } from "@/lib/validation";
 import type { BulkMediaResponse, MediaItemRow, MediaStatus } from "@/types/domain";
+import { mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,6 +28,7 @@ const DRIVE_CONCURRENCY = 6;
  */
 export async function POST(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   try {
+    const columns = await mediaColumns();
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ev
     const { ids, action } = body.data;
 
     const db = getAdminDb();
-    const found = await db.from("media_items").select(MEDIA_COLUMNS).eq("event_id", owned.event.id).in("id", ids);
+    const found = await db.from("media_items").select(columns).eq("event_id", owned.event.id).in("id", ids);
     if (found.error) throw new Error(found.error.message);
     const rows = (found.data ?? []) as MediaItemRow[];
     const foundIds = new Set(rows.map((r) => r.id));
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ev
         .update(target === "approved" ? { status: target, published_at: new Date().toISOString() } : { status: target })
         .eq("event_id", owned.event.id)
         .in("id", succeeded)
-        .select(MEDIA_COLUMNS);
+        .select(columns);
       if (update.error) throw new Error(update.error.message);
       updated = (update.data ?? []) as MediaItemRow[];
     }

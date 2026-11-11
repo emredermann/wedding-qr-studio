@@ -4,10 +4,11 @@ import { z } from "zod";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
-import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
+import { toMediaDto } from "@/lib/events";
 import { loadOwnedChild } from "@/lib/host-ownership";
 import { getAdminDb } from "@/lib/supabase/server";
 import { MEDIA_STATUSES, type MediaDto, type MediaItemRow } from "@/types/domain";
+import { mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,7 @@ const patchSchema = z
  */
 export async function PATCH(request: NextRequest, context: Ctx) {
   try {
+    const columns = await mediaColumns();
     const { mediaId } = await context.params;
     const owned = await loadOwnedChild<MediaItemRow>("media_items", mediaId);
     if (owned === "unauthenticated") return jsonError(401, "UNAUTHENTICATED", "Lütfen giriş yapın.");
@@ -52,7 +54,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
       .from("media_items")
       .update(update)
       .eq("id", row.id)
-      .select(MEDIA_COLUMNS)
+      .select(columns)
       .single();
     if (error) throw new Error(error.message);
     return jsonOk<{ media: MediaDto }>({ media: toMediaDto(data as MediaItemRow) });

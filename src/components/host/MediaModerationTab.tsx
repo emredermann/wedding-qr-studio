@@ -20,6 +20,7 @@ function MediaFeed({
   kind,
   category,
   challenge,
+  table,
   popular,
   onMessage,
   onChanged,
@@ -29,6 +30,7 @@ function MediaFeed({
   kind: KindFilter;
   category: string | null;
   challenge: string | null;
+  table: string | null;
   popular: boolean;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
   onChanged: () => void;
@@ -48,6 +50,7 @@ function MediaFeed({
     if (kind !== "all") params.set("kind", kind);
     if (category) params.set("category", category);
     if (challenge) params.set("challenge", challenge);
+    if (table) params.set("table", table);
     if (popular) params.set("sort", "popular");
     for (const [k, v] of Object.entries(extra)) if (v) params.set(k, v);
     return `/api/host/events/${event.id}/media?${params.toString()}`;
@@ -62,6 +65,7 @@ function MediaFeed({
         if (kind !== "all") params.set("kind", kind);
         if (category) params.set("category", category);
         if (challenge) params.set("challenge", challenge);
+        if (table) params.set("table", table);
         if (popular) params.set("sort", "popular");
         const page = await apiFetch<MediaPage>(`/api/host/events/${event.id}/media?${params.toString()}`);
         if (cancelled) return;
@@ -76,7 +80,7 @@ function MediaFeed({
     return () => {
       cancelled = true;
     };
-  }, [event.id, status, kind, category, challenge, popular, onMessage]);
+  }, [event.id, status, kind, category, challenge, table, popular, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -304,6 +308,8 @@ export function MediaModerationTab({
   const [category, setCategory] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<string | null>(null);
   const [popular, setPopular] = useState(false);
+  const [tableDraft, setTableDraft] = useState("");
+  const table = event.tableNumbers && /^\d{1,4}$/.test(tableDraft) ? tableDraft : null;
 
   const chip = (active: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`;
@@ -337,6 +343,19 @@ export function MediaModerationTab({
             <Heart className="h-3.5 w-3.5" /> {t("En sevilenler")}
           </span>
         </button>
+        {event.tableNumbers && (
+          <label className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white py-1 pr-1 pl-3 text-xs text-stone-700">
+            🪑
+            <input
+              value={tableDraft}
+              inputMode="numeric"
+              placeholder={t("Masa no")}
+              aria-label={t("Masa no")}
+              onChange={(e) => setTableDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              className="w-16 bg-transparent outline-none"
+            />
+          </label>
+        )}
       </div>
       {event.categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -357,12 +376,13 @@ export function MediaModerationTab({
         </div>
       )}
       <MediaFeed
-        key={`${status}:${kind}:${category ?? ""}:${challenge ?? ""}:${popular}`}
+        key={`${status}:${kind}:${category ?? ""}:${challenge ?? ""}:${table ?? ""}:${popular}`}
         event={event}
         status={status}
         kind={kind}
         category={category}
         challenge={challenge}
+        table={table}
         popular={popular}
         onMessage={onMessage}
         onChanged={onChanged}

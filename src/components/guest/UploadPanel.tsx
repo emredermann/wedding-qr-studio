@@ -59,11 +59,14 @@ function detectKind(file: File): MediaKind | null {
 export function UploadPanel({
   event,
   guestName,
+  tableNo,
   onUploaded,
   onMessage,
 }: {
   event: PublicEventDto;
   guestName: string;
+  /** Table from the guest's QR card; sent with every upload. */
+  tableNo: number | null;
   onUploaded: (media: MediaDto) => void;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
@@ -132,6 +135,7 @@ export function UploadPanel({
         note: item.note,
         category: item.category,
         challengeId: item.challengeId,
+        tableNo,
         extras,
         onProgress: (fraction) => patch(item.id, { progress: fraction }),
         onBytesUploaded: () => {
@@ -282,6 +286,10 @@ export function UploadPanel({
           }}
         />
       </div>
+
+      {tableNo !== null && (
+        <p className="-mt-2 text-center text-[11px] text-stone-500">🪑 {t("Masa {n} · yüklemeleriniz bu masayla işaretlenir", { n: tableNo })}</p>
+      )}
 
       {event.categories.length > 0 && (
         <div>

@@ -104,6 +104,7 @@ export function Lightbox({
           <p className="truncate">
             {new Date(item.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
             {item.category ? ` · ${item.category}` : ""}
+            {item.tableNo !== null ? ` · ${t("Masa {n}", { n: item.tableNo })}` : ""}
             {challengeTitle ? ` · ${challengeTitle}` : ""} · {formatBytes(item.sizeBytes)}
           </p>
         </div>

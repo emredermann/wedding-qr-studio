@@ -3,6 +3,8 @@
 import { Download, FileDown, ImageUp, Loader2, Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
@@ -14,6 +16,35 @@ type TemplateId = "klasik" | "modern" | "botanik" | "gece";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
 type CenterMode = "harfler" | "kalp" | "foto" | "yok";
 type PaperSize = "A6" | "A5" | "A4x4";
+
+/** Guest link for one table card (`?table=N`), or the plain link. */
+export function tableUrl(url: string, table: string | null, perTable: boolean): string {
+  if (!perTable || !table) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}table=${encodeURIComponent(table)}`;
+}
+
+/**
+ * Renders a QR code for `value` off-screen and returns a copy of its canvas.
+ * Used when every table card needs its own code (qrcode.react paints in an
+ * effect, so we give it a tick before copying).
+ */
+async function renderQrCanvas(value: string, fgColor: string): Promise<HTMLCanvasElement> {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    flushSync(() => root.render(<QRCodeCanvas value={value} size={1024} level="H" fgColor={fgColor} bgColor="#FFFFFF" marginSize={0} />));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const source = host.querySelector("canvas");
+    if (!source) throw new Error("Canvas desteklenmiyor.");
+    const copy = document.createElement("canvas");
+    copy.width = source.width;
+    copy.height = source.height;
+    copy.getContext("2d")?.drawImage(source, 0, 0);
+    return copy;
+  } finally {
+    root.unmount();
+  }
+}
 
 interface Palette {
   background: string;
@@ -309,12 +340,15 @@ export function QrCardDesigner({
   dateText,
   themeColor,
   slug,
+  tableNumbers,
 }: {
   url: string;
   coupleNames: string;
   dateText: string;
   themeColor: string;
   slug: string;
+  /** Event setting: each table card gets its own QR (?table=N). */
+  tableNumbers: boolean;
 }) {
   const t = useT();
   const [template, setTemplate] = useState<TemplateId>("klasik");
@@ -402,20 +436,22 @@ export function QrCardDesigner({
     img.src = objectUrl;
   };
 
-  const renderCardCanvas = (tableNumber: string | null, size: { width: number; height: number }) => {
+  const renderCardCanvas = async (tableNumber: string | null, size: { width: number; height: number }) => {
     const canvas = document.createElement("canvas");
     canvas.width = size.width;
     canvas.height = size.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas desteklenmiyor.");
-    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, tableNumber);
+    // With table numbers on, every card carries its own code; otherwise one shared code.
+    const qr = tableNumbers && tableNumber ? await renderQrCanvas(tableUrl(url, tableNumber, true), palette.qr) : qrRef.current;
+    drawCard(ctx, size.width, size.height, options, qr, photo, tableNumber);
     return canvas;
   };
 
   const exportPng = async () => {
     setExporting("png");
     try {
-      const canvas = renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
+      const canvas = await renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (blob) {
         saveBlob(blob, `masa-karti-${slug}${tables[0] ? `-${tables[0]}` : ""}.png`);
@@ -441,10 +477,11 @@ export function QrCardDesigner({
           if (!ctx) throw new Error("Canvas desteklenmiyor.");
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(0, 0, sheet.width, sheet.height);
-          list.slice(i, i + 4).forEach((table, j) => {
-            const card = renderCardCanvas(table, CARD_PX.A6);
+          const group = list.slice(i, i + 4);
+          for (let j = 0; j < group.length; j += 1) {
+            const card = await renderCardCanvas(group[j], CARD_PX.A6);
             ctx.drawImage(card, (j % 2) * CARD_PX.A6.width, Math.floor(j / 2) * CARD_PX.A6.height);
-          });
+          }
           // Cut guides
           ctx.strokeStyle = "#BBBBBB";
           ctx.lineWidth = 2;
@@ -467,7 +504,7 @@ export function QrCardDesigner({
         const px = paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
         const pt = PAGE_SIZES_PT[paper];
         for (const table of list) {
-          const canvas = renderCardCanvas(table, px);
+          const canvas = await renderCardCanvas(table, px);
           pages.push({ jpeg: await canvasToJpegBytes(canvas), pixelWidth: px.width, pixelHeight: px.height, pageWidthPt: pt.width, pageHeightPt: pt.height });
         }
       }
@@ -484,7 +521,7 @@ export function QrCardDesigner({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="hidden">
-        <QRCodeCanvas ref={qrRef} value={url} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
+        <QRCodeCanvas ref={qrRef} value={tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
       </div>
 
       <div className="order-2 space-y-5 lg:order-1">
@@ -575,6 +612,9 @@ export function QrCardDesigner({
         </section>
 
         <section className="grid grid-cols-3 gap-3">
+          <p className="col-span-full rounded-xl bg-stone-100 px-3 py-2 text-[11px] text-stone-600">
+            🪑 {tableNumbers ? t("Masa numaraları açık: her kartın QR kodu kendi masasını taşır. Masa no aralığını girin.") : t("Tüm kartlarda aynı QR kodu kullanılır. Masaya özel QR için Ayarlar’da “Masa numaraları”nı açın.")}
+          </p>
           <label className="block">
             <span className={label}>{t("Masa etiketi")}</span>
             <input value={tableLabel} maxLength={16} onChange={(e) => setTableLabel(e.target.value)} className={field} />

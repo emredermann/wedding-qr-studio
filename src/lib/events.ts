@@ -34,6 +34,7 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
     guestbookEnabled: event.guestbook_enabled,
     schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
     challenges: readChallenges(event.challenges),
+    tableNumbers: event.table_numbers === true,
   };
 }
 
@@ -62,6 +63,7 @@ export function toMediaDto(row: MediaItemRow, guestSessionId?: string | null): M
     note: row.note,
     category: row.category,
     challengeId: row.challenge_id ?? null,
+    tableNo: row.table_no ?? null,
     heartCount: Number(row.heart_count ?? 0),
     isGuestbook: row.is_guestbook,
     status: row.status,

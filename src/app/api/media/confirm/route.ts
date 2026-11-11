@@ -4,7 +4,7 @@ import { z } from "zod";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import type { DriveClient } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
-import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
+import { toMediaDto } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
 import { EXTRA_ID_PATTERN, knownChallengeId, readChallenges } from "@/lib/event-extras";
 import { detectMimeFromMagicBytes } from "@/lib/media-config";
@@ -13,6 +13,7 @@ import { verifyToken } from "@/lib/signing";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { UploadTokenPayload } from "@/lib/upload-token";
 import type { EventRow, MediaDto, MediaItemRow } from "@/types/domain";
+import { hasTableNoColumn, mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,8 @@ const schema = z.object({
     .transform((v) => (v ? v : null)),
   /** Optional photo challenge id; kept only if it belongs to the event. */
   challengeId: z.string().regex(EXTRA_ID_PATTERN).optional(),
+  /** Table number from the guest's QR card (?table=N). */
+  tableNo: z.number().int().min(0).max(9999).optional(),
   faces: z.array(descriptorSchema).max(30).default([]),
   width: z.number().int().positive().max(100_000).optional(),
   height: z.number().int().positive().max(100_000).optional(),
@@ -75,6 +78,7 @@ async function makePublicWithRetry(drive: DriveClient, fileId: string): Promise<
  */
 export async function POST(request: NextRequest) {
   try {
+    const columns = await mediaColumns();
     const guest = readGuestSession(request);
     if (!guest) return jsonError(401, "NO_GUEST_SESSION", "Oturum bulunamadı. Sayfayı yenileyip tekrar deneyin.");
 
@@ -83,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     const body = await parseJsonBody(request, schema, 192 * 1024);
     if (!body.ok) return body.response;
-    const { uploadToken, fileId, guestName, note, category, challengeId, faces, width, height } = body.data;
+    const { uploadToken, fileId, guestName, note, category, challengeId, tableNo, faces, width, height } = body.data;
 
     const token = verifyToken<UploadTokenPayload>("upload", uploadToken);
     if (!token || token.x < Date.now()) {
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
     const db = getAdminDb();
 
     // Idempotency: a retried confirm returns the existing row.
-    const existing = await db.from("media_items").select(MEDIA_COLUMNS).eq("drive_file_id", fileId).maybeSingle();
+    const existing = await db.from("media_items").select(columns).eq("drive_file_id", fileId).maybeSingle();
     if (existing.error) throw new Error(existing.error.message);
     if (existing.data) {
       const row = existing.data as MediaItemRow;
@@ -154,6 +158,8 @@ export async function POST(request: NextRequest) {
         category: safeCategory,
         // Only written when set, so uploads keep working before the 0002 migration.
         ...(safeChallenge ? { challenge_id: safeChallenge } : {}),
+        // Only when the event uses table numbers (and the 0004 migration has been run).
+        ...(tableNo !== undefined && event.table_numbers === true && (await hasTableNoColumn()) ? { table_no: tableNo } : {}),
         is_guestbook: token.b,
         status,
         width: width ?? file.imageMediaMetadata?.width ?? file.videoMediaMetadata?.width ?? null,
@@ -161,12 +167,12 @@ export async function POST(request: NextRequest) {
         face_count: facesToStore.length,
         published_at: status === "approved" ? new Date().toISOString() : null,
       })
-      .select(MEDIA_COLUMNS)
+      .select(columns)
       .single();
 
     if (insert.error) {
       if (insert.error.code === "23505") {
-        const raced = await db.from("media_items").select(MEDIA_COLUMNS).eq("drive_file_id", fileId).single();
+        const raced = await db.from("media_items").select(columns).eq("drive_file_id", fileId).single();
         if (!raced.error && raced.data) {
           return jsonOk<{ media: MediaDto }>({ media: toMediaDto(raced.data as MediaItemRow, guest.sessionId) });
         }
@@ -203,7 +209,7 @@ export async function POST(request: NextRequest) {
           .from("media_items")
           .update({ face_count: 0 })
           .eq("id", row.id)
-          .select(MEDIA_COLUMNS)
+          .select(columns)
           .single();
         if (fix.error) {
           console.error("[media:confirm] face_count reset failed", fix.error.message);

@@ -39,6 +39,7 @@ export function SettingsTab({
   const [schedule, setSchedule] = useState(event.schedule);
   const [challenges, setChallenges] = useState(event.challenges);
   const [heartsNamed, setHeartsNamed] = useState(event.heartsNamed);
+  const [tableNumbers, setTableNumbers] = useState(event.tableNumbers);
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -52,6 +53,7 @@ export function SettingsTab({
       const scheduleChanged = JSON.stringify(schedule) !== JSON.stringify(event.schedule);
       const challengesChanged = JSON.stringify(challenges) !== JSON.stringify(event.challenges);
       const heartsNamedChanged = heartsNamed !== event.heartsNamed;
+      const tableNumbersChanged = tableNumbers !== event.tableNumbers;
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
         method: "PATCH",
         json: {
@@ -59,11 +61,13 @@ export function SettingsTab({
           ...(scheduleChanged ? { schedule } : {}),
           ...(challengesChanged ? { challenges } : {}),
           ...(heartsNamedChanged ? { heartsNamed } : {}),
+          ...(tableNumbersChanged ? { tableNumbers } : {}),
         },
       });
       setSchedule(res.event.schedule);
       setChallenges(res.event.challenges);
       setHeartsNamed(res.event.heartsNamed);
+      setTableNumbers(res.event.tableNumbers);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage(t("Ayarlar kaydedildi."), "success");
@@ -191,6 +195,13 @@ export function SettingsTab({
               <span className="block text-xs text-stone-500">
                 {t("Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.")}
               </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
+            <input type="checkbox" checked={tableNumbers} onChange={(e) => setTableNumbers(e.target.checked)} className="mt-0.5 h-5 w-5 accent-stone-900" />
+            <span>
+              <span className="block text-sm font-medium text-stone-900">🪑 {t("Masa numaraları")}</span>
+              <span className="block text-xs text-stone-500">{t("Açıksa her masanın kartına o masanın numarasını taşıyan ayrı bir QR basılır; yüklemeler masa numarasıyla kaydedilir ve galeride masaya göre filtrelenebilir. Kapalıysa tüm kartlarda aynı QR kullanılır.")}</span>
             </span>
           </label>
         </div>

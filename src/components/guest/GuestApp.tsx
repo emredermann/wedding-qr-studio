@@ -13,6 +13,7 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/client/analytics";
+import { resolveGuestTable } from "@/lib/client/table";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
@@ -46,6 +47,8 @@ export function GuestApp({ slug }: { slug: string }) {
   const [nameDraft, setNameDraft] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [tab, setTab] = useState<Tab | null>(null);
+  // Table number from the QR card (?table=N), remembered for this event.
+  const [scannedTable] = useState(() => resolveGuestTable(slug));
   const [recentUploads, setRecentUploads] = useState<MediaDto[]>([]);
   const { toasts, pushToast, dismissToast } = useToastQueue();
 
@@ -102,6 +105,8 @@ export function GuestApp({ slug }: { slug: string }) {
   }
 
   const accentStyle = { "--accent": event.themeColor } as React.CSSProperties;
+  // Only events that use per-table QR codes care about the table number.
+  const tableNo = event.tableNumbers ? scannedTable : null;
   const displayName = event.coupleNames || event.title;
   const dateText = formatDate(event.eventDate, locale);
 
@@ -206,14 +211,15 @@ export function GuestApp({ slug }: { slug: string }) {
             <UploadPanel
               event={event}
               guestName={guestName}
+              tableNo={tableNo}
               onUploaded={(media) => setRecentUploads((prev) => [media, ...prev])}
               onMessage={onMessage}
             />
           </div>
         )}
-        {activeTab === "gallery" && <GalleryPanel event={event} recentUploads={recentUploads} guestName={guestName} onMessage={onMessage} />}
+        {activeTab === "gallery" && <GalleryPanel event={event} recentUploads={recentUploads} guestName={guestName} guestTable={tableNo} onMessage={onMessage} />}
         {activeTab === "find" && <FaceSearchPanel event={event} onMessage={onMessage} />}
-        {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} onMessage={onMessage} />}
+        {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} tableNo={tableNo} onMessage={onMessage} />}
       </div>
 
       <nav className="eqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 backdrop-blur-md">
