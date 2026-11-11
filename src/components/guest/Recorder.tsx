@@ -4,6 +4,8 @@ import { Loader2, Mic, Square, Video, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { MAX_AUDIO_RECORDING_SECONDS, MAX_VIDEO_RECORDING_SECONDS } from "@/lib/media-config";
+import { useT } from "@/lib/i18n/provider";
+import { tClient, translateLoose } from "@/lib/i18n/translate";
 
 // MP4/AAC first: it plays everywhere (iPhone, Google Drive preview) and carries its
 // duration. Chrome's WebM recordings have no duration, so Drive shows 0:00 and
@@ -43,6 +45,7 @@ export function Recorder({
   onCancel: () => void;
   onError: (message: string) => void;
 }) {
+  const t = useT();
   const [state, setState] = useState<"starting" | "recording" | "preview">("starting");
   const [seconds, setSeconds] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export function Recorder({
     (async () => {
       try {
         if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Bu tarayıcı kayıt yapmayı desteklemiyor.");
+          throw new Error(tClient("Bu tarayıcı kayıt yapmayı desteklemiyor."));
         }
         const stream = await navigator.mediaDevices.getUserMedia(
           mode === "audio"
@@ -96,7 +99,7 @@ export function Recorder({
           const blob = new Blob(chunks, { type });
           const previewBlob = fullType === type ? blob : new Blob(chunks, { type: fullType });
           if (blob.size === 0) {
-            onError("Kayıt boş görünüyor, lütfen tekrar deneyin.");
+            onError(tClient("Kayıt boş görünüyor, lütfen tekrar deneyin."));
             onCancel();
             return;
           }
@@ -121,11 +124,11 @@ export function Recorder({
         onError(
           error instanceof DOMException && error.name === "NotAllowedError"
             ? mode === "audio"
-              ? "Mikrofon izni verilmedi."
-              : "Kamera/mikrofon izni verilmedi."
+              ? tClient("Mikrofon izni verilmedi.")
+              : tClient("Kamera/mikrofon izni verilmedi.")
             : error instanceof Error
-              ? error.message
-              : "Kayıt başlatılamadı.",
+              ? translateLoose(error.message)
+              : tClient("Kayıt başlatılamadı."),
         );
         onCancel();
       }
@@ -159,9 +162,9 @@ export function Recorder({
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-2 text-sm font-semibold text-stone-800">
           {mode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />}
-          {mode === "audio" ? "Sesli mesaj" : "Video mesaj"}
+          {mode === "audio" ? t("Sesli mesaj") : t("Video mesaj")}
         </p>
-        <button type="button" onClick={onCancel} aria-label="Vazgeç" className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100">
+        <button type="button" onClick={onCancel} aria-label={t("Vazgeç")} className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -172,7 +175,7 @@ export function Recorder({
 
       {state === "starting" && (
         <p className="flex items-center justify-center gap-2 py-6 text-sm text-stone-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Hazırlanıyor…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("Hazırlanıyor…")}
         </p>
       )}
 
@@ -181,9 +184,9 @@ export function Recorder({
           <p className="flex items-center gap-2 font-mono text-2xl text-stone-900">
             <span className="h-3 w-3 animate-pulse rounded-full bg-rose-600" /> {mmss}
           </p>
-          <p className="text-xs text-stone-500">En fazla {Math.round(limit / 60) >= 1 ? `${Math.round(limit / 60)} dakika` : `${limit} saniye`}</p>
+          <p className="text-xs text-stone-500">{Math.round(limit / 60) >= 1 ? t("En fazla {n} dakika", { n: Math.round(limit / 60) }) : t("En fazla {n} saniye", { n: limit })}</p>
           <button type="button" onClick={stop} className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-6 py-3 text-sm font-semibold text-white">
-            <Square className="h-4 w-4 fill-current" /> Kaydı bitir
+            <Square className="h-4 w-4 fill-current" /> {t("Kaydı bitir")}
           </button>
         </div>
       )}
@@ -197,7 +200,7 @@ export function Recorder({
           )}
           <div className="flex gap-2">
             <button type="button" onClick={onCancel} className="flex-1 rounded-full border border-stone-300 py-2.5 text-sm font-medium text-stone-700">
-              Sil
+              {t("Sil")}
             </button>
             <button
               type="button"
@@ -205,7 +208,7 @@ export function Recorder({
               className="flex-1 rounded-full py-2.5 text-sm font-semibold text-white"
               style={{ backgroundColor: "var(--accent)" }}
             >
-              Gönder
+              {t("Gönder")}
             </button>
           </div>
         </div>

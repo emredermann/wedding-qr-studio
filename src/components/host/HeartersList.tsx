@@ -5,9 +5,11 @@ import { useState } from "react";
 
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, MediaHeartsDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
 
 /** Lightbox footer: "❤️ 12 · Beğenenler" → names (or an anonymous count). */
 export function HeartersList({ eventId, item }: { eventId: string; item: MediaDto }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<MediaHeartsDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function HeartersList({ eventId, item }: { eventId: string; item: MediaDt
         className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/25"
       >
         <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
-        <span className="tabular-nums">{item.heartCount}</span> · Beğenenler
+        <span className="tabular-nums">{item.heartCount}</span> · {t("Beğenenler")}
         <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -49,7 +51,7 @@ export function HeartersList({ eventId, item }: { eventId: string; item: MediaDt
           {data && (
             <>
               {!data.named && (
-                <p className="text-white/70">Beğeniler anonim. Adları görmek için Ayarlar’da “Beğenenlerin adını göster”i açın.</p>
+                <p className="text-white/70">{t("Beğeniler anonim. Adları görmek için Ayarlar’da “Beğenenlerin adını göster”i açın.")}</p>
               )}
               {data.people.length > 0 && (
                 <ul className="flex flex-wrap gap-1.5">
@@ -61,7 +63,7 @@ export function HeartersList({ eventId, item }: { eventId: string; item: MediaDt
                 </ul>
               )}
               {data.named && data.anonymousCount > 0 && (
-                <p className={`text-white/60 ${data.people.length ? "mt-2" : ""}`}>+ {data.anonymousCount} anonim misafir</p>
+                <p className={`text-white/60 ${data.people.length ? "mt-2" : ""}`}>{t("+ {n} anonim misafir", { n: data.anonymousCount })}</p>
               )}
             </>
           )}

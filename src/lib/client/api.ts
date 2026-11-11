@@ -1,5 +1,6 @@
 "use client";
 
+import { translateLoose } from "@/lib/i18n/translate";
 import type { ApiErrorBody } from "@/types/domain";
 
 export class ApiError extends Error {
@@ -13,7 +14,7 @@ export class ApiError extends Error {
   }
 }
 
-/** fetch wrapper: JSON in/out, same-origin cookies, Turkish error messages. */
+/** fetch wrapper: JSON in/out, same-origin cookies. Error messages are Turkish; `errorMessage` translates them for display. */
 export async function apiFetch<T>(url: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, headers, ...rest } = init;
   let res: Response;
@@ -47,7 +48,8 @@ export async function apiFetch<T>(url: string, init: RequestInit & { json?: unkn
   return body as T;
 }
 
+/** User-facing text for any error, in the current language. */
 export function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Beklenmeyen bir hata oluştu.";
+  if (error instanceof Error) return translateLoose(error.message);
+  return translateLoose("Beklenmeyen bir hata oluştu.");
 }

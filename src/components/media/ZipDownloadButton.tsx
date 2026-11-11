@@ -6,9 +6,11 @@ import { useRef, useState } from "react";
 import { trackEvent, type AnalyticsEvents } from "@/lib/client/analytics";
 import { downloadZip, type DownloadableFile, type ZipProgress } from "@/lib/client/download";
 import { formatBytes } from "@/lib/media-config";
+import { useLang, useT } from "@/lib/i18n/provider";
+import { translateLoose } from "@/lib/i18n/translate";
 
 export function ZipDownloadButton({
-  label = "Tümünü indir (ZIP)",
+  label,
   baseName,
   loadFiles,
   className = "",
@@ -23,6 +25,8 @@ export function ZipDownloadButton({
   className?: string;
   onMessage?: (text: string, variant: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
+  const { locale } = useLang();
   const [progress, setProgress] = useState<ZipProgress | null>(null);
   const [busy, setBusy] = useState(false);
   const controller = useRef<AbortController | null>(null);
@@ -33,19 +37,19 @@ export function ZipDownloadButton({
     try {
       const files = await loadFiles();
       if (files.length === 0) {
-        onMessage?.("İndirilecek dosya yok.", "info");
+        onMessage?.(t("İndirilecek dosya yok."), "info");
         return;
       }
       const result = await downloadZip(files, baseName, setProgress, controller.current.signal);
       trackEvent("zip_downloaded", { scope, files: files.length - result.failed.length });
       if (result.failed.length > 0) {
-        onMessage?.(`${result.failed.length} dosya indirilemedi, kalanlar ZIP'e eklendi.`, "error");
+        onMessage?.(t("{n} dosya indirilemedi, kalanlar ZIP'e eklendi.", { n: result.failed.length }), "error");
       } else {
-        onMessage?.("ZIP dosyası hazır.", "success");
+        onMessage?.(t("ZIP dosyası hazır."), "success");
       }
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
-        onMessage?.(error instanceof Error ? error.message : "İndirme başarısız.", "error");
+        onMessage?.(error instanceof Error ? translateLoose(error.message) : t("İndirme başarısız."), "error");
       }
     } finally {
       setBusy(false);
@@ -62,15 +66,15 @@ export function ZipDownloadButton({
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
             <span>
-              {progress ? `${progress.doneFiles}/${progress.totalFiles} dosya` : "Hazırlanıyor…"}
+              {progress ? t("{done}/{total} dosya", { done: progress.doneFiles, total: progress.totalFiles }) : t("Hazırlanıyor…")}
             </span>
-            <span>{progress ? `${formatBytes(progress.doneBytes)} · %${pct}` : ""}</span>
+            <span>{progress ? `${formatBytes(progress.doneBytes)} · ${new Intl.NumberFormat(locale, { style: "percent" }).format(pct / 100)}` : ""}</span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-200">
             <div className="h-full bg-amber-600 transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <button type="button" onClick={() => controller.current?.abort()} aria-label="İptal" className="rounded-full p-1 hover:bg-stone-100">
+        <button type="button" onClick={() => controller.current?.abort()} aria-label={t("İptal")} className="rounded-full p-1 hover:bg-stone-100">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -84,7 +88,7 @@ export function ZipDownloadButton({
       className={`inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm transition hover:bg-stone-50 ${className}`}
     >
       <Archive className="h-4 w-4" />
-      {label}
+      {label ?? t("Tümünü indir (ZIP)")}
     </button>
   );
 }

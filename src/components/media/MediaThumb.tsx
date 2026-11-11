@@ -5,8 +5,10 @@ import { useState } from "react";
 
 import { mediaImageSrc } from "@/lib/media-urls";
 import type { MediaDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
 
 export function MediaThumb({ item, size = 600, className = "" }: { item: MediaDto; size?: number; className?: string }) {
+  const t = useT();
   const [failed, setFailed] = useState(false);
 
   if (item.kind === "audio") {
@@ -15,7 +17,7 @@ export function MediaThumb({ item, size = 600, className = "" }: { item: MediaDt
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
           <Mic className="h-5 w-5" />
         </span>
-        <span className="line-clamp-2 text-[11px] font-medium leading-tight">{item.guestName ?? "Sesli mesaj"}</span>
+        <span className="line-clamp-2 text-[11px] font-medium leading-tight">{item.guestName ?? t("Sesli mesaj")}</span>
         <StatusBadge status={item.status} />
       </div>
     );
@@ -35,7 +37,7 @@ export function MediaThumb({ item, size = 600, className = "" }: { item: MediaDt
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-stone-800 text-[11px] text-stone-300">
-          {item.kind === "video" ? "Video işleniyor…" : "Önizleme hazırlanıyor…"}
+          {item.kind === "video" ? t("Video işleniyor…") : t("Önizleme hazırlanıyor…")}
         </div>
       )}
       {item.kind === "video" && (
@@ -53,6 +55,7 @@ export function MediaThumb({ item, size = 600, className = "" }: { item: MediaDt
 }
 
 export function StatusBadge({ status }: { status: MediaDto["status"] }) {
+  const t = useT();
   if (status === "approved") return null;
   return (
     <span
@@ -61,7 +64,7 @@ export function StatusBadge({ status }: { status: MediaDto["status"] }) {
       }`}
     >
       {status === "pending" ? <Clock className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-      {status === "pending" ? "Onay bekliyor" : "Gizli"}
+      {status === "pending" ? t("Onay bekliyor") : t("Gizli")}
     </span>
   );
 }

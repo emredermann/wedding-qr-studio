@@ -10,7 +10,8 @@ import { getHostUser } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { createEventSchema } from "@/lib/validation";
-import type { EventRow, HostEventDto, HostEventListItem } from "@/types/domain";
+import { DEFAULT_CATEGORIES_EN, type EventRow, type HostEventDto, type HostEventListItem } from "@/types/domain";
+import { getServerLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
         drive_voice_folder_id: folders.voiceId,
         drive_account: account,
         theme_color: BRAND.defaultEventColor,
+        // The database default categories are Turkish; English hosts get English ones.
+        ...((await getServerLang()) === "en" ? { categories: [...DEFAULT_CATEGORIES_EN] } : {}),
         // Optional extras are only written when set, so creating a plain event
         // keeps working even before the 0002 migration has been run.
         ...(schedule && schedule.length > 0 ? { schedule } : {}),

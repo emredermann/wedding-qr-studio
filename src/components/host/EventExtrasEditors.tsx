@@ -13,11 +13,14 @@ import {
   type Challenge,
   type ScheduleItem,
 } from "@/lib/event-extras";
+import { useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
 
 const input = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
 
 /** Emoji button that opens a small picker; "Otomatik" goes back to the title-based emoji. */
 function EmojiPicker({ item, onPick }: { item: ScheduleItem; onPick: (emoji: string | null) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +54,8 @@ function EmojiPicker({ item, onPick }: { item: ScheduleItem; onPick: (emoji: str
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="true"
         aria-expanded={open}
-        aria-label={`Simge: ${current}. Değiştirmek için tıklayın`}
-        title="Simgeyi değiştir"
+        aria-label={t("Simge: {emoji}. Değiştirmek için tıklayın", { emoji: current })}
+        title={t("Simgeyi değiştir")}
         className={`flex h-9 w-full items-center justify-center rounded-xl border text-lg transition hover:bg-stone-100 ${open ? "border-stone-400 bg-stone-100" : "border-stone-200 bg-stone-50"}`}
       >
         {current}
@@ -64,7 +67,7 @@ function EmojiPicker({ item, onPick }: { item: ScheduleItem; onPick: (emoji: str
             onClick={() => pick(null)}
             className={`mb-1.5 flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs hover:bg-stone-100 ${!item.emoji ? "bg-stone-100 font-semibold text-stone-900" : "text-stone-600"}`}
           >
-            <span className="text-base">{auto}</span> Otomatik (başlıktan)
+            <span className="text-base">{auto}</span> {t("Otomatik (başlıktan)")}
           </button>
           <div className="grid grid-cols-7 gap-0.5">
             {SCHEDULE_EMOJI_CHOICES.map((emoji) => (
@@ -72,7 +75,7 @@ function EmojiPicker({ item, onPick }: { item: ScheduleItem; onPick: (emoji: str
                 key={emoji}
                 type="button"
                 onClick={() => pick(emoji)}
-                aria-label={`Simge ${emoji}`}
+                aria-label={t("Simge {emoji}", { emoji })}
                 aria-pressed={item.emoji === emoji}
                 className={`flex h-8 items-center justify-center rounded-lg text-lg hover:bg-stone-100 ${item.emoji === emoji ? "bg-stone-200 ring-1 ring-stone-400" : ""}`}
               >
@@ -96,6 +99,7 @@ export function ScheduleEditor({
   onChange: (next: ScheduleItem[]) => void;
   categories: readonly string[];
 }) {
+  const t = useT();
   const update = (id: string, patch: Partial<ScheduleItem>) => onChange(value.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   const add = () => {
     if (value.length >= MAX_SCHEDULE_ITEMS) return;
@@ -105,13 +109,13 @@ export function ScheduleEditor({
 
   return (
     <div className="@container space-y-2">
-      {value.length === 0 && <p className="text-xs text-stone-500">Henüz program yok. Örnek: 19:00 Nikah, 20:30 Yemek, 21:30 İlk dans.</p>}
+      {value.length === 0 && <p className="text-xs text-stone-500">{t("Henüz program yok. Örnek: 19:00 Nikah, 20:30 Yemek, 21:30 İlk dans.")}</p>}
       {value.length > 0 && (
         <div aria-hidden className="grid grid-cols-[2.25rem_6.5rem_1fr_auto] gap-2 px-1 text-[11px] font-semibold text-stone-500 @md:grid-cols-[2.25rem_6.5rem_1fr_12.5rem_auto]">
-          <span className="text-center">Simge</span>
-          <span>Saat</span>
-          <span>Başlık</span>
-          <span className="hidden @md:block">Albüm kategorisi</span>
+          <span className="text-center">{t("Simge")}</span>
+          <span>{t("Saat")}</span>
+          <span>{t("Başlık")}</span>
+          <span className="hidden @md:block">{t("Albüm kategorisi")}</span>
         </div>
       )}
       {value.map((item) => (
@@ -123,24 +127,24 @@ export function ScheduleEditor({
             value={item.time}
             onChange={(e) => update(item.id, { time: e.target.value })}
             className={input}
-            aria-label="Saat"
+            aria-label={t("Saat")}
           />
           <input
             required
             maxLength={60}
             value={item.title}
             onChange={(e) => update(item.id, { title: e.target.value })}
-            placeholder="ör. İlk dans"
+            placeholder={t("ör. İlk dans")}
             className={input}
-            aria-label="Başlık"
+            aria-label={t("Başlık")}
           />
           <select
             value={item.category ?? ""}
             onChange={(e) => update(item.id, { category: e.target.value || null })}
             className={`${input} col-span-2 col-start-2 @md:col-span-1 @md:col-start-4 @md:row-start-1`}
-            aria-label="Albüm kategorisi"
+            aria-label={t("Albüm kategorisi")}
           >
-            <option value="">Albüm kategorisi yok</option>
+            <option value="">{t("Albüm kategorisi yok")}</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -151,7 +155,7 @@ export function ScheduleEditor({
             type="button"
             onClick={() => onChange(value.filter((x) => x.id !== item.id))}
             className="col-start-4 row-start-1 self-stretch rounded-xl px-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 @md:col-start-5"
-            aria-label={`${item.title || "Madde"} kaldır`}
+            aria-label={t("{name} kaldır", { name: item.title || t("Madde") })}
           >
             <X className="h-4 w-4" />
           </button>
@@ -159,15 +163,15 @@ export function ScheduleEditor({
       ))}
       {value.length < MAX_SCHEDULE_ITEMS && (
         <button type="button" onClick={add} className="inline-flex items-center gap-1 rounded-xl border border-stone-300 px-3 py-1.5 text-xs text-stone-700 hover:border-stone-500">
-          <Plus className="h-3.5 w-3.5" /> Madde ekle
+          <Plus className="h-3.5 w-3.5" /> {t("Madde ekle")}
         </button>
       )}
-      <p className="text-[11px] text-stone-500">Simge başlıktan otomatik seçilir (ör. “Pasta” 🎂, “İlk dans” 💃); değiştirmek için simgeye tıklayın. Kategori seçerseniz, o saatte yükleme yapan misafirlerde bu kategori önceden seçili gelir.</p>
+      <p className="text-[11px] text-stone-500">{t("Simge başlıktan otomatik seçilir (ör. “Pasta” 🎂, “İlk dans” 💃); değiştirmek için simgeye tıklayın. Kategori seçerseniz, o saatte yükleme yapan misafirlerde bu kategori önceden seçili gelir.")}</p>
     </div>
   );
 }
 
-const CHALLENGE_SUGGESTIONS = [
+const CHALLENGE_SUGGESTIONS: MsgKey[] = [
   "Gelinle bir selfie",
   "Damatla bir selfie",
   "Dans pistinden bir kare",
@@ -178,16 +182,17 @@ const CHALLENGE_SUGGESTIONS = [
 
 /** Editable list of photo challenges guests can join while uploading. */
 export function ChallengesEditor({ value, onChange }: { value: Challenge[]; onChange: (next: Challenge[]) => void }) {
+  const t = useT();
   const add = (title = "") => {
     if (value.length >= MAX_CHALLENGES) return;
     onChange([...value, { id: newExtraId(), title }]);
   };
   const used = new Set(value.map((c) => c.title.trim().toLocaleLowerCase("tr-TR")));
-  const suggestions = CHALLENGE_SUGGESTIONS.filter((s) => !used.has(s.toLocaleLowerCase("tr-TR")));
+  const suggestions = CHALLENGE_SUGGESTIONS.map((key) => t(key)).filter((s) => !used.has(s.toLocaleLowerCase("tr-TR")));
 
   return (
     <div className="space-y-2">
-      {value.length === 0 && <p className="text-xs text-stone-500">Misafirler yüklerken bir göreve katılabilir; galeri görevlere göre filtrelenir.</p>}
+      {value.length === 0 && <p className="text-xs text-stone-500">{t("Misafirler yüklerken bir göreve katılabilir; galeri görevlere göre filtrelenir.")}</p>}
       {value.map((item) => (
         <div key={item.id} className="flex gap-2">
           <input
@@ -195,15 +200,15 @@ export function ChallengesEditor({ value, onChange }: { value: Challenge[]; onCh
             maxLength={80}
             value={item.title}
             onChange={(e) => onChange(value.map((c) => (c.id === item.id ? { ...c, title: e.target.value } : c)))}
-            placeholder="ör. Dans pistinden bir kare"
+            placeholder={t("ör. Dans pistinden bir kare")}
             className={input}
-            aria-label="Görev"
+            aria-label={t("Görev")}
           />
           <button
             type="button"
             onClick={() => onChange(value.filter((c) => c.id !== item.id))}
             className="rounded-xl px-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-            aria-label={`${item.title || "Görev"} kaldır`}
+            aria-label={t("{name} kaldır", { name: item.title || t("Görev") })}
           >
             <X className="h-4 w-4" />
           </button>
@@ -212,7 +217,7 @@ export function ChallengesEditor({ value, onChange }: { value: Challenge[]; onCh
       {value.length < MAX_CHALLENGES && (
         <div className="flex flex-wrap gap-1.5">
           <button type="button" onClick={() => add()} className="inline-flex items-center gap-1 rounded-xl border border-stone-300 px-3 py-1.5 text-xs text-stone-700 hover:border-stone-500">
-            <Plus className="h-3.5 w-3.5" /> Görev ekle
+            <Plus className="h-3.5 w-3.5" /> {t("Görev ekle")}
           </button>
           {suggestions.slice(0, 4).map((s) => (
             <button key={s} type="button" onClick={() => add(s)} className="rounded-xl bg-stone-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-stone-200">

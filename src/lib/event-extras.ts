@@ -174,23 +174,23 @@ export function scheduleStatus(
  * "Pasta kesimi" must not become a generic entrance, etc.).
  */
 const SCHEDULE_EMOJI: Array<[RegExp, string]> = [
-  [/pasta|kek/, "🎂"],
-  [/havai fişek|maytap|fişek/, "🎆"],
-  [/buket|çiçek/, "💐"],
-  [/kına/, "🪔"],
+  [/pasta|kek|cake/, "🎂"],
+  [/havai fişek|maytap|fişek|firework/, "🎆"],
+  [/buket|çiçek|bouquet|flower/, "💐"],
+  [/kına|henna/, "🪔"],
   [/takı/, "💛"],
-  [/nikah|nikâh|imza|nişan|evet/, "💍"],
-  [/dans|halay|horon|zeybek|vals|tango/, "💃"],
-  [/kokteyl|karşılama|kadeh|şampanya|içki/, "🥂"],
-  [/yemek|ziyafet|akşam|öğle|kahvaltı|büfe|dinner/, "🍽️"],
-  [/kahve|çay|tatlı/, "☕"],
-  [/müzik|dj|konser|sahne|canlı|orkestra|şarkı/, "🎶"],
-  [/foto|çekim|poz/, "📸"],
-  [/konuşma|sunum|söz|mikrofon|anı/, "🎤"],
-  [/oyun|yarışma|çekiliş|sürpriz/, "🎁"],
-  [/parti|eğlence|after/, "🎉"],
-  [/veda|uğurlama|çıkış|kapanış|final/, "👋"],
-  [/giriş|gelin|damat|çift/, "👰"],
+  [/nikah|nikâh|imza|nişan|evet|ceremony|vows|engagement/, "💍"],
+  [/dans|halay|horon|zeybek|vals|tango|dance|waltz/, "💃"],
+  [/kokteyl|karşılama|kadeh|şampanya|içki|cocktail|reception|toast|champagne|drinks/, "🥂"],
+  [/yemek|ziyafet|akşam|öğle|kahvaltı|büfe|dinner|lunch|breakfast|buffet|meal/, "🍽️"],
+  [/kahve|çay|tatlı|coffee|tea|dessert/, "☕"],
+  [/müzik|dj|konser|sahne|canlı|orkestra|şarkı|music|band|concert|live|song/, "🎶"],
+  [/foto|çekim|poz|photo/, "📸"],
+  [/konuşma|sunum|söz|mikrofon|anı|speech|talk/, "🎤"],
+  [/oyun|yarışma|çekiliş|sürpriz|game|surprise|raffle/, "🎁"],
+  [/parti|eğlence|after|party/, "🎉"],
+  [/veda|uğurlama|çıkış|kapanış|final|farewell|send-off|goodbye/, "👋"],
+  [/giriş|gelin|damat|çift|bride|groom|couple|entrance/, "👰"],
 ];
 
 /** The emoji guests see: the host's pick, else one inferred from the title. */
@@ -209,13 +209,14 @@ function minutesOf(time: string): number {
   return h * 60 + m;
 }
 
-/** "az sonra" / "12 dk" / "1 sa 5 dk" / "2 sa". */
-export function formatMinutes(minutes: number): string {
-  if (minutes < 1) return "az sonra";
-  if (minutes < 60) return `${minutes} dk`;
+/** "az sonra" / "12 dk" / "1 sa 5 dk" / "2 sa" (English: "soon" / "12 min" / "1 h 5 min"). */
+export function formatMinutes(minutes: number, lang: "tr" | "en" = "tr"): string {
+  const [soon, min, hr] = lang === "en" ? ["soon", "min", "h"] : ["az sonra", "dk", "sa"];
+  if (minutes < 1) return soon;
+  if (minutes < 60) return `${minutes} ${min}`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return m ? `${h} sa ${m} dk` : `${h} sa`;
+  return m ? `${h} ${hr} ${m} ${min}` : `${h} ${hr}`;
 }
 
 export type ProgramPhase =

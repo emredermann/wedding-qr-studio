@@ -4,6 +4,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 
 import { BRAND } from "@/lib/brand";
+import { LanguageProvider } from "@/lib/i18n/provider";
+import { getServerLang, getServerT } from "@/lib/i18n/server";
 
 import "./globals.css";
 
@@ -26,16 +28,20 @@ const display = Instrument_Serif({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    // Browser tab shows only the brand name; the tagline stays in social previews.
-    default: BRAND.name,
-    template: `%s · ${BRAND.name}`,
-  },
-  applicationName: BRAND.name,
-  description: BRAND.description,
-  openGraph: { siteName: BRAND.name, title: `${BRAND.name} — ${BRAND.tagline}`, description: BRAND.description },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  const description = t(BRAND.description);
+  return {
+    title: {
+      // Browser tab shows only the brand name; the tagline stays in social previews.
+      default: BRAND.name,
+      template: `%s · ${BRAND.name}`,
+    },
+    applicationName: BRAND.name,
+    description,
+    openGraph: { siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -44,18 +50,21 @@ export const viewport: Viewport = {
   themeColor: "#f7f5f0",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // The language cookie is read on every request, so pages render in the
+  // visitor's language from the first byte (Turkish by default).
+  const lang = await getServerLang();
   return (
     <html
-      lang="tr"
+      lang={lang}
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col overflow-x-clip">
-        {children}
+        <LanguageProvider initialLang={lang}>{children}</LanguageProvider>
         {/* Vercel Web Analytics (page views) + Speed Insights (Core Web Vitals).
             Both are no-ops outside Vercel and send no data in development. */}
         <Analytics />

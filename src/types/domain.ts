@@ -13,6 +13,8 @@ export const MEDIA_STATUSES = ["approved", "pending", "hidden"] as const;
 export type MediaStatus = (typeof MEDIA_STATUSES)[number];
 
 export const DEFAULT_CATEGORIES = ["Hazırlık", "Nikah", "İlk Dans", "Yemek", "After Party"] as const;
+/** Used for events created while the host's interface is in English. */
+export const DEFAULT_CATEGORIES_EN = ["Getting Ready", "Ceremony", "First Dance", "Dinner", "After Party"] as const;
 
 export interface EventRow {
   id: string;

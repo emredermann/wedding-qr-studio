@@ -8,6 +8,7 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
+import { useT } from "@/lib/i18n/provider";
 import { extractSelfieFromFile, extractSingleFaceFromSelfie, loadFaceModels } from "@/lib/faceRecognition";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
 
@@ -20,6 +21,7 @@ export function FaceSearchPanel({
   event: PublicEventDto;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
   const [phase, setPhase] = useState<Phase>("idle");
   const [results, setResults] = useState<MediaDto[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -29,7 +31,7 @@ export function FaceSearchPanel({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   };
 
@@ -43,11 +45,11 @@ export function FaceSearchPanel({
     setResults(res.items);
     setPhase("results");
     trackEvent("face_search", { found: res.items.length > 0 });
-    if (res.items.length === 0) onMessage("Henüz sizi içeren bir fotoğraf bulunamadı. Daha sonra tekrar deneyin.", "info");
+    if (res.items.length === 0) onMessage(t("Henüz sizi içeren bir fotoğraf bulunamadı. Daha sonra tekrar deneyin."), "info");
   }
 
   async function openCamera() {
-    setHint("Modeller yükleniyor…");
+    setHint(t("Modeller yükleniyor…"));
     setPhase("camera");
     try {
       const [stream] = await Promise.all([
@@ -59,14 +61,14 @@ export function FaceSearchPanel({
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => undefined);
       }
-      setHint("Yüzünüzü çerçeveye ortalayın ve “Tara”ya basın.");
+      setHint(t("Yüzünüzü çerçeveye ortalayın ve “Tara”ya basın."));
     } catch (error) {
       stopCamera();
       setPhase("idle");
       setHint(null);
       onMessage(
         error instanceof DOMException && error.name === "NotAllowedError"
-          ? "Kamera izni verilmedi. Bunun yerine bir selfie fotoğrafı yükleyebilirsiniz."
+          ? t("Kamera izni verilmedi. Bunun yerine bir selfie fotoğrafı yükleyebilirsiniz.")
           : errorMessage(error),
         "error",
       );
@@ -76,11 +78,11 @@ export function FaceSearchPanel({
   async function captureFromCamera() {
     const video = videoRef.current;
     if (!video) return;
-    setHint("Yüz analiz ediliyor…");
+    setHint(t("Yüz analiz ediliyor…"));
     try {
       const descriptor = await extractSingleFaceFromSelfie(video);
       if (!descriptor) {
-        setHint("Yüz bulunamadı. Işığa dönüp tekrar deneyin.");
+        setHint(t("Yüz bulunamadı. Işığa dönüp tekrar deneyin."));
         return;
       }
       stopCamera();
@@ -100,7 +102,7 @@ export function FaceSearchPanel({
     try {
       const descriptor = await extractSelfieFromFile(file);
       if (!descriptor) {
-        onMessage("Fotoğrafta yüz bulunamadı. Yüzünüzün net göründüğü bir fotoğraf seçin.", "error");
+        onMessage(t("Fotoğrafta yüz bulunamadı. Yüzünüzün net göründüğü bir fotoğraf seçin."), "error");
         setPhase("idle");
         return;
       }
@@ -112,7 +114,7 @@ export function FaceSearchPanel({
   }
 
   if (!event.faceSearchEnabled || !event.galleryPublic) {
-    return <p className="rounded-3xl bg-white/80 p-8 text-center text-stone-600">Yüz arama bu etkinlikte kapalı.</p>;
+    return <p className="rounded-3xl bg-white/80 p-8 text-center text-stone-600">{t("Yüz arama bu etkinlikte kapalı.")}</p>;
   }
 
   return (
@@ -121,16 +123,16 @@ export function FaceSearchPanel({
         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-white" style={{ backgroundColor: "var(--accent)" }}>
           <ScanFace className="h-7 w-7" />
         </span>
-        <h2 className="font-serif text-xl text-stone-900">Fotoğraflarımı Bul</h2>
+        <h2 className="font-serif text-xl text-stone-900">{t("Fotoğraflarımı Bul")}</h2>
         <p className="mx-auto mt-1 max-w-sm text-sm text-stone-600">
-          Bir selfie çekin; yapay zekâ etkinlikteki yüzlerle karşılaştırıp sizin olduğunuz fotoğrafları getirsin. Selfie’niz cihazınızdan çıkmaz.
+          {t("Bir selfie çekin; yapay zekâ etkinlikteki yüzlerle karşılaştırıp sizin olduğunuz fotoğrafları getirsin. Selfie’niz cihazınızdan çıkmaz.")}
         </p>
 
         {phase === "camera" && (
           <div className="relative mx-auto mt-4 aspect-[3/4] w-full max-w-xs overflow-hidden rounded-3xl bg-black">
             <video ref={videoRef} playsInline muted className="h-full w-full -scale-x-100 object-cover" />
             <div className="pointer-events-none absolute inset-8 rounded-[45%] border-2 border-white/70" />
-            <button type="button" onClick={() => { stopCamera(); setPhase("idle"); }} aria-label="Kapat" className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white">
+            <button type="button" onClick={() => { stopCamera(); setPhase("idle"); }} aria-label={t("Kapat")} className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -140,19 +142,19 @@ export function FaceSearchPanel({
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           {phase === "camera" ? (
             <button type="button" onClick={captureFromCamera} className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white" style={{ backgroundColor: "var(--accent)" }}>
-              <ScanFace className="h-4 w-4" /> Tara
+              <ScanFace className="h-4 w-4" /> {t("Tara")}
             </button>
           ) : phase === "analyzing" ? (
             <span className="inline-flex items-center justify-center gap-2 py-3 text-sm text-stone-600">
-              <Loader2 className="h-4 w-4 animate-spin" /> Fotoğraflar taranıyor…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("Fotoğraflar taranıyor…")}
             </span>
           ) : (
             <>
               <button type="button" onClick={openCamera} className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white" style={{ backgroundColor: "var(--accent)" }}>
-                <Camera className="h-4 w-4" /> Selfie çek
+                <Camera className="h-4 w-4" /> {t("Selfie çek")}
               </button>
               <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm font-semibold text-stone-800">
-                <ImageUp className="h-4 w-4" /> Fotoğraf yükle
+                <ImageUp className="h-4 w-4" /> {t("Fotoğraf yükle")}
               </button>
             </>
           )}
@@ -163,11 +165,11 @@ export function FaceSearchPanel({
       {phase === "results" && results.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-stone-800">{results.length} fotoğrafta sizi bulduk</p>
+            <p className="text-sm font-semibold text-stone-800">{t("{n} fotoğrafta sizi bulduk", { n: results.length })}</p>
             <ZipDownloadButton
               scope="faces"
               baseName={`${event.slug}-fotograflarim`}
-              label="Hepsini indir"
+              label={t("Hepsini indir")}
               loadFiles={async () => results.map((m) => ({ fileId: m.fileId, name: m.originalName, sizeBytes: m.sizeBytes, createdAt: m.createdAt }))}
               onMessage={onMessage}
             />

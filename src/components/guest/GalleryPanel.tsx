@@ -10,6 +10,7 @@ import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { DownloadableFile } from "@/lib/client/download";
 import type { MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
 
 function buildQuery(params: Record<string, string | null | undefined>): string {
   const search = new URLSearchParams();
@@ -38,6 +39,7 @@ function GalleryFeed({
   extraItems: MediaDto[];
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
   const [items, setItems] = useState<MediaDto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,7 +123,7 @@ function GalleryFeed({
       await apiFetch(`/api/media/${item.id}`, { method: "DELETE" });
       setItems((prev) => prev.filter((m) => m.id !== item.id));
       setOpenIndex(null);
-      onMessage("Silindi.", "success");
+      onMessage(t("Silindi."), "success");
     } catch (error) {
       onMessage(errorMessage(error), "error");
     }
@@ -142,7 +144,7 @@ function GalleryFeed({
           <ZipDownloadButton
             scope={mineOnly ? "mine" : "gallery"}
             baseName={`${event.slug}${category ? `-${category}` : ""}`}
-            label={mineOnly ? "Yüklediklerimi indir" : "Tümünü indir (ZIP)"}
+            label={mineOnly ? t("Yüklediklerimi indir") : t("Tümünü indir (ZIP)")}
             loadFiles={loadAllForZip}
             onMessage={onMessage}
           />
@@ -152,13 +154,13 @@ function GalleryFeed({
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-stone-300 bg-white/60 px-6 py-14 text-center text-stone-500">
           <Images className="h-8 w-8" />
-          <p className="text-sm">{mineOnly ? "Henüz bir şey yüklemediniz." : "İlk anıyı siz paylaşın!"}</p>
+          <p className="text-sm">{mineOnly ? t("Henüz bir şey yüklemediniz.") : t("İlk anıyı siz paylaşın!")}</p>
         </div>
       ) : (
         <MediaGrid
           items={visible}
           onOpen={setOpenIndex}
-          renderOverlay={(m) => (canHeart(m) ? <HeartButton item={m} guestName={guestName} onChange={onHeart} onError={(t) => onMessage(t, "error")} /> : null)}
+          renderOverlay={(m) => (canHeart(m) ? <HeartButton item={m} guestName={guestName} onChange={onHeart} onError={(msg) => onMessage(msg, "error")} /> : null)}
         />
       )}
 
@@ -171,7 +173,7 @@ function GalleryFeed({
             className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700"
           >
             {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-            Daha fazla göster
+            {t("Daha fazla göster")}
           </button>
         </div>
       )}
@@ -187,7 +189,7 @@ function GalleryFeed({
           footer={(m) =>
             canHeart(m) ? (
               <div className="mb-1 flex justify-center">
-                <HeartButton item={m} guestName={guestName} variant="lightbox" onChange={onHeart} onError={(t) => onMessage(t, "error")} />
+                <HeartButton item={m} guestName={guestName} variant="lightbox" onChange={onHeart} onError={(msg) => onMessage(msg, "error")} />
               </div>
             ) : null
           }
@@ -208,6 +210,7 @@ export function GalleryPanel({
   guestName: string;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
   const [category, setCategory] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(!event.galleryPublic);
   const [challenge, setChallenge] = useState<string | null>(null);
@@ -217,13 +220,13 @@ export function GalleryPanel({
     <div className="space-y-4">
       {!event.galleryPublic && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          Bu galeri gizli: yalnızca kendi yüklediklerinizi görebilirsiniz.
+          {t("Bu galeri gizli: yalnızca kendi yüklediklerinizi görebilirsiniz.")}
         </p>
       )}
-      <div className="flex rounded-full border border-stone-200 bg-white p-1 text-xs font-medium" role="group" aria-label="Sıralama">
+      <div className="flex rounded-full border border-stone-200 bg-white p-1 text-xs font-medium" role="group" aria-label={t("Sıralama")}>
         {([
-          [false, "En yeniler"],
-          [true, "En sevilenler"],
+          [false, t("En yeniler")],
+          [true, t("En sevilenler")],
         ] as const).map(([value, label]) => (
           <button
             key={label}
@@ -248,7 +251,7 @@ export function GalleryPanel({
               mineOnly ? "border-transparent bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"
             }`}
           >
-            Yüklediklerim
+            {t("Yüklediklerim")}
           </button>
         )}
         {[null, ...event.categories].map((cat) => (
@@ -261,7 +264,7 @@ export function GalleryPanel({
             }`}
             style={category === cat ? { backgroundColor: "var(--accent)" } : undefined}
           >
-            {cat ?? "Tümü"}
+            {cat ?? t("Tümü")}
           </button>
         ))}
       </div>
@@ -278,7 +281,7 @@ export function GalleryPanel({
                   active ? "border-stone-900 bg-stone-900 text-white" : "border-dashed border-stone-300 bg-white text-stone-700"
                 }`}
               >
-                {c ? c.title : "Tüm görevler"}
+                {c ? c.title : t("Tüm görevler")}
               </button>
             );
           })}

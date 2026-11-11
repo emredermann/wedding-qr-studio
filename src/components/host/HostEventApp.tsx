@@ -13,12 +13,14 @@ import { SettingsTab } from "@/components/host/SettingsTab";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { EventStatsDto, HostEventDto } from "@/types/domain";
+import { useLang, useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
 
 const STATS_REFRESH_DEBOUNCE_MS = 1500;
 
 type Tab = "overview" | "media" | "guestbook" | "qr" | "settings";
 
-const TABS: Array<{ id: Tab; label: string; icon: typeof Images }> = [
+const TABS: Array<{ id: Tab; label: MsgKey; icon: typeof Images }> = [
   { id: "overview", label: "Özet", icon: LayoutDashboard },
   { id: "media", label: "Medya", icon: Images },
   { id: "guestbook", label: "Anı Defteri", icon: BookHeart },
@@ -27,6 +29,8 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Images }> = [
 ];
 
 export function HostEventApp({ eventId }: { eventId: string }) {
+  const t = useT();
+  const { locale } = useLang();
   const [data, setData] = useState<{ event: HostEventDto; stats: EventStatsDto } | null>(null);
   const [origin, setOrigin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +85,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
         json: { uploadsEnabled: open },
       });
       setData((prev) => (prev ? { ...prev, event: res.event } : prev));
-      onMessage(open ? "Yüklemeler açıldı." : "Yüklemeler kapatıldı.", "success");
+      onMessage(open ? t("Yüklemeler açıldı.") : t("Yüklemeler kapatıldı."), "success");
     } catch (err) {
       onMessage(errorMessage(err), "error");
     }
@@ -94,7 +98,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
         <main className="mx-auto max-w-xl px-4 py-16 text-center">
           <p className="rounded-2xl bg-rose-50 p-5 text-sm text-rose-700">{error}</p>
           <Link href="/dashboard" className="mt-4 inline-block text-sm text-stone-600 underline">
-            Etkinliklerime dön
+            {t("Etkinliklerime dön")}
           </Link>
         </main>
       </div>
@@ -115,7 +119,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
   const { event, stats } = data;
   const guestUrl = `${origin}/e/${event.slug}`;
   const dateText = event.eventDate
-    ? new Date(`${event.eventDate}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
+    ? new Date(`${event.eventDate}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
     : "";
 
   return (
@@ -123,7 +127,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
       <HostHeader />
       <main className="mx-auto max-w-6xl px-4 py-6">
         <Link href="/dashboard" className="mb-3 inline-flex items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-800">
-          <ChevronLeft className="h-4 w-4" /> Etkinliklerim
+          <ChevronLeft className="h-4 w-4" /> {t("Etkinliklerim")}
         </Link>
         <h1 className="font-serif text-3xl text-stone-900">{event.coupleNames || event.title}</h1>
         <p className="mt-1 text-sm text-stone-500">
@@ -141,7 +145,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
                     tab === id ? "border-stone-900 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-800"
                   }`}
                 >
-                  <Icon className="h-4 w-4" /> {label}
+                  <Icon className="h-4 w-4" /> {t(label)}
                   {id === "media" && stats.pending > 0 && (
                     <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950">{stats.pending}</span>
                   )}

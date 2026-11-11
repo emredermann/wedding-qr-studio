@@ -8,6 +8,8 @@ import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
+import { tClient, translateLoose } from "@/lib/i18n/translate";
 
 const PHOTO_MS = 7000;
 const VIDEO_MAX_MS = 25000;
@@ -60,6 +62,7 @@ function maxIso(values: Array<string | null | undefined>): string {
 }
 
 export function LiveWall({ slug }: { slug: string }) {
+  const t = useT();
   const [event, setEvent] = useState<PublicEventDto | null>(null);
   const [guestUrl, setGuestUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +96,7 @@ export function LiveWall({ slug }: { slug: string }) {
         setMessages(approvedNotes.slice(0, 50));
         setNewestMessage(maxIso(notes.items.map((n) => n.publishedAt)));
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Yüklenemedi");
+        if (!cancelled) setError(err instanceof Error ? translateLoose(err.message) : tClient("Yüklenemedi"));
       }
     })();
     return () => {
@@ -247,7 +250,7 @@ export function LiveWall({ slug }: { slug: string }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
           <Heart className="h-12 w-12 fill-current" style={{ color: accent }} />
           <h1 className="font-serif text-5xl">{event.coupleNames || event.title}</h1>
-          <p className="text-xl text-white/70">QR kodu okutun, ilk fotoğrafı siz paylaşın!</p>
+          <p className="text-xl text-white/70">{t("QR kodu okutun, ilk fotoğrafı siz paylaşın!")}</p>
         </div>
       )}
 
@@ -256,7 +259,7 @@ export function LiveWall({ slug }: { slug: string }) {
         <div className="absolute top-8 left-8 max-w-[45vw] rounded-2xl bg-black/45 px-5 py-3 backdrop-blur-md">
           {isNew && (
             <span className="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold tracking-wider uppercase" style={{ backgroundColor: accent }}>
-              Yeni
+              {t("Yeni")}
             </span>
           )}
           {current.guestName && <p className="text-lg font-semibold">{current.guestName}</p>}
@@ -278,13 +281,13 @@ export function LiveWall({ slug }: { slug: string }) {
       {guestUrl && (
         <div className="absolute right-8 bottom-8 flex flex-col items-center gap-2 rounded-3xl bg-white p-4 text-center text-stone-900 shadow-2xl">
           <QRCodeSVG value={guestUrl} size={150} level="M" fgColor="#111111" />
-          <p className="max-w-[160px] text-sm leading-tight font-semibold">Okut, fotoğrafını paylaş!</p>
+          <p className="max-w-[160px] text-sm leading-tight font-semibold">{t("Okut, fotoğrafını paylaş!")}</p>
         </div>
       )}
 
       <div className="absolute top-8 right-8 flex items-center gap-3">
-        <span className="rounded-full bg-black/45 px-4 py-2 text-sm backdrop-blur-md">{slides.pool.length} anı</span>
-        <button type="button" onClick={toggleFullscreen} className="cursor-pointer rounded-full bg-black/45 p-2.5 backdrop-blur-md hover:bg-black/60" aria-label="Tam ekran">
+        <span className="rounded-full bg-black/45 px-4 py-2 text-sm backdrop-blur-md">{t("{n} anı", { n: slides.pool.length })}</span>
+        <button type="button" onClick={toggleFullscreen} className="cursor-pointer rounded-full bg-black/45 p-2.5 backdrop-blur-md hover:bg-black/60" aria-label={t("Tam ekran")}>
           {fullscreen ? <Shrink className="h-5 w-5" /> : <Expand className="h-5 w-5" />}
         </button>
       </div>

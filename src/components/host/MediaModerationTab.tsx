@@ -9,6 +9,7 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { BulkMediaResponse, HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
 
 type StatusFilter = "all" | MediaStatus;
 type KindFilter = "all" | "photo" | "video";
@@ -32,6 +33,7 @@ function MediaFeed({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [items, setItems] = useState<MediaDto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ function MediaFeed({
   const bulk = async (action: "approve" | "hide" | "delete") => {
     const targets = items.filter((m) => selected.has(m.id));
     if (targets.length === 0) return;
-    if (action === "delete" && !window.confirm(`${targets.length} dosya Drive çöp kutusuna taşınsın mı?`)) return;
+    if (action === "delete" && !window.confirm(t("{n} dosya Drive çöp kutusuna taşınsın mı?", { n: targets.length }))) return;
     setWorking(true);
     try {
       const res = await apiFetch<BulkMediaResponse>(`/api/host/events/${event.id}/media/bulk`, {
@@ -144,7 +146,7 @@ function MediaFeed({
           .filter((m) => status === "all" || m.status === status),
       );
       const failed = res.failedIds.length;
-      onMessage(failed ? `${failed} öğe güncellenemedi, diğerleri tamamlandı.` : "İşlem tamamlandı.", failed ? "error" : "success");
+      onMessage(failed ? t("{n} öğe güncellenemedi, diğerleri tamamlandı.", { n: failed }) : t("İşlem tamamlandı."), failed ? "error" : "success");
     } catch (error) {
       onMessage(errorMessage(error), "error");
     } finally {
@@ -177,17 +179,17 @@ function MediaFeed({
         <p className="text-xs text-stone-500">{items.length}{cursor ? "+" : ""} dosya</p>
         {selectMode ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-stone-600">{selected.size} seçili</span>
+            <span className="text-xs text-stone-600">{t("{n} seçili", { n: selected.size })}</span>
             <button type="button" disabled={working} onClick={() => bulk("approve")} className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">
-              <Check className="h-3.5 w-3.5" /> Onayla
+              <Check className="h-3.5 w-3.5" /> {t("Onayla")}
             </button>
             <button type="button" disabled={working} onClick={() => bulk("hide")} className="inline-flex items-center gap-1 rounded-full bg-stone-700 px-3 py-1.5 text-xs font-medium text-white">
-              <EyeOff className="h-3.5 w-3.5" /> Gizle
+              <EyeOff className="h-3.5 w-3.5" /> {t("Gizle")}
             </button>
             <button type="button" disabled={working} onClick={() => bulk("delete")} className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">
-              <Trash2 className="h-3.5 w-3.5" /> Sil
+              <Trash2 className="h-3.5 w-3.5" /> {t("Sil")}
             </button>
-            <button type="button" onClick={() => { setSelectMode(false); setSelected(new Set()); }} className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100" aria-label="Seçimi kapat">
+            <button type="button" onClick={() => { setSelectMode(false); setSelected(new Set()); }} className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100" aria-label={t("Seçimi kapat")}>
               <X className="h-4 w-4" />
             </button>
             {working && <Loader2 className="h-4 w-4 animate-spin text-stone-400" />}
@@ -195,14 +197,14 @@ function MediaFeed({
         ) : (
           items.length > 0 && (
             <button type="button" onClick={() => setSelectMode(true)} className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs font-medium">
-              <CheckSquare className="h-4 w-4" /> Toplu seç
+              <CheckSquare className="h-4 w-4" /> {t("Toplu seç")}
             </button>
           )
         )}
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-stone-300 bg-white py-14 text-center text-sm text-stone-500">Bu filtrede dosya yok.</p>
+        <p className="rounded-3xl border border-dashed border-stone-300 bg-white py-14 text-center text-sm text-stone-500">{t("Bu filtrede dosya yok.")}</p>
       ) : (
         <MediaGrid
           items={items}
@@ -218,10 +220,10 @@ function MediaFeed({
               </span>
             ) : !selectMode && item.status === "pending" ? (
               <div className="absolute inset-x-1 bottom-1 flex gap-1">
-                <button type="button" onClick={() => single(() => setStatus(item, "approved"), "Onaylandı")} className="flex flex-1 items-center justify-center rounded-md bg-emerald-600/90 py-1 text-white" aria-label="Onayla">
+                <button type="button" onClick={() => single(() => setStatus(item, "approved"), t("Onaylandı"))} className="flex flex-1 items-center justify-center rounded-md bg-emerald-600/90 py-1 text-white" aria-label={t("Onayla")}>
                   <Check className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => single(() => setStatus(item, "hidden"), "Gizlendi")} className="flex flex-1 items-center justify-center rounded-md bg-stone-900/80 py-1 text-white" aria-label="Gizle">
+                <button type="button" onClick={() => single(() => setStatus(item, "hidden"), t("Gizlendi"))} className="flex flex-1 items-center justify-center rounded-md bg-stone-900/80 py-1 text-white" aria-label={t("Gizle")}>
                   <EyeOff className="h-4 w-4" />
                 </button>
               </div>
@@ -233,7 +235,7 @@ function MediaFeed({
       {cursor && (
         <div className="flex justify-center">
           <button type="button" onClick={loadMore} className="rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium">
-            Daha fazla
+            {t("Daha fazla")}
           </button>
         </div>
       )}
@@ -246,7 +248,7 @@ function MediaFeed({
           onClose={() => setOpenIndex(null)}
           challenges={event.challenges}
           onDelete={async (item) => {
-            await single(() => remove(item), "Drive çöp kutusuna taşındı");
+            await single(() => remove(item), t("Drive çöp kutusuna taşındı"));
             setOpenIndex(null);
           }}
           footer={(item) => (
@@ -254,22 +256,22 @@ function MediaFeed({
             <HeartersList key={item.id} eventId={event.id} item={item} />
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
               {item.status !== "approved" && (
-                <button type="button" onClick={() => single(() => setStatus(item, "approved"), "Onaylandı")} className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">
-                  <Check className="h-3.5 w-3.5" /> Onayla / Göster
+                <button type="button" onClick={() => single(() => setStatus(item, "approved"), t("Onaylandı"))} className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">
+                  <Check className="h-3.5 w-3.5" /> {t("Onayla / Göster")}
                 </button>
               )}
               {item.status !== "hidden" && (
-                <button type="button" onClick={() => single(() => setStatus(item, "hidden"), "Gizlendi")} className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white">
-                  <EyeOff className="h-3.5 w-3.5" /> Gizle
+                <button type="button" onClick={() => single(() => setStatus(item, "hidden"), t("Gizlendi"))} className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white">
+                  <EyeOff className="h-3.5 w-3.5" /> {t("Gizle")}
                 </button>
               )}
               <select
                 value={item.category ?? ""}
                 onChange={(e) => void setCategory(item, e.target.value || null)}
                 className="rounded-full bg-white/15 px-3 py-1.5 text-xs text-white outline-none"
-                aria-label="Kategori"
+                aria-label={t("Kategori")}
               >
-                <option value="" className="text-stone-900">Kategorisiz</option>
+                <option value="" className="text-stone-900">{t("Kategorisiz")}</option>
                 {event.categories.map((c) => (
                   <option key={c} value={c} className="text-stone-900">
                     {c}
@@ -296,6 +298,7 @@ export function MediaModerationTab({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [status, setStatus] = useState<StatusFilter>(pendingCount > 0 ? "pending" : "all");
   const [kind, setKind] = useState<KindFilter>("all");
   const [category, setCategory] = useState<string | null>(null);
@@ -309,10 +312,10 @@ export function MediaModerationTab({
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {([
-          ["all", "Tümü"],
-          ["pending", `Onay bekleyen${pendingCount ? ` (${pendingCount})` : ""}`],
-          ["approved", "Yayında"],
-          ["hidden", "Gizli"],
+          ["all", t("Tümü")],
+          ["pending", pendingCount ? t("Onay bekleyen ({n})", { n: pendingCount }) : t("Onay bekleyen")],
+          ["approved", t("Yayında")],
+          ["hidden", t("Gizli")],
         ] as Array<[StatusFilter, string]>).map(([id, label]) => (
           <button key={id} type="button" onClick={() => setStatus(id)} className={chip(status === id)}>
             {label}
@@ -320,9 +323,9 @@ export function MediaModerationTab({
         ))}
         <span className="mx-1 w-px bg-stone-200" />
         {([
-          ["all", "Hepsi"],
-          ["photo", "Fotoğraf"],
-          ["video", "Video"],
+          ["all", t("Hepsi")],
+          ["photo", t("Fotoğraf")],
+          ["video", t("Video")],
         ] as Array<[KindFilter, string]>).map(([id, label]) => (
           <button key={id} type="button" onClick={() => setKind(id)} className={chip(kind === id)}>
             {label}
@@ -331,7 +334,7 @@ export function MediaModerationTab({
         <span className="mx-1 w-px bg-stone-200" />
         <button type="button" aria-pressed={popular} onClick={() => setPopular((v) => !v)} className={chip(popular)}>
           <span className="inline-flex items-center gap-1">
-            <Heart className="h-3.5 w-3.5" /> En sevilenler
+            <Heart className="h-3.5 w-3.5" /> {t("En sevilenler")}
           </span>
         </button>
       </div>
@@ -339,7 +342,7 @@ export function MediaModerationTab({
         <div className="flex flex-wrap gap-2">
           {[null, ...event.categories].map((c) => (
             <button key={c ?? "_"} type="button" onClick={() => setCategory(c)} className={chip(category === c)}>
-              {c ?? "Tüm kategoriler"}
+              {c ?? t("Tüm kategoriler")}
             </button>
           ))}
         </div>
@@ -348,7 +351,7 @@ export function MediaModerationTab({
         <div className="flex flex-wrap gap-2">
           {[null, ...event.challenges].map((c) => (
             <button key={c?.id ?? "_"} type="button" onClick={() => setChallenge(c?.id ?? null)} className={chip(challenge === (c?.id ?? null))}>
-              {c ? c.title : "Tüm görevler"}
+              {c ? c.title : t("Tüm görevler")}
             </button>
           ))}
         </div>

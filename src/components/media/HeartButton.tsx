@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
 
 /**
  * Guest heart toggle. Optimistic: the count changes immediately and is rolled
@@ -24,6 +25,7 @@ export function HeartButton({
   onError?: (message: string) => void;
   variant?: "grid" | "lightbox";
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const hearted = Boolean(item.heartedByMe);
 
@@ -47,7 +49,7 @@ export function HeartButton({
     }
   };
 
-  const label = hearted ? "Kalbi geri al" : "Kalp bırak";
+  const label = hearted ? t("Kalbi geri al") : t("Kalp bırak");
   if (variant === "lightbox") {
     return (
       <button

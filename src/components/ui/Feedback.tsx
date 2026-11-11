@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 import { type RefObject, useCallback, useEffect, useState } from "react";
+import { useT } from "@/lib/i18n/provider";
 
 export type ToastVariant = "success" | "error" | "info";
 
@@ -42,6 +43,7 @@ export function ToastRegion({
   toasts: ReadonlyArray<ToastMessage>;
   onDismiss: (id: string) => void;
 }) {
+  const t = useT();
   if (toasts.length === 0) return null;
 
   return (
@@ -75,7 +77,7 @@ export function ToastRegion({
           <button
             type="button"
             onClick={() => onDismiss(toast.id)}
-            aria-label="Dismiss notification"
+            aria-label={t("Bildirimi kapat")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-stone-400 transition hover:bg-white/10 hover:text-white"
           >
             <X className="h-3.5 w-3.5" />

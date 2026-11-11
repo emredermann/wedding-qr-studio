@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { BRAND } from "@/lib/brand";
+import { useT } from "@/lib/i18n/provider";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** Smooth ease for the zoom so it starts gently and accelerates into the letter. */
@@ -17,6 +18,7 @@ const ease = (t: number) => t * t * (3 - 2 * t);
  * Without JS, or with `prefers-reduced-motion`, it is a static full-height hero.
  */
 export function HeroFlyThrough({ children }: { children: ReactNode }) {
+  const t = useT();
   const sectionRef = useRef<HTMLElement>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
   const iRef = useRef<HTMLSpanElement>(null);
@@ -102,7 +104,7 @@ export function HeroFlyThrough({ children }: { children: ReactNode }) {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center text-xs text-stone-50 mix-blend-difference motion-reduce:hidden"
         >
-          Kaydırın
+          {t("Kaydırın")}
         </div>
         <span className="sr-only">{BRAND.name}</span>
       </div>

@@ -24,17 +24,19 @@ export function BrandMark({ className = "h-7 w-7", variant = "line" }: { classNa
 }
 
 /** Mark + wordmark. Inherits text colour, so it works on light and dark backgrounds. */
-export function BrandLogo({ className = "", markClassName = "h-6 w-6", showTagline = false }: {
+export function BrandLogo({ className = "", markClassName = "h-6 w-6", showTagline = false, tagline = BRAND.tagline }: {
   className?: string;
   markClassName?: string;
   showTagline?: boolean;
+  /** Translated tagline (defaults to the Turkish one). */
+  tagline?: string;
 }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <BrandMark className={markClassName} />
       <span className="flex flex-col leading-none">
         <span className="font-serif text-[1.6em] tracking-[0.01em]">{BRAND.name}</span>
-        {showTagline && <span className="mt-1.5 max-w-[15rem] text-[0.62em] leading-snug tracking-[0.02em] text-stone-500">{BRAND.tagline}</span>}
+        {showTagline && <span className="mt-1.5 max-w-[15rem] text-[0.62em] leading-snug tracking-[0.02em] text-stone-500">{tagline}</span>}
       </span>
     </span>
   );

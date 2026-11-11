@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useMinuteClock } from "@/components/guest/ScheduleCard";
 import { trackEvent } from "@/lib/client/analytics";
+import { useLang, useT } from "@/lib/i18n/provider";
 import { scheduleStatus } from "@/lib/event-extras";
 import { errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
@@ -66,6 +67,9 @@ export function UploadPanel({
   onUploaded: (media: MediaDto) => void;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
+  const { locale } = useLang();
+  const percent = (fraction: number) => new Intl.NumberFormat(locale, { style: "percent" }).format(Math.round(fraction * 100) / 100);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -164,7 +168,7 @@ export function UploadPanel({
     const remaining = queueRef.current.filter((i) => i.status === "queued" || i.status === "uploading").length;
     if (remaining === 0 && queueRef.current.some((i) => i.status === "done")) {
       const failed = queueRef.current.filter((i) => i.status === "error").length;
-      if (failed === 0) onMessage(event.requireApproval ? "Yüklendi! Etkinlik sahibi onayladıktan sonra galeride görünecek." : "Tüm dosyalar yüklendi. Teşekkürler! 💛", "success");
+      if (failed === 0) onMessage(event.requireApproval ? t("Yüklendi! Etkinlik sahibi onayladıktan sonra galeride görünecek.") : t("Tüm dosyalar yüklendi. Teşekkürler! 💛"), "success");
     }
   }
 
@@ -179,7 +183,7 @@ export function UploadPanel({
         continue;
       }
       if (file.size > MAX_FILE_SIZE_BYTES[kind]) {
-        onMessage(`${file.name} çok büyük (en fazla ${formatBytes(MAX_FILE_SIZE_BYTES[kind])}).`, "error");
+        onMessage(t("{name} çok büyük (en fazla {max}).", { name: file.name, max: formatBytes(MAX_FILE_SIZE_BYTES[kind]) }), "error");
         continue;
       }
       accepted.push({
@@ -195,7 +199,7 @@ export function UploadPanel({
         note: note.trim(),
       });
     }
-    if (rejected > 0) onMessage(`${rejected} dosya desteklenmiyor (yalnızca fotoğraf ve video).`, "error");
+    if (rejected > 0) onMessage(t("{n} dosya desteklenmiyor (yalnızca fotoğraf ve video).", { n: rejected }), "error");
     if (accepted.length === 0) return;
     mutate((prev) => [...accepted, ...prev]);
     setNote("");
@@ -227,7 +231,7 @@ export function UploadPanel({
   if (!event.uploadsEnabled) {
     return (
       <div className="rounded-3xl border border-stone-200 bg-white/80 p-8 text-center text-stone-600">
-        Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.
+        {t("Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.")}
       </div>
     );
   }
@@ -244,7 +248,7 @@ export function UploadPanel({
           style={{ backgroundColor: "var(--accent)" }}
         >
           <Camera className="h-8 w-8" />
-          <span className="text-sm font-semibold">Fotoğraf / Video Çek</span>
+          <span className="text-sm font-semibold">{t("Fotoğraf / Video Çek")}</span>
         </button>
         <button
           type="button"
@@ -253,7 +257,7 @@ export function UploadPanel({
           style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
         >
           <ImagePlus className="h-8 w-8" />
-          <span className="text-sm font-semibold">Galeriden Seç</span>
+          <span className="text-sm font-semibold">{t("Galeriden Seç")}</span>
         </button>
         <input
           ref={cameraRef}
@@ -281,7 +285,7 @@ export function UploadPanel({
 
       {event.categories.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">Hangi an? (isteğe bağlı)</p>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Hangi an? (isteğe bağlı)")}</p>
           <div className="flex flex-wrap gap-2">
             {[null, ...event.categories].map((cat) => (
               <button
@@ -296,7 +300,7 @@ export function UploadPanel({
                 }`}
                 style={category === cat ? { backgroundColor: "var(--accent)" } : undefined}
               >
-                {cat ?? "Genel"}
+                {cat ?? t("Genel")}
               </button>
             ))}
           </div>
@@ -305,7 +309,7 @@ export function UploadPanel({
 
       {event.challenges.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">Bir göreve katıl (isteğe bağlı)</p>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Bir göreve katıl (isteğe bağlı)")}</p>
           <div className="flex flex-wrap gap-2">
             {event.challenges.map((c) => {
               const active = challengeId === c.id;
@@ -325,31 +329,31 @@ export function UploadPanel({
               );
             })}
           </div>
-          {challengeId && <p className="mt-1.5 text-[11px] text-stone-500">Şimdi seçeceğiniz fotoğraflar bu göreve eklenecek.</p>}
+          {challengeId && <p className="mt-1.5 text-[11px] text-stone-500">{t("Şimdi seçeceğiniz fotoğraflar bu göreve eklenecek.")}</p>}
         </div>
       )}
 
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold tracking-wide text-stone-500 uppercase">Anı notu (isteğe bağlı)</span>
+        <span className="mb-2 block text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Anı notu (isteğe bağlı)")}</span>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, 500))}
           rows={2}
-          placeholder="Bu fotoğrafla ilgili kısa bir not bırakın…"
+          placeholder={t("Bu fotoğrafla ilgili kısa bir not bırakın…")}
           className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-stone-500"
         />
-        <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · seçeceğiniz dosyalara eklenir</span>
+        <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · {t("seçeceğiniz dosyalara eklenir")}</span>
       </label>
 
       {items.length > 0 && (
         <div className="rounded-3xl border border-stone-200 bg-white p-3">
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-sm font-semibold text-stone-800">
-              Yüklemeler <span className="font-normal text-stone-500">({doneCount}/{items.length})</span>
+              {t("Yüklemeler")} <span className="font-normal text-stone-500">({doneCount}/{items.length})</span>
             </p>
             {doneCount > 0 && (
               <button type="button" onClick={clearFinished} className="text-xs font-medium text-stone-500 hover:text-stone-800">
-                Tamamlananları temizle
+                {t("Tamamlananları temizle")}
               </button>
             )}
           </div>
@@ -364,12 +368,12 @@ export function UploadPanel({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-stone-800">{item.file.name || "Kamera"}</p>
+                  <p className="truncate text-xs font-medium text-stone-800">{item.file.name || t("Kamera")}</p>
                   <p className="text-[11px] text-stone-500">
                     {formatBytes(item.file.size)}
-                    {item.status === "uploading" && ` · %${Math.round(item.progress * 100)}`}
-                    {item.status === "queued" && " · sırada"}
-                    {item.status === "done" && " · yüklendi"}
+                    {item.status === "uploading" && ` · ${percent(item.progress)}`}
+                    {item.status === "queued" && ` · ${t("sırada")}`}
+                    {item.status === "done" && ` · ${t("yüklendi")}`}
                   </p>
                   {item.status === "error" ? (
                     <p className="mt-0.5 flex items-start gap-1 text-[11px] text-rose-600">
@@ -390,10 +394,10 @@ export function UploadPanel({
                   {item.status === "done" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
                   {item.status === "error" && (
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => retry(item.id)} aria-label="Tekrar dene" className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
+                      <button type="button" onClick={() => retry(item.id)} aria-label={t("Tekrar dene")} className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
                         <RotateCcw className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => removeItem(item.id)} aria-label="Kaldır" className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
+                      <button type="button" onClick={() => removeItem(item.id)} aria-label={t("Kaldır")} className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -406,8 +410,8 @@ export function UploadPanel({
       )}
 
       <p className="text-center text-[11px] leading-relaxed text-stone-500">
-        Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.
-        {event.faceSearchEnabled && event.galleryPublic && " “Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır."}
+        {t("Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.")}
+        {event.faceSearchEnabled && event.galleryPublic && ` ${t("“Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır.")}`}
       </p>
     </div>
   );

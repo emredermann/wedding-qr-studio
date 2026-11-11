@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
+import { useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
 
 type TemplateId = "klasik" | "modern" | "botanik" | "gece";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
@@ -20,7 +22,7 @@ interface Palette {
   qr: string;
 }
 
-const TEMPLATES: Record<TemplateId, { name: string; palette: Palette; frame: FrameStyle; serifNames: boolean; leaves: boolean }> = {
+const TEMPLATES: Record<TemplateId, { name: MsgKey; palette: Palette; frame: FrameStyle; serifNames: boolean; leaves: boolean }> = {
   klasik: { name: "Klasik", palette: { background: "#FFFDF8", text: "#1C1917", accent: "#B45309", qr: "#1C1917" }, frame: "cift", serifNames: true, leaves: false },
   modern: { name: "Modern", palette: { background: "#FFFFFF", text: "#111827", accent: "#111827", qr: "#111827" }, frame: "ince", serifNames: false, leaves: false },
   botanik: { name: "Botanik", palette: { background: "#F7F5EE", text: "#1F2A1F", accent: "#4D6B48", qr: "#1F2A1F" }, frame: "kose", serifNames: true, leaves: true },
@@ -314,16 +316,17 @@ export function QrCardDesigner({
   themeColor: string;
   slug: string;
 }) {
+  const t = useT();
   const [template, setTemplate] = useState<TemplateId>("klasik");
   const [palette, setPalette] = useState<Palette>({ ...TEMPLATES.klasik.palette, accent: themeColor });
   const [frame, setFrame] = useState<FrameStyle>(TEMPLATES.klasik.frame);
   const [center, setCenter] = useState<CenterMode>("harfler");
   const [initials, setInitials] = useState(() => initialsFrom(coupleNames));
-  const [topText, setTopText] = useState("Anılarımızı paylaşın");
+  const [topText, setTopText] = useState(() => t("Anılarımızı paylaşın"));
   const [names, setNames] = useState(coupleNames);
   const [date, setDate] = useState(dateText);
-  const [description, setDescription] = useState("Telefon kameranızla okutun; fotoğraf, video ve dileklerinizi uygulama indirmeden yükleyin.");
-  const [tableLabel, setTableLabel] = useState("Masa");
+  const [description, setDescription] = useState(() => t("Telefon kameranızla okutun; fotoğraf, video ve dileklerinizi uygulama indirmeden yükleyin."));
+  const [tableLabel, setTableLabel] = useState(() => t("Masa"));
   const [tableFrom, setTableFrom] = useState("");
   const [tableTo, setTableTo] = useState("");
   const [showUrl, setShowUrl] = useState(true);
@@ -486,7 +489,7 @@ export function QrCardDesigner({
 
       <div className="order-2 space-y-5 lg:order-1">
         <section>
-          <p className={label}>Şablon</p>
+          <p className={label}>{t("Şablon")}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(TEMPLATES) as TemplateId[]).map((id) => (
               <button
@@ -498,7 +501,7 @@ export function QrCardDesigner({
                 <span className="mb-1.5 flex h-8 items-center justify-center rounded-lg" style={{ backgroundColor: TEMPLATES[id].palette.background, color: TEMPLATES[id].palette.accent, border: `1px solid ${TEMPLATES[id].palette.accent}` }}>
                   ♥
                 </span>
-                {TEMPLATES[id].name}
+                {t(TEMPLATES[id].name)}
               </button>
             ))}
           </div>
@@ -507,7 +510,7 @@ export function QrCardDesigner({
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(["background", "text", "accent", "qr"] as const).map((key) => (
             <label key={key} className="block">
-              <span className={label}>{{ background: "Arka plan", text: "Yazı", accent: "Vurgu", qr: "QR rengi" }[key]}</span>
+              <span className={label}>{t(({ background: "Arka plan", text: "Yazı", accent: "Vurgu", qr: "QR rengi" } as const)[key])}</span>
               <input type="color" value={palette[key]} onChange={(e) => setPalette((p) => ({ ...p, [key]: e.target.value }))} className="h-10 w-full cursor-pointer rounded-xl border border-stone-300 bg-white p-1" />
             </label>
           ))}
@@ -515,34 +518,34 @@ export function QrCardDesigner({
 
         <section className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={label}>Çerçeve</span>
+            <span className={label}>{t("Çerçeve")}</span>
             <select value={frame} onChange={(e) => setFrame(e.target.value as FrameStyle)} className={field}>
-              <option value="yok">Yok</option>
-              <option value="ince">İnce çizgi</option>
-              <option value="cift">Çift çizgi</option>
-              <option value="kose">Köşe süsü</option>
+              <option value="yok">{t("Yok")}</option>
+              <option value="ince">{t("İnce çizgi")}</option>
+              <option value="cift">{t("Çift çizgi")}</option>
+              <option value="kose">{t("Köşe süsü")}</option>
             </select>
           </label>
           <label className="block">
-            <span className={label}>QR ortası</span>
+            <span className={label}>{t("QR ortası")}</span>
             <select value={center} onChange={(e) => setCenter(e.target.value as CenterMode)} className={field}>
-              <option value="harfler">Baş harfler</option>
-              <option value="kalp">Kalp</option>
-              <option value="foto">Fotoğraf</option>
-              <option value="yok">Boş</option>
+              <option value="harfler">{t("Baş harfler")}</option>
+              <option value="kalp">{t("Kalp")}</option>
+              <option value="foto">{t("Fotoğraf")}</option>
+              <option value="yok">{t("Boş")}</option>
             </select>
           </label>
           {center === "harfler" && (
             <label className="block">
-              <span className={label}>Baş harfler</span>
+              <span className={label}>{t("Baş harfler")}</span>
               <input value={initials} maxLength={5} onChange={(e) => setInitials(e.target.value)} className={field} />
             </label>
           )}
           {center === "foto" && (
             <label className="block">
-              <span className={label}>Fotoğraf</span>
+              <span className={label}>{t("Fotoğraf")}</span>
               <span className={`${field} flex cursor-pointer items-center gap-2`}>
-                <ImageUp className="h-4 w-4" /> {photo ? "Değiştir" : "Fotoğraf seç"}
+                <ImageUp className="h-4 w-4" /> {photo ? t("Değiştir") : t("Fotoğraf seç")}
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
               </span>
             </label>
@@ -551,48 +554,48 @@ export function QrCardDesigner({
 
         <section className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={label}>Üst başlık</span>
+            <span className={label}>{t("Üst başlık")}</span>
             <input value={topText} maxLength={40} onChange={(e) => setTopText(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>İsimler</span>
+            <span className={label}>{t("İsimler")}</span>
             <input value={names} maxLength={60} onChange={(e) => setNames(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Tarih</span>
+            <span className={label}>{t("Tarih")}</span>
             <input value={date} maxLength={40} onChange={(e) => setDate(e.target.value)} className={field} />
           </label>
           <label className="flex items-end gap-2 pb-2 text-sm text-stone-700">
-            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className="h-4 w-4" /> Bağlantıyı kartta göster
+            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className="h-4 w-4" /> {t("Bağlantıyı kartta göster")}
           </label>
           <label className="block sm:col-span-2">
-            <span className={label}>Açıklama</span>
+            <span className={label}>{t("Açıklama")}</span>
             <textarea value={description} maxLength={160} rows={2} onChange={(e) => setDescription(e.target.value)} className={field} />
           </label>
         </section>
 
         <section className="grid grid-cols-3 gap-3">
           <label className="block">
-            <span className={label}>Masa etiketi</span>
+            <span className={label}>{t("Masa etiketi")}</span>
             <input value={tableLabel} maxLength={16} onChange={(e) => setTableLabel(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Masa no (başlangıç)</span>
-            <input value={tableFrom} inputMode="numeric" placeholder="ör. 1" onChange={(e) => setTableFrom(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+            <span className={label}>{t("Masa no (başlangıç)")}</span>
+            <input value={tableFrom} inputMode="numeric" placeholder={t("ör. 1")} onChange={(e) => setTableFrom(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Bitiş (isteğe bağlı)</span>
-            <input value={tableTo} inputMode="numeric" placeholder="ör. 20" onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+            <span className={label}>{t("Bitiş (isteğe bağlı)")}</span>
+            <input value={tableTo} inputMode="numeric" placeholder={t("ör. 20")} onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
           </label>
         </section>
 
         <section>
-          <p className={label}>Kâğıt boyutu</p>
+          <p className={label}>{t("Kâğıt boyutu")}</p>
           <div className="flex flex-wrap gap-2">
             {([
-              ["A6", "A6 (10,5×14,8 cm)"],
-              ["A5", "A5 (14,8×21 cm)"],
-              ["A4x4", "A4'e 4 kart"],
+              ["A6", t("A6 (10,5×14,8 cm)")],
+              ["A5", t("A5 (14,8×21 cm)")],
+              ["A4x4", t("A4'e 4 kart")],
             ] as Array<[PaperSize, string]>).map(([id, text]) => (
               <button key={id} type="button" onClick={() => setPaper(id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${paper === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`}>
                 {text}
@@ -604,18 +607,18 @@ export function QrCardDesigner({
 
       <div className="order-1 lg:order-2">
         <div className="sticky top-4 space-y-3">
-          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label="Masa kartı önizlemesi" />
-          {tables.length > 1 && <p className="text-center text-xs text-stone-500">{tables.length} masa kartı oluşturulacak (önizleme: {tableLabel} {tables[0]})</p>}
+          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label={t("Masa kartı önizlemesi")} />
+          {tables.length > 1 && <p className="text-center text-xs text-stone-500">{t("{n} masa kartı oluşturulacak (önizleme: {label} {first})", { n: tables.length, label: tableLabel, first: tables[0] })}</p>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={exportPng} disabled={exporting !== null} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800">
               {exporting === "png" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PNG
             </button>
             <button type="button" onClick={exportPdf} disabled={exporting !== null} className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white">
-              {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF (baskı)
+              {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} {t("PDF (baskı)")}
             </button>
           </div>
           <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-stone-500">
-            <Printer className="mt-px h-3.5 w-3.5 shrink-0" /> 300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.
+            <Printer className="mt-px h-3.5 w-3.5 shrink-0" /> {t("300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.")}
           </p>
         </div>
       </div>

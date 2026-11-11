@@ -8,10 +8,12 @@ import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { BRAND } from "@/lib/brand";
 import type { DriveConnectionStatusDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
 
 const CONNECT_URL = "/api/host/drive/connect";
 
-const CALLBACK_ERRORS: Record<string, string> = {
+const CALLBACK_ERRORS: Record<string, MsgKey> = {
   denied: "Google izni verilmedi. Bağlantı yapılmadı.",
   scope:
     "Google Drive izni işaretlenmedi. Tekrar bağlanırken izin ekranındaki Google Drive kutucuğunu işaretleyin.",
@@ -39,6 +41,7 @@ export function DriveConnectionCard({
 }) {
   const router = useRouter();
   const params = useSearchParams();
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,13 +53,13 @@ export function DriveConnectionCard({
   const reason = params.get("reason") ?? "";
   const banner =
     outcome === "connected"
-      ? { ok: true, text: "Google Drive'ınız bağlandı. Yeni etkinliklerin medyası artık kendi Drive'ınıza kaydedilecek." }
+      ? { ok: true, text: t("Google Drive'ınız bağlandı. Yeni etkinliklerin medyası artık kendi Drive'ınıza kaydedilecek.") }
       : outcome === "error"
-        ? { ok: false, text: CALLBACK_ERRORS[reason] ?? "Google Drive bağlanamadı. Lütfen tekrar deneyin." }
+        ? { ok: false, text: t(CALLBACK_ERRORS[reason] ?? "Google Drive bağlanamadı. Lütfen tekrar deneyin.") }
         : null;
 
   const disconnect = async () => {
-    if (!window.confirm("Google Drive bağlantısı kaldırılsın mı? Drive'ınızdaki dosyalar silinmez.")) return;
+    if (!window.confirm(t("Google Drive bağlantısı kaldırılsın mı? Drive'ınızdaki dosyalar silinmez."))) return;
     setBusy(true);
     setError(null);
     try {
@@ -78,7 +81,7 @@ export function DriveConnectionCard({
         >
           {banner.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
           <span className="flex-1">{banner.text}</span>
-          <button type="button" onClick={() => router.replace("/dashboard")} aria-label="Kapat" className="rounded-full p-0.5 hover:bg-black/5">
+          <button type="button" onClick={() => router.replace("/dashboard")} aria-label={t("Kapat")} className="rounded-full p-0.5 hover:bg-black/5">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -89,31 +92,29 @@ export function DriveConnectionCard({
           <HardDrive className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-stone-900">Google Drive depolama</h2>
+          <h2 className="font-semibold text-stone-900">{t("Google Drive depolama")}</h2>
           {!status ? (
             <p className="flex items-center gap-1.5 text-sm text-stone-500">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Kontrol ediliyor…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("Kontrol ediliyor…")}
             </p>
           ) : status.connected ? (
             <p className="text-sm text-stone-600">
-              Bağlı: <span className="font-medium text-stone-900">{status.email ?? "Google hesabınız"}</span>. Fotoğraf, video ve ses kayıtları
-              Drive’ınızdaki <span className="font-medium">“{BRAND.driveFolderName}”</span> klasörüne kaydedilir.
+              {t("Bağlı:")} <span className="font-medium text-stone-900">{status.email ?? t("Google hesabınız")}</span>.{" "}
+              {t("Fotoğraf, video ve ses kayıtları Drive’ınızdaki “{folder}” klasörüne kaydedilir.", { folder: BRAND.driveFolderName })}
             </p>
           ) : status.status === "revoked" ? (
             <p className="text-sm text-rose-700">
-              Google Drive bağlantınız kopmuş (erişim iptal edilmiş veya süresi dolmuş). Bu Drive’ı kullanan etkinliklerde yükleme yapılamaz;
-              aynı Google hesabıyla yeniden bağlayın.
+              {t("Google Drive bağlantınız kopmuş (erişim iptal edilmiş veya süresi dolmuş). Bu Drive’ı kullanan etkinliklerde yükleme yapılamaz; aynı Google hesabıyla yeniden bağlayın.")}
             </p>
           ) : status.platformDriveAvailable ? (
             <p className="text-sm text-stone-600">
-              Şu an yeni etkinlikler <span className="font-medium">platform Drive’ına</span> kaydediliyor. Medyanın kendi Google Drive’ınızda durmasını
-              istiyorsanız bağlayın.
+              {t("Şu an yeni etkinlikler platform Drive’ına kaydediliyor. Medyanın kendi Google Drive’ınızda durmasını istiyorsanız bağlayın.")}
             </p>
           ) : (
-            <p className="text-sm text-stone-600">Etkinlik oluşturmadan önce medyanın saklanacağı Google Drive’ınızı bağlayın. Ücretsizdir.</p>
+            <p className="text-sm text-stone-600">{t("Etkinlik oluşturmadan önce medyanın saklanacağı Google Drive’ınızı bağlayın. Ücretsizdir.")}</p>
           )}
           {status?.connected && status.eventsOnOwnDrive > 0 && (
-            <p className="mt-1 text-xs text-stone-500">{status.eventsOnOwnDrive} etkinlik bu Drive’ı kullanıyor.</p>
+            <p className="mt-1 text-xs text-stone-500">{t("{n} etkinlik bu Drive’ı kullanıyor.", { n: status.eventsOnOwnDrive })}</p>
           )}
           {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
         </div>
@@ -124,15 +125,15 @@ export function DriveConnectionCard({
                 type="button"
                 onClick={disconnect}
                 disabled={busy || status.eventsOnOwnDrive > 0}
-                title={status.eventsOnOwnDrive > 0 ? "Bu Drive’ı kullanan etkinlikler varken bağlantı kaldırılamaz." : undefined}
+                title={status.eventsOnOwnDrive > 0 ? t("Bu Drive’ı kullanan etkinlikler varken bağlantı kaldırılamaz.") : undefined}
                 className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-4 py-2 text-xs font-medium text-stone-700 disabled:opacity-50"
               >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />} Bağlantıyı kaldır
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />} {t("Bağlantıyı kaldır")}
               </button>
             ) : (
               <a href={CONNECT_URL} onClick={() => trackEvent("drive_connect_started")} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white">
                 <HardDrive className="h-4 w-4" />
-                {status.status === "revoked" ? "Yeniden bağla" : "Google Drive’ı bağla"}
+                {status.status === "revoked" ? t("Yeniden bağla") : t("Google Drive’ı bağla")}
               </a>
             )}
           </div>

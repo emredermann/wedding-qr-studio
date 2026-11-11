@@ -9,6 +9,8 @@ import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasE
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
 
 export function SettingsTab({
   event,
@@ -20,6 +22,7 @@ export function SettingsTab({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const router = useRouter();
+  const t = useT();
   const [form, setForm] = useState({
     title: event.title,
     coupleNames: event.coupleNames ?? "",
@@ -63,7 +66,7 @@ export function SettingsTab({
       setHeartsNamed(res.event.heartsNamed);
       trackEvent("settings_saved");
       onSaved(res.event);
-      onMessage("Ayarlar kaydedildi.", "success");
+      onMessage(t("Ayarlar kaydedildi."), "success");
     } catch (error) {
       onMessage(errorMessage(error), "error");
     } finally {
@@ -79,7 +82,7 @@ export function SettingsTab({
   };
 
   const deleteEvent = async () => {
-    const answer = window.prompt(`Etkinliği silmek için bağlantı adresini yazın: ${event.slug}`);
+    const answer = window.prompt(t("Etkinliği silmek için bağlantı adresini yazın: {slug}", { slug: event.slug }));
     if (answer !== event.slug) return;
     setDeleting(true);
     try {
@@ -92,7 +95,7 @@ export function SettingsTab({
   };
 
   const field = "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-stone-500";
-  const toggles: Array<[keyof typeof form, string, string]> = [
+  const toggles: Array<[keyof typeof form, MsgKey, MsgKey]> = [
     ["uploadsEnabled", "Misafir yüklemeleri açık", "Kapatırsanız misafirler sadece galeriyi görür."],
     ["requireApproval", "Yayından önce onay iste", "Yeni fotoğraf ve mesajlar siz onaylayana kadar gizli kalır."],
     ["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini görür ve “Beni Bul” kapanır."],
@@ -103,36 +106,36 @@ export function SettingsTab({
   return (
     <form onSubmit={save} className="grid gap-6 lg:grid-cols-2">
       <section className="space-y-4 rounded-3xl border border-stone-200 bg-white p-5">
-        <h3 className="font-serif text-lg text-stone-900">Etkinlik bilgileri</h3>
+        <h3 className="font-serif text-lg text-stone-900">{t("Etkinlik bilgileri")}</h3>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Etkinlik adı</span>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Etkinlik adı")}</span>
           <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={field} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Başlıkta görünecek isim</span>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Başlıkta görünecek isim")}</span>
           <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} className={field} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-stone-600">Tarih</span>
+            <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Tarih")}</span>
             <input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} className={field} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-stone-600">Tema rengi</span>
+            <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Tema rengi")}</span>
             <input type="color" value={form.themeColor} onChange={(e) => setForm({ ...form, themeColor: e.target.value })} className="h-[42px] w-full cursor-pointer rounded-xl border border-stone-300 bg-white p-1" />
           </label>
         </div>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Karşılama mesajı</span>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Karşılama mesajı")}</span>
           <textarea maxLength={500} rows={3} value={form.welcomeMessage} onChange={(e) => setForm({ ...form, welcomeMessage: e.target.value })} className={field} />
         </label>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Albüm kategorileri</span>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Albüm kategorileri")}</span>
           <div className="mb-2 flex flex-wrap gap-2">
             {form.categories.map((c) => (
               <span key={c} className="inline-flex items-center gap-1 rounded-full bg-stone-100 py-1 pr-1 pl-3 text-xs text-stone-800">
                 {c}
-                <button type="button" onClick={() => setForm({ ...form, categories: form.categories.filter((x) => x !== c) })} className="rounded-full p-0.5 hover:bg-stone-200" aria-label={`${c} kaldır`}>
+                <button type="button" onClick={() => setForm({ ...form, categories: form.categories.filter((x) => x !== c) })} className="rounded-full p-0.5 hover:bg-stone-200" aria-label={t("{name} kaldır", { name: c })}>
                   <X className="h-3 w-3" />
                 </button>
               </span>
@@ -149,58 +152,58 @@ export function SettingsTab({
                   addCategory();
                 }
               }}
-              placeholder="ör. Masa 1, Sahne, Sunum, After Party"
+              placeholder={t("ör. Masa 1, Sahne, Sunum, After Party")}
               className={field}
             />
             <button type="button" onClick={addCategory} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-3 text-sm">
-              <Plus className="h-4 w-4" /> Ekle
+              <Plus className="h-4 w-4" /> {t("Ekle")}
             </button>
           </div>
         </div>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Program akışı (isteğe bağlı)</span>
-          <p className="mb-2 text-xs text-stone-500">Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.</p>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Program akışı (isteğe bağlı)")}</span>
+          <p className="mb-2 text-xs text-stone-500">{t("Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.")}</p>
           <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} />
         </div>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">Fotoğraf görevleri (isteğe bağlı)</span>
-          <p className="mb-2 text-xs text-stone-500">Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.</p>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Fotoğraf görevleri (isteğe bağlı)")}</span>
+          <p className="mb-2 text-xs text-stone-500">{t("Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.")}</p>
           <ChallengesEditor value={challenges} onChange={setChallenges} />
         </div>
       </section>
 
       <section className="space-y-4">
         <div className="space-y-1 rounded-3xl border border-stone-200 bg-white p-5">
-          <h3 className="mb-2 font-serif text-lg text-stone-900">Özellikler & moderasyon</h3>
+          <h3 className="mb-2 font-serif text-lg text-stone-900">{t("Özellikler & moderasyon")}</h3>
           {toggles.map(([key, label, hint]) => (
             <label key={key} className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
               <input type="checkbox" checked={Boolean(form[key])} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="mt-0.5 h-5 w-5 accent-stone-900" />
               <span>
-                <span className="block text-sm font-medium text-stone-900">{label}</span>
-                <span className="block text-xs text-stone-500">{hint}</span>
+                <span className="block text-sm font-medium text-stone-900">{t(label)}</span>
+                <span className="block text-xs text-stone-500">{t(hint)}</span>
               </span>
             </label>
           ))}
           <label className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
             <input type="checkbox" checked={heartsNamed} onChange={(e) => setHeartsNamed(e.target.checked)} className="mt-0.5 h-5 w-5 accent-stone-900" />
             <span>
-              <span className="block text-sm font-medium text-stone-900">Beğenenlerin adını göster</span>
+              <span className="block text-sm font-medium text-stone-900">{t("Beğenenlerin adını göster")}</span>
               <span className="block text-xs text-stone-500">
-                Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.
+                {t("Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.")}
               </span>
             </span>
           </label>
         </div>
         <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
-          {saving && <Loader2 className="h-4 w-4 animate-spin" />} Kaydet
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t("Kaydet")}
         </button>
         {event.role === "owner" && <CoHostsCard eventId={event.id} onMessage={onMessage} />}
         {event.role === "owner" && (
           <div className="rounded-3xl border border-rose-200 bg-rose-50/60 p-5">
-            <h3 className="text-sm font-semibold text-rose-800">Etkinliği sil</h3>
-            <p className="mt-1 text-xs text-rose-700">Etkinlik kaydı silinir; Drive klasörü çöp kutusuna taşınır ve 30 gün içinde geri alınabilir.</p>
+            <h3 className="text-sm font-semibold text-rose-800">{t("Etkinliği sil")}</h3>
+            <p className="mt-1 text-xs text-rose-700">{t("Etkinlik kaydı silinir; Drive klasörü çöp kutusuna taşınır ve 30 gün içinde geri alınabilir.")}</p>
             <button type="button" onClick={deleteEvent} disabled={deleting} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white">
-              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Etkinliği sil
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} {t("Etkinliği sil")}
             </button>
           </div>
         )}

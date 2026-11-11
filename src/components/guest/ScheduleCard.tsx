@@ -4,6 +4,8 @@ import { Camera, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { formatMinutes, itemEmoji, programPhase, type ProgramPhase, type ScheduleItem } from "@/lib/event-extras";
+import type { Lang } from "@/lib/i18n/config";
+import { useLang, useT, type TFunction } from "@/lib/i18n/provider";
 
 /** Re-renders once a minute so "now" / "next" follow the clock on the event day. */
 export function useMinuteClock(): Date {
@@ -15,39 +17,39 @@ export function useMinuteClock(): Date {
   return now;
 }
 
-function headline(phase: ProgramPhase, schedule: ScheduleItem[]) {
+function headline(phase: ProgramPhase, schedule: ScheduleItem[], t: TFunction, lang: Lang) {
   const find = (id: string) => schedule.find((item) => item.id === id)!;
   switch (phase.kind) {
     case "countdown":
       return {
         emoji: phase.days === 1 ? "🥳" : "⏳",
-        eyebrow: "Program",
-        title: phase.days === 1 ? "Büyük gün yarın!" : `Büyük güne ${phase.days} gün kaldı`,
-        chip: `${schedule.length} durak`,
+        eyebrow: t("Program"),
+        title: phase.days === 1 ? t("Büyük gün yarın!") : t("Büyük güne {n} gün kaldı", { n: phase.days }),
+        chip: t("{n} durak", { n: schedule.length }),
       };
     case "warmup": {
       const next = find(phase.nextId);
-      return { emoji: "🎈", eyebrow: "Birazdan başlıyoruz", title: `${itemEmoji(next)} ${next.title}`, chip: formatMinutes(phase.minutesToNext) };
+      return { emoji: "🎈", eyebrow: t("Birazdan başlıyoruz"), title: `${itemEmoji(next)} ${next.title}`, chip: formatMinutes(phase.minutesToNext, lang) };
     }
     case "live": {
       const current = find(phase.currentId);
       const next = find(phase.nextId);
       return {
         emoji: itemEmoji(current),
-        eyebrow: "Şimdi",
+        eyebrow: t("Şimdi"),
         title: current.title,
         chip: null,
-        sub: `Sıradaki ${itemEmoji(next)} ${next.title} · ${formatMinutes(phase.minutesToNext)}`,
+        sub: t("Sıradaki {item} · {time}", { item: `${itemEmoji(next)} ${next.title}`, time: formatMinutes(phase.minutesToNext, lang) }),
       };
     }
     case "finale": {
       const current = find(phase.currentId);
-      return { emoji: itemEmoji(current), eyebrow: "Son durak", title: current.title, chip: null, sub: "Gece daha bitmedi 🎉" };
+      return { emoji: itemEmoji(current), eyebrow: t("Son durak"), title: current.title, chip: null, sub: t("Gece daha bitmedi 🎉") };
     }
     default:
       return {
         emoji: "🗓️",
-        eyebrow: "Program",
+        eyebrow: t("Program"),
         title: `${itemEmoji(schedule[0])} ${schedule[0].time} ${schedule[0].title}`,
         chip: schedule.length > 1 ? `+${schedule.length - 1}` : null,
       };
@@ -72,13 +74,15 @@ export function ScheduleCard({
   /** Fixed clock for previews/tests; defaults to the device clock. */
   now?: Date;
 }) {
+  const t = useT();
+  const { lang } = useLang();
   const clock = useMinuteClock();
   const now = nowOverride ?? clock;
   const [open, setOpen] = useState(false);
   if (schedule.length === 0) return null;
 
   const phase = programPhase(schedule, eventDate, now);
-  const head = headline(phase, schedule);
+  const head = headline(phase, schedule, t, lang);
   const onAir = phase.kind === "live" || phase.kind === "finale";
   const currentId = onAir ? phase.currentId : null;
   const currentIndex = currentId ? schedule.findIndex((item) => item.id === currentId) : -1;
@@ -112,7 +116,7 @@ export function ScheduleCard({
       </button>
 
       {phase.kind === "live" && (
-        <div className="h-1 bg-stone-100" role="progressbar" aria-label="Sıradaki etkinliğe kalan süre" aria-valuenow={Math.round(phase.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-1 bg-stone-100" role="progressbar" aria-label={t("Sıradaki etkinliğe kalan süre")} aria-valuenow={Math.round(phase.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full transition-[width] duration-1000" style={{ width: `${phase.progress * 100}%`, backgroundColor: "var(--accent)" }} />
         </div>
       )}
@@ -143,10 +147,10 @@ export function ScheduleCard({
                     <span className={`text-sm ${isCurrent ? "font-semibold" : ""} ${isPast ? "line-through decoration-stone-300" : ""}`}>{item.title}</span>
                     {isCurrent && (
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white uppercase" style={{ backgroundColor: "var(--accent)" }}>
-                        şimdi
+                        {t("şimdi")}
                       </span>
                     )}
-                    {isNext && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600">sıradaki · {formatMinutes(phase.minutesToNext)}</span>}
+                    {isNext && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600">{t("sıradaki · {time}", { time: formatMinutes(phase.minutesToNext, lang) })}</span>}
                   </div>
                   {isCurrent && onShareMoment && (
                     <button
@@ -158,7 +162,7 @@ export function ScheduleCard({
                       className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
                       style={{ backgroundColor: "var(--accent)" }}
                     >
-                      <Camera className="h-3.5 w-3.5" /> Bu anı paylaş
+                      <Camera className="h-3.5 w-3.5" /> {t("Bu anı paylaş")}
                     </button>
                   )}
                 </div>

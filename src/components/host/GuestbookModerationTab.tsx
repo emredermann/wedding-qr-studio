@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/media/MediaThumb";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
+import { useLang, useT } from "@/lib/i18n/provider";
 
 export function GuestbookModerationTab({
   event,
@@ -16,6 +17,8 @@ export function GuestbookModerationTab({
   event: HostEventDto;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
+  const { locale } = useLang();
   const [messages, setMessages] = useState<GuestbookMessageDto[]>([]);
   const [media, setMedia] = useState<MediaDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +55,7 @@ export function GuestbookModerationTab({
   };
 
   const deleteMessage = async (msg: GuestbookMessageDto) => {
-    if (!window.confirm("Bu mesaj silinsin mi?")) return;
+    if (!window.confirm(t("Bu mesaj silinsin mi?"))) return;
     try {
       await apiFetch(`/api/host/guestbook/${msg.id}`, { method: "DELETE" });
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
@@ -71,7 +74,7 @@ export function GuestbookModerationTab({
   };
 
   const deleteMedia = async (item: MediaDto) => {
-    if (!window.confirm("Bu kayıt Drive çöp kutusuna taşınsın mı?")) return;
+    if (!window.confirm(t("Bu kayıt Drive çöp kutusuna taşınsın mı?"))) return;
     try {
       await apiFetch(`/api/host/media/${item.id}`, { method: "DELETE" });
       setMedia((prev) => prev.filter((m) => m.id !== item.id));
@@ -83,16 +86,16 @@ export function GuestbookModerationTab({
   const actions = (status: MediaStatus, onSet: (s: MediaStatus) => void, onDelete: () => void) => (
     <div className="flex shrink-0 gap-1">
       {status !== "approved" && (
-        <button type="button" onClick={() => onSet("approved")} className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50" aria-label="Onayla">
+        <button type="button" onClick={() => onSet("approved")} className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50" aria-label={t("Onayla")}>
           <Check className="h-4 w-4" />
         </button>
       )}
       {status !== "hidden" && (
-        <button type="button" onClick={() => onSet("hidden")} className="rounded-full p-2 text-stone-600 hover:bg-stone-100" aria-label="Gizle">
+        <button type="button" onClick={() => onSet("hidden")} className="rounded-full p-2 text-stone-600 hover:bg-stone-100" aria-label={t("Gizle")}>
           <EyeOff className="h-4 w-4" />
         </button>
       )}
-      <button type="button" onClick={onDelete} className="rounded-full p-2 text-rose-600 hover:bg-rose-50" aria-label="Sil">
+      <button type="button" onClick={onDelete} className="rounded-full p-2 text-rose-600 hover:bg-rose-50" aria-label={t("Sil")}>
         <Trash2 className="h-4 w-4" />
       </button>
     </div>
@@ -109,9 +112,9 @@ export function GuestbookModerationTab({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <section>
-        <h3 className="mb-3 font-serif text-lg text-stone-900">Yazılı notlar ({messages.length})</h3>
+        <h3 className="mb-3 font-serif text-lg text-stone-900">{t("Yazılı notlar ({n})", { n: messages.length })}</h3>
         {messages.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">Henüz not yok.</p>
+          <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">{t("Henüz not yok.")}</p>
         ) : (
           <ul className="space-y-2">
             {messages.map((msg) => (
@@ -119,7 +122,7 @@ export function GuestbookModerationTab({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm whitespace-pre-line text-stone-800">{msg.message}</p>
                   <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                    {msg.guestName} · {new Date(msg.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}
+                    {msg.guestName} · {new Date(msg.createdAt).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" })}
                     <StatusBadge status={msg.status} />
                   </p>
                 </div>
@@ -130,9 +133,9 @@ export function GuestbookModerationTab({
         )}
       </section>
       <section>
-        <h3 className="mb-3 font-serif text-lg text-stone-900">Sesli & video mesajlar ({media.length})</h3>
+        <h3 className="mb-3 font-serif text-lg text-stone-900">{t("Sesli & video mesajlar ({n})", { n: media.length })}</h3>
         {media.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">Henüz kayıt yok.</p>
+          <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">{t("Henüz kayıt yok.")}</p>
         ) : (
           <ul className="space-y-2">
             {media.map((item) => (
@@ -144,7 +147,7 @@ export function GuestbookModerationTab({
                 )}
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                    {item.guestName ?? "Misafir"} · {new Date(item.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}
+                    {item.guestName ?? t("Misafir")} · {new Date(item.createdAt).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" })}
                     <StatusBadge status={item.status} />
                   </p>
                   {actions(item.status, (s) => void updateMedia(item, s), () => void deleteMedia(item))}
