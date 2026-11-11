@@ -3,7 +3,8 @@
  *
  * - One typeface everywhere (Geist). `font-serif` is kept as the class name
  *   for large display headings (medium weight, tighter tracking; see
- *   globals.css); only the Mira wordmark uses the brand font (`font-brand`).
+ *   globals.css); only the Mira wordmark and the landing page headings use
+ *   the brand font (`font-brand`).
  * - Section/card headings: semibold, text-base.
  * - Inputs are 16px on phones (iOS zooms into smaller inputs) and 14px from `sm`.
  */

@@ -524,7 +524,6 @@ export const EN = {
   "Merak edilenler.": "Questions.",
   "Hiçbir an kaybolmasın.": "Let no moment be lost.",
   "Albümünüzü dakikalar içinde kurun; gerisini misafirleriniz tamamlasın.": "Set up your album in minutes; let your guests do the rest.",
-  "Fotoğraf ve videolarınız yalnızca sizin Google Drive’ınızda durur.": "Your photos and videos live only in your Google Drive.",
   // ── page titles
   "{name} etkinliğinden fotoğraf, video ve anılarınızı paylaşın.": "Share your photos, videos and memories from {name}.",
   "{name} · Anılarımızı paylaşın": "{name} · Share our memories",

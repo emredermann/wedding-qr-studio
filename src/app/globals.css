@@ -71,7 +71,7 @@
   font-feature-settings: "liga", "kern";
 }
 
-/* Mira wordmark only. */
+/* Mira wordmark and the landing page's display headings. */
 .font-brand {
   font-weight: 400;
   letter-spacing: -0.01em;

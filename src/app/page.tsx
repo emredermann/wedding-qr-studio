@@ -110,7 +110,7 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
 function SectionHead({ title, text, dark = false }: { title: ReactNode; text?: string; dark?: boolean }) {
   return (
     <div className="mb-14 max-w-2xl">
-      <h2 className="font-serif text-5xl leading-[1.04] sm:text-6xl">{title}</h2>
+      <h2 className="font-brand text-5xl leading-[1.04] sm:text-6xl">{title}</h2>
       {text && <p className={`mt-5 max-w-xl leading-relaxed ${dark ? "text-stone-400" : "text-stone-600"}`}>{text}</p>}
     </div>
   );
@@ -168,7 +168,7 @@ function PhoneMock({ t }: { t: T }) {
         <div className="flex flex-col items-center px-5 pt-8 pb-5 text-center">
           <BrandMark className="h-5 w-5 text-stone-400" />
           <p className="mt-4 text-[9px] tracking-[0.3em] text-stone-500 uppercase">{t("12 Eylül")}</p>
-          <p className="mt-1 font-serif text-2xl">Elif &amp; Can</p>
+          <p className="mt-1 font-brand text-2xl">Elif &amp; Can</p>
           <div className="mt-5 w-full rounded-full bg-stone-900 py-2.5 text-[11px] text-stone-50">{t("Fotoğraf yükle")}</div>
           <div className="mt-2 w-full rounded-full border border-stone-300 py-2.5 text-[11px] text-stone-700">{t("Albüme bak")}</div>
         </div>
@@ -191,7 +191,7 @@ function TableCard({ variant, t }: { variant: "classic" | "monogram" | "ink"; t:
       }`}
     >
       {variant === "monogram" ? (
-        <p className="font-serif text-3xl italic">E · C</p>
+        <p className="font-brand text-3xl italic">E · C</p>
       ) : (
         <p className={`text-[9px] tracking-[0.3em] uppercase ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Anılarınızı paylaşın")}</p>
       )}
@@ -199,7 +199,7 @@ function TableCard({ variant, t }: { variant: "classic" | "monogram" | "ink"; t:
         <QrGlyph className="h-20 w-20" />
       </div>
       <div>
-        <p className="font-serif text-lg">Elif &amp; Can</p>
+        <p className="font-brand text-lg">Elif &amp; Can</p>
         <p className={`mt-1 text-[10px] ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Kodu okutun, karelerinizi bırakın")}</p>
       </div>
     </div>
@@ -274,8 +274,8 @@ export default async function HomePage() {
           <ol className="grid gap-px overflow-hidden border border-stone-700 bg-stone-700 md:grid-cols-3">
             {STEPS.map((s, i) => (
               <li key={s.title} className="bg-stone-900 p-8">
-                <p className="font-serif text-7xl text-stone-500">{i + 1}</p>
-                <h3 className="mt-8 font-serif text-2xl">{t(s.title)}</h3>
+                <p className="font-brand text-7xl text-stone-500">{i + 1}</p>
+                <h3 className="mt-8 font-brand text-2xl">{t(s.title)}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-400">{t(s.text)}</p>
               </li>
             ))}
@@ -305,7 +305,7 @@ export default async function HomePage() {
               <li key={s.title} className="flex gap-6 border-b border-stone-200 py-6">
                 <span className="w-6 shrink-0 pt-1 text-sm text-stone-400 tabular-nums">{i + 1}</span>
                 <div>
-                  <h3 className="font-serif text-2xl">{t(s.title)}</h3>
+                  <h3 className="font-brand text-2xl">{t(s.title)}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-stone-600">{t(s.text)}</p>
                 </div>
               </li>
@@ -313,7 +313,7 @@ export default async function HomePage() {
           </ol>
           <figure className="flex flex-col justify-center gap-12 md:pl-8">
             <PhoneMock t={t} />
-            <blockquote className="font-serif text-3xl leading-snug text-stone-800 sm:text-4xl">
+            <blockquote className="font-brand text-3xl leading-snug text-stone-800 sm:text-4xl">
               {t("“En güzel kareler çoğu zaman misafirlerin telefonunda kalır. Onlara ulaşmanın yolu, paylaşmayı zahmetsiz kılmaktan geçer.”")}
             </blockquote>
             <figcaption className="-mt-6 text-sm text-stone-500">{t("{brand} ilkesi", { brand: BRAND.name })}</figcaption>
@@ -338,7 +338,7 @@ export default async function HomePage() {
             {CARD_OPTIONS.map((o) => (
               <div key={o.title} className="bg-stone-50 p-8">
                 <p className="text-xs text-stone-500">{t(o.note)}</p>
-                <h3 className="mt-4 font-serif text-2xl">{t(o.title)}</h3>
+                <h3 className="mt-4 font-brand text-2xl">{t(o.title)}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600">{t(o.text)}</p>
               </div>
             ))}
@@ -352,7 +352,7 @@ export default async function HomePage() {
         <div className="grid gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="border-t border-stone-200 py-6">
-              <h3 className="font-serif text-2xl">{t(f.title)}</h3>
+              <h3 className="font-brand text-2xl">{t(f.title)}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{t(f.text)}</p>
             </div>
           ))}
@@ -370,7 +370,7 @@ export default async function HomePage() {
               <thead>
                 <tr className="border-b border-stone-900">
                   <th className="py-4 pr-6 font-normal text-stone-500" />
-                  <th className="py-4 pr-6 font-serif text-2xl font-normal">{BRAND.name}</th>
+                  <th className="py-4 pr-6 font-brand text-2xl font-normal">{BRAND.name}</th>
                   <th className="py-4 pr-6 font-normal text-stone-500">{t("Fotoğraf uygulamaları")}</th>
                   <th className="py-4 font-normal text-stone-500">{t("Paylaşılan albümler")}</th>
                 </tr>
@@ -405,7 +405,7 @@ export default async function HomePage() {
           <div className="flex flex-col justify-between gap-10 border-b border-stone-200 p-10 md:border-r md:border-b-0">
             <div>
               <p className="text-sm text-stone-500">{t("Her şey dahil")}</p>
-              <p className="mt-6 font-serif text-7xl">{t("0 ₺")}</p>
+              <p className="mt-6 font-brand text-7xl">{t("0 ₺")}</p>
               <p className="mt-3 text-sm text-stone-600">{t("Abonelik yok, gizli ücret yok, kilitli özellik yok. Dosyalarınız kendi Google Drive’ınızda.")}</p>
             </div>
             <div>
@@ -431,7 +431,7 @@ export default async function HomePage() {
             {FAQ.map((f) => (
               <details key={f.q} className="group border-b border-stone-200">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-stone-900 [&::-webkit-details-marker]:hidden">
-                  <span className="font-serif text-2xl">{t(f.q)}</span>
+                  <span className="font-brand text-2xl">{t(f.q)}</span>
                   <Plus className="h-4 w-4 shrink-0 text-stone-400 transition group-open:rotate-45" strokeWidth={1.5} />
                 </summary>
                 <p className="pb-6 text-sm leading-relaxed text-stone-600">{t(f.a)}</p>
@@ -445,7 +445,7 @@ export default async function HomePage() {
       <section className="bg-stone-900 text-stone-50">
         <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-28 text-center sm:py-36">
           <BrandMark className="h-8 w-8 text-stone-500" />
-          <h2 className="mt-10 font-serif text-5xl leading-[1.05] sm:text-6xl">
+          <h2 className="mt-10 font-brand text-5xl leading-[1.05] sm:text-6xl">
             {t("Hiçbir an kaybolmasın.")}
           </h2>
           <p className="mt-6 max-w-md text-stone-400">{t("Albümünüzü dakikalar içinde kurun; gerisini misafirleriniz tamamlasın.")}</p>
@@ -470,7 +470,6 @@ export default async function HomePage() {
               </a>
             ))}
           </nav>
-          <span>{t("Fotoğraf ve videolarınız yalnızca sizin Google Drive’ınızda durur.")}</span>
         </div>
       </footer>
     </main>
