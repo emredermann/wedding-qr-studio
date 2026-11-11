@@ -73,7 +73,7 @@ export function CoHostsCard({
     <div className="rounded-3xl border border-stone-200 bg-white p-5">
       <h3 className="font-serif text-lg text-stone-900">Ortak yöneticiler</h3>
       <p className="mt-1 text-xs text-stone-500">
-        Mira hesabı olan birini kullanıcı adıyla ekleyin. Moderasyon, ayarlar ve indirme yapabilir; etkinliği silemez, yönetici ekleyemez. Dosyalar her zaman sizin Drive’ınızda kalır.
+        Mira hesabı olan birini giriş yaptığı kullanıcı adı (ya da e-posta) ile ekleyin. Moderasyon, ayarlar ve indirme yapabilir; etkinliği silemez, yönetici ekleyemez. Dosyalar her zaman sizin Drive’ınızda kalır.
       </p>
       <ul className="mt-3 space-y-1.5">
         {items === null && <Loader2 className="h-4 w-4 animate-spin text-stone-400" />}
@@ -98,7 +98,7 @@ export function CoHostsCard({
               void add();
             }
           }}
-          placeholder="Kullanıcı adı"
+          placeholder="Kullanıcı adı veya e-posta"
           autoCapitalize="none"
           className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-stone-500"
         />

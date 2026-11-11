@@ -10,7 +10,7 @@
  * dependency-free.
  */
 export const DEFAULT_LOGIN_EMAIL_DOMAIN = "kullanici.eventqr.app";
-const LEGACY_LOGIN_EMAIL_DOMAINS = ["kullanici.weddingqr.app"] as const;
+export const LEGACY_LOGIN_EMAIL_DOMAINS = ["kullanici.weddingqr.app"] as const;
 
 export const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])$/;
 
@@ -46,4 +46,18 @@ export function loginEmailToUsername(email: string | null | undefined, domain: s
     if (lower.endsWith(suffix)) return email.slice(0, -suffix.length);
   }
   return email;
+}
+
+const SIMPLE_EMAIL_PATTERN = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+
+/**
+ * Every login e-mail an account entered as `input` may have, in lookup order:
+ * a full e-mail (legacy accounts) as typed, or a username under the current
+ * and the legacy internal domains. Empty when the input is neither.
+ */
+export function loginEmailCandidates(input: string, domain: string = loginEmailDomain()): string[] {
+  const value = normaliseUsername(input);
+  if (value.includes("@")) return SIMPLE_EMAIL_PATTERN.test(value) ? [value] : [];
+  if (!isValidUsername(value)) return [];
+  return [...new Set([domain, ...LEGACY_LOGIN_EMAIL_DOMAINS])].map((d) => `${value}@${d}`);
 }

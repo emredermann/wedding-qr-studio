@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { isValidUsername, loginEmailToUsername, normaliseUsername, usernameToLoginEmail } from "../src/lib/login-identity.ts";
+import { isValidUsername, loginEmailCandidates, loginEmailToUsername, normaliseUsername, usernameToLoginEmail } from "../src/lib/login-identity.ts";
 
 const DOMAIN = "kullanici.eventqr.app";
 
@@ -26,5 +26,21 @@ describe("login identity", () => {
     for (const bad of ["ab", ".ayse", "ayse.", "ayşe mehmet", "a".repeat(33), "x@y"]) {
       assert.ok(!isValidUsername(bad), bad);
     }
+  });
+});
+
+describe("loginEmailCandidates (co-host lookup)", () => {
+  it("tries the current and legacy internal domains for a username", () => {
+    assert.deepEqual(loginEmailCandidates(" Ayşe ", DOMAIN), ["ayse@kullanici.eventqr.app", "ayse@kullanici.weddingqr.app"]);
+  });
+
+  it("accepts the full e-mail of a legacy account as typed", () => {
+    assert.deepEqual(loginEmailCandidates("Ornek.Kisi@Gmail.com", DOMAIN), ["ornek.kisi@gmail.com"]);
+  });
+
+  it("returns nothing for input that is neither", () => {
+    assert.deepEqual(loginEmailCandidates("a", DOMAIN), []);
+    assert.deepEqual(loginEmailCandidates("not an email@", DOMAIN), []);
+    assert.deepEqual(loginEmailCandidates("Geçersiz Ad!!", DOMAIN), []);
   });
 });

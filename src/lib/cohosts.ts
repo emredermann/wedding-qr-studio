@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isValidUsername, loginEmailToUsername, normaliseUsername, usernameToLoginEmail } from "@/lib/login-identity";
+import { loginEmailCandidates, loginEmailToUsername } from "@/lib/login-identity";
 import { getAdminDb } from "@/lib/supabase/server";
 
 export const MAX_COHOSTS = 5;
@@ -12,13 +12,18 @@ export interface CohostDto {
 
 export type AddCohostResult = { ok: true } | { ok: false; reason: "not_found" | "self" | "limit" };
 
-/** Maps a Mira username to its account id, or null (same answer for "invalid" and "unknown"). */
+/**
+ * Maps what the owner typed (a username, or the e-mail of a legacy account —
+ * the same forms the login screen accepts) to an account id, or null. The
+ * answer is the same for "invalid" and "unknown".
+ */
 async function findUserIdByUsername(username: string): Promise<string | null> {
-  const name = normaliseUsername(username);
-  if (!isValidUsername(name)) return null;
-  const { data, error } = await getAdminDb().rpc("find_user_id_by_email", { p_email: usernameToLoginEmail(name) });
-  if (error) throw new Error(`[cohosts] ${error.message}`);
-  return typeof data === "string" && data ? data : null;
+  for (const email of loginEmailCandidates(username)) {
+    const { data, error } = await getAdminDb().rpc("find_user_id_by_email", { p_email: email });
+    if (error) throw new Error(`[cohosts] ${error.message}`);
+    if (typeof data === "string" && data) return data;
+  }
+  return null;
 }
 
 export async function countCohosts(eventId: string): Promise<number> {
@@ -84,7 +89,7 @@ export async function cohostEventIds(userId: string): Promise<string[]> {
 }
 
 export const COHOST_ERRORS: Record<Exclude<AddCohostResult, { ok: true }>["reason"], string> = {
-  not_found: "Bu kullanıcı adıyla eklenebilecek bir hesap bulunamadı.",
+  not_found: "Bu kullanıcı adı ya da e-postayla eklenebilecek bir hesap bulunamadı.",
   self: "Kendinizi ortak yönetici olarak ekleyemezsiniz.",
   limit: `En fazla ${MAX_COHOSTS} ortak yönetici ekleyebilirsiniz.`,
 };

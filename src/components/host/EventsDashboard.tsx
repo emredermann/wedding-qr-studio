@@ -212,7 +212,7 @@ export function EventsDashboard() {
                   {coHosts.length > 0 && <span className="ml-1 font-normal text-stone-400">· {coHosts.length} kişi</span>}
                 </summary>
                 <div className="space-y-2 pt-3">
-                  <p className="text-xs text-stone-500">Mira hesabı olan birini kullanıcı adıyla ekleyin. Moderasyon ve ayarları yönetebilir; etkinliği silemez. En fazla 5 kişi.</p>
+                  <p className="text-xs text-stone-500">Mira hesabı olan birini giriş yaptığı kullanıcı adı (ya da e-posta) ile ekleyin. Moderasyon ve ayarları yönetebilir; etkinliği silemez. En fazla 5 kişi.</p>
                   {coHosts.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {coHosts.map((u) => (
@@ -238,7 +238,7 @@ export function EventsDashboard() {
                             addCoHostDraft();
                           }
                         }}
-                        placeholder="Kullanıcı adı"
+                        placeholder="Kullanıcı adı veya e-posta"
                         className={field}
                       />
                       <button type="button" onClick={addCoHostDraft} className="shrink-0 rounded-xl border border-stone-300 px-3 text-sm">
