@@ -96,6 +96,12 @@ export const createEventSchema = z.object({
   schedule: scheduleSchema.optional(),
   /** Optional photo challenges; omitted or empty = none. */
   challenges: challengesSchema.optional(),
+  /** Optional co-hosts: usernames of existing Mira accounts (at most 5). */
+  coHosts: z
+    .array(z.string().trim().min(1).max(64))
+    .max(5, "En fazla 5 ortak yönetici")
+    .optional()
+    .transform((list) => (list ? [...new Set(list.map((u) => u.toLocaleLowerCase("tr-TR")))] : undefined)),
   slug: z
     .string()
     .trim()

@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonOk } from "@/lib/api/http";
 import { toGuestbookDto } from "@/lib/events";
-import { requireOwnedEvent } from "@/lib/host-auth";
+import { requireEventAccess } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { GuestbookMessageRow } from "@/types/domain";
 
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function GET(_request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   try {
     const { eventId } = await context.params;
-    const owned = await requireOwnedEvent(eventId);
+    const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
     const { data, error } = await getAdminDb()
       .from("guestbook_messages")

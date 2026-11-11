@@ -115,6 +115,12 @@ describe("event schemas with extras", () => {
     assert.equal(createEventSchema.parse({ title: "Düğün", schedule: [{ time: "19:00", title: "Nikah" }] }).schedule?.length, 1);
   });
 
+  it("keeps co-hosts optional, de-duplicated and capped at 5", () => {
+    assert.equal(createEventSchema.parse({ title: "Düğün" }).coHosts, undefined);
+    assert.deepEqual(createEventSchema.parse({ title: "Düğün", coHosts: [" Ayse ", "ayse", "mehmet"] }).coHosts, ["ayse", "mehmet"]);
+    assert.equal(createEventSchema.safeParse({ title: "Düğün", coHosts: ["a1", "a2", "a3", "a4", "a5", "a6"] }).success, false);
+  });
+
   it("writes schedule only when it is sent", () => {
     assert.deepEqual(settingsPatchToColumns(eventSettingsPatchSchema.parse({ title: "Yeni ad" })), { title: "Yeni ad" });
     const cols = settingsPatchToColumns(eventSettingsPatchSchema.parse({ schedule: [] }));

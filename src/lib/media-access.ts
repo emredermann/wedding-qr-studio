@@ -3,7 +3,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 
 import { readGuestSession } from "@/lib/guest-session";
-import { getHostUser } from "@/lib/host-auth";
+import { eventRoleFor, getHostUser } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { EventRow, MediaItemRow } from "@/types/domain";
 
@@ -21,7 +21,7 @@ export interface AccessibleMedia {
  * reachable only if it is a known media item AND one of:
  *  - it is approved (already "anyone with the link" on Drive),
  *  - the requester uploaded it (signed guest cookie),
- *  - the requester owns the event (Supabase session).
+ *  - the requester manages the event: owner or co-host (Supabase session).
  * Arbitrary Drive IDs are never proxied.
  */
 export async function authorizeMediaAccess(request: NextRequest, fileId: string): Promise<AccessibleMedia | null> {
@@ -42,6 +42,8 @@ export async function authorizeMediaAccess(request: NextRequest, fileId: string)
   if (guest && media.guest_session_id === guest.sessionId) return { media, event, isPublic: false };
 
   const host = await getHostUser().catch(() => null);
-  if (host && host.id === event.owner_id) return { media, event, isPublic: false };
+  if (host && (await eventRoleFor({ id: media.event_id, owner_id: event.owner_id }, host.id).catch(() => null))) {
+    return { media, event, isPublic: false };
+  }
   return null;
 }

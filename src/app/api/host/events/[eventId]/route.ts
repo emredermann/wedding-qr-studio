@@ -4,7 +4,7 @@ import { handleRouteError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { fetchAllRows, toHostEventDto } from "@/lib/events";
-import { requireOwnedEvent } from "@/lib/host-auth";
+import { requireEventAccess } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
 import { eventSettingsPatchSchema, settingsPatchToColumns } from "@/lib/validation";
 import type { EventRow, EventStatsDto, HostEventDto, MediaItemRow } from "@/types/domain";
@@ -92,10 +92,10 @@ async function computeStats(eventId: string): Promise<EventStatsDto> {
 export async function GET(_request: NextRequest, context: Ctx) {
   try {
     const { eventId } = await context.params;
-    const owned = await requireOwnedEvent(eventId);
+    const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
     const stats = await computeStats(owned.event.id);
-    return jsonOk<{ event: HostEventDto; stats: EventStatsDto }>({ event: toHostEventDto(owned.event), stats });
+    return jsonOk<{ event: HostEventDto; stats: EventStatsDto }>({ event: toHostEventDto(owned.event, owned.role), stats });
   } catch (error) {
     return handleRouteError("host:event:get", error);
   }
@@ -105,7 +105,7 @@ export async function GET(_request: NextRequest, context: Ctx) {
 export async function PATCH(request: NextRequest, context: Ctx) {
   try {
     const { eventId } = await context.params;
-    const owned = await requireOwnedEvent(eventId);
+    const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
 
     const body = await parseJsonBody(request, eventSettingsPatchSchema, 16 * 1024);
@@ -118,17 +118,17 @@ export async function PATCH(request: NextRequest, context: Ctx) {
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return jsonOk<{ event: HostEventDto }>({ event: toHostEventDto(data as EventRow) });
+    return jsonOk<{ event: HostEventDto }>({ event: toHostEventDto(data as EventRow, owned.role) });
   } catch (error) {
     return handleRouteError("host:event:update", error);
   }
 }
 
-/** DELETE /api/host/events/:eventId — deletes the event; its Drive folder goes to the trash (30-day recovery). */
+/** DELETE /api/host/events/:eventId — owner only; its Drive folder goes to the trash (30-day recovery). */
 export async function DELETE(_request: NextRequest, context: Ctx) {
   try {
     const { eventId } = await context.params;
-    const owned = await requireOwnedEvent(eventId);
+    const owned = await requireEventAccess(eventId, { ownerOnly: true });
     if (!owned.ok) return owned.response;
     const { error } = await getAdminDb().from("events").delete().eq("id", owned.event.id);
     if (error) throw new Error(error.message);

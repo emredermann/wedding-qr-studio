@@ -13,7 +13,7 @@ import {
 } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
 import { POPULAR_LIMIT, withHeartedByMe } from "@/lib/hearts";
-import { getHostUser } from "@/lib/host-auth";
+import { eventRoleFor, getHostUser } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { MEDIA_KINDS, type MediaItemRow, type MediaKind, type MediaPage } from "@/types/domain";
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     let canSeeAll = event.gallery_public;
     if (!canSeeAll && !mineOnly) {
       const host = await getHostUser().catch(() => null);
-      canSeeAll = host?.id === event.owner_id;
+      canSeeAll = host ? Boolean(await eventRoleFor(event, host.id).catch(() => null)) : false;
     }
 
     let query = getAdminDb()

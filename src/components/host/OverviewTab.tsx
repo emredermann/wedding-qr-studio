@@ -90,7 +90,11 @@ export function OverviewTab({
               <span>
                 <span className="block text-sm font-semibold">Google Drive klasörü</span>
                 <span className="block text-xs text-stone-500">
-                  {event.driveAccount === "host" ? "Kendi Drive’ınızda · tüm orijinaller burada" : "Platform Drive’ında · tüm orijinaller burada"}
+                  {event.role === "cohost"
+                    ? "Etkinlik sahibinin Drive’ında · açmak için sahibin paylaşması gerekir"
+                    : event.driveAccount === "host"
+                      ? "Kendi Drive’ınızda · tüm orijinaller burada"
+                      : "Platform Drive’ında · tüm orijinaller burada"}
                 </span>
               </span>
             </a>

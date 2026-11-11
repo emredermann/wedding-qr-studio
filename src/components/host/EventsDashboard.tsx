@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarHeart, ChevronRight, Images, Loader2, Plus } from "lucide-react";
+import { CalendarHeart, ChevronRight, Images, Loader2, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,6 +22,16 @@ export function EventsDashboard() {
   const [formError, setFormError] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [coHosts, setCoHosts] = useState<string[]>([]);
+  const [coHostDraft, setCoHostDraft] = useState("");
+  const [created, setCreated] = useState<{ id: string; notAdded: string[] } | null>(null);
+
+  const addCoHostDraft = () => {
+    const value = coHostDraft.trim().toLocaleLowerCase("tr-TR").slice(0, 64);
+    if (!value || coHosts.includes(value) || coHosts.length >= 5) return;
+    setCoHosts([...coHosts, value]);
+    setCoHostDraft("");
+  };
   const [drive, setDrive] = useState<DriveConnectionStatusDto | null>(null);
   const [driveReload, setDriveReload] = useState(0);
 
@@ -62,7 +72,7 @@ export function EventsDashboard() {
     setFormError(null);
     setCreating(true);
     try {
-      const res = await apiFetch<{ event: HostEventDto }>("/api/host/events", {
+      const res = await apiFetch<{ event: HostEventDto; coHostsNotAdded?: string[] }>("/api/host/events", {
         method: "POST",
         json: {
           title: form.title,
@@ -71,9 +81,17 @@ export function EventsDashboard() {
           slug: form.slug || undefined,
           ...(schedule.length > 0 ? { schedule } : {}),
           ...(challenges.length > 0 ? { challenges } : {}),
+          ...(coHosts.length > 0 ? { coHosts } : {}),
         },
       });
       trackEvent("event_created", { drive: res.event.driveAccount });
+      const notAdded = res.coHostsNotAdded ?? [];
+      if (notAdded.length > 0) {
+        // Let the host read which co-hosts could not be added before moving on.
+        setCreated({ id: res.event.id, notAdded });
+        setCreating(false);
+        return;
+      }
       router.push(`/dashboard/${res.event.id}`);
     } catch (err) {
       setFormError(errorMessage(err));
@@ -110,7 +128,12 @@ export function EventsDashboard() {
                     <CalendarHeart className="h-6 w-6" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-stone-900">{ev.coupleNames || ev.title}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-medium text-stone-900">{ev.coupleNames || ev.title}</span>
+                      {ev.role === "cohost" && (
+                        <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600">Ortak yönetici</span>
+                      )}
+                    </span>
                     <span className="block truncate text-xs text-stone-500">
                       /e/{ev.slug}
                       {ev.eventDate ? ` · ${new Date(`${ev.eventDate}T12:00:00`).toLocaleDateString("tr-TR")}` : ""}
@@ -181,11 +204,66 @@ export function EventsDashboard() {
                   <ChallengesEditor value={challenges} onChange={setChallenges} />
                 </div>
               </details>
+              <details className="group rounded-xl border border-stone-200 px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-stone-600 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-1">
+                    <Plus className="h-3.5 w-3.5 transition group-open:rotate-45" /> Ortak yöneticiler (isteğe bağlı)
+                  </span>
+                  {coHosts.length > 0 && <span className="ml-1 font-normal text-stone-400">· {coHosts.length} kişi</span>}
+                </summary>
+                <div className="space-y-2 pt-3">
+                  <p className="text-xs text-stone-500">Mira hesabı olan birini kullanıcı adıyla ekleyin. Moderasyon ve ayarları yönetebilir; etkinliği silemez. En fazla 5 kişi.</p>
+                  {coHosts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {coHosts.map((u) => (
+                        <span key={u} className="inline-flex items-center gap-1 rounded-full bg-stone-100 py-1 pr-1 pl-3 text-xs text-stone-800">
+                          {u}
+                          <button type="button" onClick={() => setCoHosts(coHosts.filter((x) => x !== u))} className="rounded-full p-0.5 hover:bg-stone-200" aria-label={`${u} kaldır`}>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {coHosts.length < 5 && (
+                    <div className="flex gap-2">
+                      <input
+                        value={coHostDraft}
+                        maxLength={64}
+                        autoCapitalize="none"
+                        onChange={(e) => setCoHostDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addCoHostDraft();
+                          }
+                        }}
+                        placeholder="Kullanıcı adı"
+                        className={field}
+                      />
+                      <button type="button" onClick={addCoHostDraft} className="shrink-0 rounded-xl border border-stone-300 px-3 text-sm">
+                        Ekle
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </details>
               {formError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>}
+              {created && (
+                <div role="status" className="space-y-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <p>
+                    Etkinlik oluşturuldu, ancak şu kullanıcı adları ortak yönetici olarak eklenemedi: <strong>{created.notAdded.join(", ")}</strong>. Hesap açtıktan
+                    sonra Ayarlar’dan ekleyebilirsiniz.
+                  </p>
+                  <button type="button" onClick={() => router.push(`/dashboard/${created.id}`)} className="rounded-full bg-stone-900 px-3 py-1.5 text-white">
+                    Etkinliğe git
+                  </button>
+                </div>
+              )}
               {needsDrive && (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">Etkinlik oluşturmak için önce “Google Drive depolama” kartından Drive’ınızı bağlayın.</p>
               )}
-              <button type="submit" disabled={creating || needsDrive} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={creating || needsDrive || created !== null} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />} Oluştur
               </button>
             </div>

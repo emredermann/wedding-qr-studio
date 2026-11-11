@@ -4,6 +4,7 @@ import { Loader2, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { CoHostsCard } from "@/components/host/CoHostsCard";
 import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
@@ -176,13 +177,16 @@ export function SettingsTab({
         <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} Kaydet
         </button>
-        <div className="rounded-3xl border border-rose-200 bg-rose-50/60 p-5">
-          <h3 className="text-sm font-semibold text-rose-800">Etkinliği sil</h3>
-          <p className="mt-1 text-xs text-rose-700">Etkinlik kaydı silinir; Drive klasörü çöp kutusuna taşınır ve 30 gün içinde geri alınabilir.</p>
-          <button type="button" onClick={deleteEvent} disabled={deleting} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white">
-            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Etkinliği sil
-          </button>
-        </div>
+        {event.role === "owner" && <CoHostsCard eventId={event.id} onMessage={onMessage} />}
+        {event.role === "owner" && (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50/60 p-5">
+            <h3 className="text-sm font-semibold text-rose-800">Etkinliği sil</h3>
+            <p className="mt-1 text-xs text-rose-700">Etkinlik kaydı silinir; Drive klasörü çöp kutusuna taşınır ve 30 gün içinde geri alınabilir.</p>
+            <button type="button" onClick={deleteEvent} disabled={deleting} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white">
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Etkinliği sil
+            </button>
+          </div>
+        )}
       </section>
     </form>
   );

@@ -102,6 +102,8 @@ export interface PublicEventDto {
 /** Host-facing event info (includes Drive links and stats). */
 export interface HostEventDto extends PublicEventDto {
   id: string;
+  /** "owner" manages everything; "cohost" cannot delete the event or manage co-hosts. */
+  role: "owner" | "cohost";
   driveFolderUrl: string;
   driveAccount: "app" | "host";
   createdAt: string;
@@ -129,6 +131,7 @@ export interface HostEventListItem {
   eventDate: string | null;
   themeColor: string;
   mediaCount: number;
+  role: "owner" | "cohost";
   createdAt: string;
 }
 

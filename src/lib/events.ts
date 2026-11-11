@@ -37,10 +37,11 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
   };
 }
 
-export function toHostEventDto(event: EventRow): HostEventDto {
+export function toHostEventDto(event: EventRow, role: HostEventDto["role"] = "owner"): HostEventDto {
   return {
     ...toPublicEventDto(event),
     id: event.id,
+    role,
     driveFolderUrl: driveFolderUrl(event.drive_folder_id),
     driveAccount: event.drive_account,
     createdAt: event.created_at,

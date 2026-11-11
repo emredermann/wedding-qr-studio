@@ -5,7 +5,7 @@ import { mapSettledLimit } from "@/lib/concurrency";
 import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
-import { requireOwnedEvent } from "@/lib/host-auth";
+import { requireEventAccess } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { bulkMediaSchema } from "@/lib/validation";
@@ -28,7 +28,7 @@ const DRIVE_CONCURRENCY = 6;
 export async function POST(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   try {
     const { eventId } = await context.params;
-    const owned = await requireOwnedEvent(eventId);
+    const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
     const limited = await rateLimit(request, "media-bulk", 30, 60, owned.host.id);
     if (limited) return limited;
