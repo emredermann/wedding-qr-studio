@@ -88,7 +88,7 @@ export function HeroFlyThrough({ children }: { children: ReactNode }) {
         <div aria-hidden className="absolute inset-0 flex items-center justify-center">
           <span
             ref={wordRef}
-            className="font-serif leading-none text-stone-900 select-none"
+            className="font-brand leading-none text-stone-900 select-none"
             style={{ fontSize: "clamp(8rem, 36vw, 46rem)" }}
           >
             M<span ref={iRef}>i</span>ra

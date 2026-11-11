@@ -35,7 +35,7 @@ export function BrandLogo({ className = "", markClassName = "h-6 w-6", showTagli
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <BrandMark className={markClassName} />
       <span className="flex flex-col leading-none">
-        <span className="font-serif text-[1.6em] tracking-[0.01em]">{BRAND.name}</span>
+        <span className="font-brand text-[1.6em] tracking-[0.01em]">{BRAND.name}</span>
         {showTagline && <span className="mt-1.5 max-w-[15rem] text-[0.62em] leading-snug tracking-[0.02em] text-stone-500">{tagline}</span>}
       </span>
     </span>

@@ -43,7 +43,7 @@
   --event-text: #1c1917;
   --event-surface: rgba(255, 255, 255, 0.92);
   --event-surface-text: #1c1917;
-  --event-font: Georgia, "Times New Roman", serif;
+  --event-font: var(--font-geist-sans), system-ui, sans-serif;
   --event-radius: 9999px;
 }
 
@@ -51,8 +51,12 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-display), "Instrument Serif", Georgia, "Times New Roman", serif;
+  /* One typeface across the app: Geist. `font-serif` / `font-mono` resolve to it
+     too, so display headings and code share the same family. */
+  --font-mono: var(--font-geist-sans), system-ui, sans-serif;
+  --font-serif: var(--font-geist-sans), system-ui, sans-serif;
+  /* The only exception is the Mira wordmark (a logo, not running text). */
+  --font-brand: var(--font-display), "Instrument Serif", Georgia, "Times New Roman", serif;
 }
 
 ::selection {
@@ -60,8 +64,15 @@
   color: #1c1b18;
 }
 
-/* Display serif: a touch tighter, never bold — elegance comes from size and space. */
+/* Display headings: same typeface, medium weight and slightly tighter. */
 .font-serif {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-feature-settings: "liga", "kern";
+}
+
+/* Mira wordmark only. */
+.font-brand {
   font-weight: 400;
   letter-spacing: -0.01em;
   font-feature-settings: "liga", "kern";

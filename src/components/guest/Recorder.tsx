@@ -181,7 +181,7 @@ export function Recorder({
 
       {state === "recording" && (
         <div className="flex flex-col items-center gap-3 py-2">
-          <p className="flex items-center gap-2 font-mono text-2xl text-stone-900">
+          <p className="flex items-center gap-2 text-2xl font-medium text-stone-900 tabular-nums">
             <span className="h-3 w-3 animate-pulse rounded-full bg-rose-600" /> {mmss}
           </p>
           <p className="text-xs text-stone-500">{Math.round(limit / 60) >= 1 ? t("En fazla {n} dakika", { n: Math.round(limit / 60) }) : t("En fazla {n} saniye", { n: limit })}</p>

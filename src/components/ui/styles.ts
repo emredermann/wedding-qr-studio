@@ -1,9 +1,10 @@
 /**
  * Shared type scale and form styles, so every screen uses the same sizes.
  *
- * - Display serif (Instrument Serif) is for large display text only: page
- *   titles, couple names, the landing page and the live wall (text-2xl+).
- * - Section/card headings use the sans face, semibold, text-base.
+ * - One typeface everywhere (Geist). `font-serif` is kept as the class name
+ *   for large display headings (medium weight, tighter tracking; see
+ *   globals.css); only the Mira wordmark uses the brand font (`font-brand`).
+ * - Section/card headings: semibold, text-base.
  * - Inputs are 16px on phones (iOS zooms into smaller inputs) and 14px from `sm`.
  */
 export const ui = {

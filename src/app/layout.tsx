@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 
 import { BRAND } from "@/lib/brand";
 import { LanguageProvider } from "@/lib/i18n/provider";
@@ -15,16 +15,11 @@ const geistSans = Geist({
   subsets: ["latin", "latin-ext"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin", "latin-ext"],
-});
-
 const display = Instrument_Serif({
   variable: "--font-display",
   subsets: ["latin", "latin-ext"],
   weight: "400",
-  style: ["normal", "italic"],
+  style: "normal",
   display: "swap",
 });
 
@@ -61,7 +56,7 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col overflow-x-clip">
         <LanguageProvider initialLang={lang}>{children}</LanguageProvider>
