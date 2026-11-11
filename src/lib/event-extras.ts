@@ -150,3 +150,91 @@ export function scheduleStatus(
   }
   return { today: true, currentId, nextId };
 }
+
+/**
+ * Keyword → emoji for program items, so the guest timeline gets a playful icon
+ * without the host having to pick one. First match wins (order matters:
+ * "Pasta kesimi" must not become a generic entrance, etc.).
+ */
+const SCHEDULE_EMOJI: Array<[RegExp, string]> = [
+  [/pasta|kek/, "🎂"],
+  [/havai fişek|maytap|fişek/, "🎆"],
+  [/buket|çiçek/, "💐"],
+  [/kına/, "🪔"],
+  [/takı/, "💛"],
+  [/nikah|nikâh|imza|nişan|evet/, "💍"],
+  [/dans|halay|horon|zeybek|vals|tango/, "💃"],
+  [/kokteyl|karşılama|kadeh|şampanya|içki/, "🥂"],
+  [/yemek|ziyafet|akşam|öğle|kahvaltı|büfe|dinner/, "🍽️"],
+  [/kahve|çay|tatlı/, "☕"],
+  [/müzik|dj|konser|sahne|canlı|orkestra|şarkı/, "🎶"],
+  [/foto|çekim|poz/, "📸"],
+  [/konuşma|sunum|söz|mikrofon|anı/, "🎤"],
+  [/oyun|yarışma|çekiliş|sürpriz/, "🎁"],
+  [/parti|eğlence|after/, "🎉"],
+  [/veda|uğurlama|çıkış|kapanış|final/, "👋"],
+  [/giriş|gelin|damat|çift/, "👰"],
+];
+
+export function scheduleEmoji(title: string): string {
+  const text = title.toLocaleLowerCase("tr-TR");
+  for (const [pattern, emoji] of SCHEDULE_EMOJI) if (pattern.test(text)) return emoji;
+  return "✨";
+}
+
+function minutesOf(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** "az sonra" / "12 dk" / "1 sa 5 dk" / "2 sa". */
+export function formatMinutes(minutes: number): string {
+  if (minutes < 1) return "az sonra";
+  if (minutes < 60) return `${minutes} dk`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} sa ${m} dk` : `${h} sa`;
+}
+
+export type ProgramPhase =
+  /** No date set, or the event is over: plain program. */
+  | { kind: "static" }
+  /** Before the event day. */
+  | { kind: "countdown"; days: number }
+  /** Event day, first item not started yet. */
+  | { kind: "warmup"; nextId: string; minutesToNext: number }
+  /** Event day, an item is happening and another one follows. */
+  | { kind: "live"; currentId: string; nextId: string; minutesToNext: number; progress: number }
+  /** Event day, the last item has started. */
+  | { kind: "finale"; currentId: string };
+
+/** Richer view of `scheduleStatus` for the guest timeline (device local time). */
+export function programPhase(schedule: ScheduleItem[], eventDate: string | null, now: Date): ProgramPhase {
+  if (!eventDate || schedule.length === 0) return { kind: "static" };
+  const today = localDateKey(now);
+  if (today < eventDate) {
+    const [y, mo, d] = eventDate.split("-").map(Number);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((new Date(y, mo - 1, d).getTime() - startOfToday.getTime()) / 86_400_000);
+    return { kind: "countdown", days: Math.max(1, days) };
+  }
+  if (today > eventDate) return { kind: "static" };
+
+  const { currentId, nextId } = scheduleStatus(schedule, eventDate, now);
+  const clock = now.getHours() * 60 + now.getMinutes();
+  const current = schedule.find((item) => item.id === currentId);
+  const next = schedule.find((item) => item.id === nextId);
+  if (!current && next) return { kind: "warmup", nextId: next.id, minutesToNext: minutesOf(next.time) - clock };
+  if (current && next) {
+    const start = minutesOf(current.time);
+    const span = Math.max(1, minutesOf(next.time) - start);
+    return {
+      kind: "live",
+      currentId: current.id,
+      nextId: next.id,
+      minutesToNext: minutesOf(next.time) - clock,
+      progress: Math.min(1, Math.max(0, (clock - start) / span)),
+    };
+  }
+  return current ? { kind: "finale", currentId: current.id } : { kind: "static" };
+}

@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 
-import { MAX_CHALLENGES, MAX_SCHEDULE_ITEMS, newExtraId, type Challenge, type ScheduleItem } from "@/lib/event-extras";
+import { MAX_CHALLENGES, MAX_SCHEDULE_ITEMS, newExtraId, scheduleEmoji, type Challenge, type ScheduleItem } from "@/lib/event-extras";
 
 const input = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
 
@@ -27,7 +27,10 @@ export function ScheduleEditor({
     <div className="@container space-y-2">
       {value.length === 0 && <p className="text-xs text-stone-500">Henüz program yok. Örnek: 19:00 Nikah, 20:30 Yemek, 21:30 İlk dans.</p>}
       {value.map((item) => (
-        <div key={item.id} className="grid grid-cols-[6.5rem_1fr_auto] gap-2 @md:grid-cols-[6.5rem_1fr_9rem_auto]">
+        <div key={item.id} className="grid grid-cols-[1.75rem_6.5rem_1fr_auto] items-center gap-2 @md:grid-cols-[1.75rem_6.5rem_1fr_9rem_auto]">
+          <span className="text-center text-lg" title="Misafirlerin göreceği simge (başlıktan seçilir)" aria-hidden>
+            {item.title.trim() ? scheduleEmoji(item.title) : "·"}
+          </span>
           <input
             type="time"
             required
@@ -48,7 +51,7 @@ export function ScheduleEditor({
           <select
             value={item.category ?? ""}
             onChange={(e) => update(item.id, { category: e.target.value || null })}
-            className={`${input} col-span-2 @md:col-span-1 @md:col-start-3 @md:row-start-1`}
+            className={`${input} col-span-2 col-start-2 @md:col-span-1 @md:col-start-4 @md:row-start-1`}
             aria-label="Albüm kategorisi"
           >
             <option value="">Kategori yok</option>
@@ -61,7 +64,7 @@ export function ScheduleEditor({
           <button
             type="button"
             onClick={() => onChange(value.filter((x) => x.id !== item.id))}
-            className="row-start-1 rounded-xl px-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 @md:col-start-4"
+            className="col-start-4 row-start-1 self-stretch rounded-xl px-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 @md:col-start-5"
             aria-label={`${item.title || "Madde"} kaldır`}
           >
             <X className="h-4 w-4" />
@@ -73,7 +76,7 @@ export function ScheduleEditor({
           <Plus className="h-3.5 w-3.5" /> Madde ekle
         </button>
       )}
-      <p className="text-[11px] text-stone-500">Kategori seçerseniz, o saatte yükleme yapan misafirlerde bu kategori önceden seçili gelir.</p>
+      <p className="text-[11px] text-stone-500">Simge başlıktan otomatik seçilir (ör. “Pasta” 🎂, “İlk dans” 💃). Kategori seçerseniz, o saatte yükleme yapan misafirlerde bu kategori önceden seçili gelir.</p>
     </div>
   );
 }

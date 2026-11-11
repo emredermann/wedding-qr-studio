@@ -178,7 +178,18 @@ export function GuestApp({ slug }: { slug: string }) {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pt-5">
-        <ScheduleCard schedule={event.schedule} eventDate={event.eventDate} />
+        <ScheduleCard
+          schedule={event.schedule}
+          eventDate={event.eventDate}
+          onShareMoment={
+            event.uploadsEnabled
+              ? () => {
+                  setTab("upload");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              : undefined
+          }
+        />
         {/* Kept mounted while other tabs are open so in-flight uploads, the queue
             and progress bars survive a tab switch (no orphaned XHRs). */}
         {event.uploadsEnabled && (
