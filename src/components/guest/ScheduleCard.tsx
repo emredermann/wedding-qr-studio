@@ -63,13 +63,17 @@ export function ScheduleCard({
   schedule,
   eventDate,
   onShareMoment,
+  now: nowOverride,
 }: {
   schedule: ScheduleItem[];
   eventDate: string | null;
   /** Opens the upload screen (the current item's category is preselected there). */
   onShareMoment?: () => void;
+  /** Fixed clock for previews/tests; defaults to the device clock. */
+  now?: Date;
 }) {
-  const now = useMinuteClock();
+  const clock = useMinuteClock();
+  const now = nowOverride ?? clock;
   const [open, setOpen] = useState(false);
   if (schedule.length === 0) return null;
 
