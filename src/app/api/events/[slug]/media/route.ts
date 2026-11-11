@@ -12,6 +12,7 @@ import {
   toMediaDto,
 } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
+import { POPULAR_LIMIT, withHeartedByMe } from "@/lib/hearts";
 import { getHostUser } from "@/lib/host-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     const cursor = parseMediaCursor(params.get("cursor"));
     const since = parseCursor(params.get("since"));
     const limit = Math.min(Math.max(Number(params.get("limit")) || PAGE_SIZE, 1), 100);
+    const popular = params.get("sort") === "popular";
 
     let canSeeAll = event.gallery_public;
     if (!canSeeAll && !mineOnly) {
@@ -81,6 +83,25 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       return jsonOk<MediaPage>({ items: ((data ?? []) as MediaItemRow[]).map((row) => toMediaDto(row, sessionId)), nextCursor: null });
     }
 
+    if (popular) {
+      // "En sevilenler": the most-hearted approved items (own items only in a private gallery). No pagination.
+      let top = query.eq("status", "approved");
+      if (mineOnly || !canSeeAll) {
+        if (!sessionId) return jsonOk<MediaPage>({ items: [], nextCursor: null });
+        top = top.eq("guest_session_id", sessionId);
+      }
+      if (category) top = top.eq("category", category);
+      if (challenge) top = top.eq("challenge_id", challenge);
+      if (kind) top = top.eq("kind", kind);
+      const { data, error } = await top
+        .order("heart_count", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(POPULAR_LIMIT);
+      if (error) throw new Error(error.message);
+      const items = ((data ?? []) as MediaItemRow[]).map((row) => toMediaDto(row, sessionId));
+      return jsonOk<MediaPage>({ items: await withHeartedByMe(items, sessionId), nextCursor: null });
+    }
+
     if (mineOnly || !canSeeAll) {
       if (!sessionId) return jsonOk<MediaPage>({ items: [], nextCursor: null });
       query = query.eq("guest_session_id", sessionId).neq("status", "hidden");
@@ -101,7 +122,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as MediaItemRow[];
-    const items = rows.map((row) => toMediaDto(row, sessionId));
+    const items = await withHeartedByMe(
+      rows.map((row) => toMediaDto(row, sessionId)),
+      sessionId,
+    );
     const nextCursor = rows.length === limit ? encodeMediaCursor(rows[rows.length - 1]) : null;
     return jsonOk<MediaPage>({ items, nextCursor });
   } catch (error) {

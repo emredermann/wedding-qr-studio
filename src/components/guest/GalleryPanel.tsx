@@ -1,8 +1,9 @@
 "use client";
 
-import { Images, Loader2 } from "lucide-react";
+import { Heart, Images, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { HeartButton } from "@/components/media/HeartButton";
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
@@ -22,6 +23,7 @@ function GalleryFeed({
   event,
   category,
   challenge,
+  popular,
   mineOnly,
   extraItems,
   onMessage,
@@ -29,6 +31,7 @@ function GalleryFeed({
   event: PublicEventDto;
   category: string | null;
   challenge: string | null;
+  popular: boolean;
   mineOnly: boolean;
   extraItems: MediaDto[];
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
@@ -41,12 +44,17 @@ function GalleryFeed({
 
   const baseUrl = `/api/events/${encodeURIComponent(event.slug)}/media`;
   const filters = { category, challenge, mine: mineOnly ? "1" : null };
+  const [heartPatches, setHeartPatches] = useState<Record<string, Pick<MediaDto, "heartCount" | "heartedByMe">>>({});
+  const onHeart = (id: string, patch: Pick<MediaDto, "heartCount" | "heartedByMe">) =>
+    setHeartPatches((prev) => ({ ...prev, [id]: patch }));
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const page = await apiFetch<MediaPage>(`${baseUrl}${buildQuery({ category, challenge, mine: mineOnly ? "1" : null })}`);
+        const page = await apiFetch<MediaPage>(
+          `${baseUrl}${buildQuery({ category, challenge, mine: mineOnly ? "1" : null, sort: popular ? "popular" : null })}`,
+        );
         if (cancelled) return;
         setItems(page.items);
         setCursor(page.nextCursor);
@@ -59,7 +67,7 @@ function GalleryFeed({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, category, challenge, mineOnly, onMessage]);
+  }, [baseUrl, category, challenge, mineOnly, popular, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -75,8 +83,8 @@ function GalleryFeed({
     }
   };
 
-  const visible = [
-    ...extraItems.filter(
+  const merged = [
+    ...(popular ? [] : extraItems).filter(
       (x) =>
         !items.some((i) => i.id === x.id) &&
         (!category || x.category === category) &&
@@ -85,6 +93,9 @@ function GalleryFeed({
     ),
     ...items,
   ];
+  // Heart changes are kept as patches so they survive "load more" and the lightbox.
+  const visible = merged.map((m) => (heartPatches[m.id] ? { ...m, ...heartPatches[m.id] } : m));
+  const canHeart = (m: MediaDto) => m.status === "approved" && m.kind !== "audio";
 
   const loadAllForZip = async (): Promise<DownloadableFile[]> => {
     const all: MediaDto[] = [];
@@ -142,7 +153,11 @@ function GalleryFeed({
           <p className="text-sm">{mineOnly ? "Henüz bir şey yüklemediniz." : "İlk anıyı siz paylaşın!"}</p>
         </div>
       ) : (
-        <MediaGrid items={visible} onOpen={setOpenIndex} />
+        <MediaGrid
+          items={visible}
+          onOpen={setOpenIndex}
+          renderOverlay={(m) => (canHeart(m) ? <HeartButton item={m} onChange={onHeart} onError={(t) => onMessage(t, "error")} /> : null)}
+        />
       )}
 
       {cursor && (
@@ -167,6 +182,13 @@ function GalleryFeed({
           onClose={() => setOpenIndex(null)}
           onDelete={visible[openIndex]?.isMine ? handleDelete : undefined}
           challenges={event.challenges}
+          footer={(m) =>
+            canHeart(m) ? (
+              <div className="mb-1 flex justify-center">
+                <HeartButton item={m} variant="lightbox" onChange={onHeart} onError={(t) => onMessage(t, "error")} />
+              </div>
+            ) : null
+          }
         />
       )}
     </div>
@@ -185,6 +207,7 @@ export function GalleryPanel({
   const [category, setCategory] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(!event.galleryPublic);
   const [challenge, setChallenge] = useState<string | null>(null);
+  const [popular, setPopular] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -193,6 +216,25 @@ export function GalleryPanel({
           Bu galeri gizli: yalnızca kendi yüklediklerinizi görebilirsiniz.
         </p>
       )}
+      <div className="flex rounded-full border border-stone-200 bg-white p-1 text-xs font-medium" role="group" aria-label="Sıralama">
+        {([
+          [false, "En yeniler"],
+          [true, "En sevilenler"],
+        ] as const).map(([value, label]) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={popular === value}
+            onClick={() => setPopular(value)}
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition ${
+              popular === value ? "bg-stone-900 text-white" : "text-stone-600"
+            }`}
+          >
+            {value && <Heart className="h-3.5 w-3.5" />}
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {event.galleryPublic && (
           <button
@@ -239,10 +281,11 @@ export function GalleryPanel({
         </div>
       )}
       <GalleryFeed
-        key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}`}
+        key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}:${popular}`}
         event={event}
         category={category}
         challenge={challenge}
+        popular={popular}
         mineOnly={mineOnly}
         extraItems={recentUploads}
         onMessage={onMessage}

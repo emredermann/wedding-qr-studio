@@ -62,6 +62,8 @@ export interface MediaItemRow {
   face_count: number;
   /** Photo challenge the guest joined (0002 migration). */
   challenge_id?: string | null;
+  /** Denormalised heart total (0002 migration), maintained by toggle_media_heart(). */
+  heart_count?: number;
   published_at: string | null;
   created_at: string;
 }
@@ -149,6 +151,9 @@ export interface MediaDto {
   publishedAt: string | null;
   /** True when the current guest uploaded it (only set on guest endpoints). */
   isMine?: boolean;
+  heartCount: number;
+  /** True when the current guest left a heart (only set on guest gallery endpoints). */
+  heartedByMe?: boolean;
 }
 
 export interface GuestbookMessageDto {

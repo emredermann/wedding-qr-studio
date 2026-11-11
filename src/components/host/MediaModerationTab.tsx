@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CheckSquare, EyeOff, Loader2, Trash2, X } from "lucide-react";
+import { Check, CheckSquare, EyeOff, Heart, Loader2, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Lightbox } from "@/components/media/Lightbox";
@@ -18,6 +18,7 @@ function MediaFeed({
   kind,
   category,
   challenge,
+  popular,
   onMessage,
   onChanged,
 }: {
@@ -26,6 +27,7 @@ function MediaFeed({
   kind: KindFilter;
   category: string | null;
   challenge: string | null;
+  popular: boolean;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
   onChanged: () => void;
 }) {
@@ -43,6 +45,7 @@ function MediaFeed({
     if (kind !== "all") params.set("kind", kind);
     if (category) params.set("category", category);
     if (challenge) params.set("challenge", challenge);
+    if (popular) params.set("sort", "popular");
     for (const [k, v] of Object.entries(extra)) if (v) params.set(k, v);
     return `/api/host/events/${event.id}/media?${params.toString()}`;
   };
@@ -56,6 +59,7 @@ function MediaFeed({
         if (kind !== "all") params.set("kind", kind);
         if (category) params.set("category", category);
         if (challenge) params.set("challenge", challenge);
+        if (popular) params.set("sort", "popular");
         const page = await apiFetch<MediaPage>(`/api/host/events/${event.id}/media?${params.toString()}`);
         if (cancelled) return;
         setItems(page.items);
@@ -69,7 +73,7 @@ function MediaFeed({
     return () => {
       cancelled = true;
     };
-  }, [event.id, status, kind, category, challenge, onMessage]);
+  }, [event.id, status, kind, category, challenge, popular, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -206,7 +210,12 @@ function MediaFeed({
           selected={selected}
           onToggleSelect={toggle}
           renderOverlay={(item) =>
-            !selectMode && item.status === "pending" ? (
+            !selectMode && item.status !== "pending" && item.heartCount > 0 ? (
+              <span className="pointer-events-none absolute right-1 bottom-1 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[11px] text-white">
+                <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
+                <span className="tabular-nums">{item.heartCount}</span>
+              </span>
+            ) : !selectMode && item.status === "pending" ? (
               <div className="absolute inset-x-1 bottom-1 flex gap-1">
                 <button type="button" onClick={() => single(() => setStatus(item, "approved"), "Onaylandı")} className="flex flex-1 items-center justify-center rounded-md bg-emerald-600/90 py-1 text-white" aria-label="Onayla">
                   <Check className="h-4 w-4" />
@@ -287,6 +296,7 @@ export function MediaModerationTab({
   const [kind, setKind] = useState<KindFilter>("all");
   const [category, setCategory] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<string | null>(null);
+  const [popular, setPopular] = useState(false);
 
   const chip = (active: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`;
@@ -314,6 +324,12 @@ export function MediaModerationTab({
             {label}
           </button>
         ))}
+        <span className="mx-1 w-px bg-stone-200" />
+        <button type="button" aria-pressed={popular} onClick={() => setPopular((v) => !v)} className={chip(popular)}>
+          <span className="inline-flex items-center gap-1">
+            <Heart className="h-3.5 w-3.5" /> En sevilenler
+          </span>
+        </button>
       </div>
       {event.categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -334,12 +350,13 @@ export function MediaModerationTab({
         </div>
       )}
       <MediaFeed
-        key={`${status}:${kind}:${category ?? ""}:${challenge ?? ""}`}
+        key={`${status}:${kind}:${category ?? ""}:${challenge ?? ""}:${popular}`}
         event={event}
         status={status}
         kind={kind}
         category={category}
         challenge={challenge}
+        popular={popular}
         onMessage={onMessage}
         onChanged={onChanged}
       />

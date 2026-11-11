@@ -16,7 +16,7 @@ import type {
 export const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])$/;
 
 export const MEDIA_COLUMNS =
-  "id, event_id, drive_file_id, kind, mime_type, size_bytes, original_name, guest_name, guest_session_id, note, category, challenge_id, is_guestbook, status, width, height, face_count, published_at, created_at";
+  "id, event_id, drive_file_id, kind, mime_type, size_bytes, original_name, guest_name, guest_session_id, note, category, challenge_id, heart_count, is_guestbook, status, width, height, face_count, published_at, created_at";
 
 export function toPublicEventDto(event: EventRow): PublicEventDto {
   return {
@@ -60,6 +60,7 @@ export function toMediaDto(row: MediaItemRow, guestSessionId?: string | null): M
     note: row.note,
     category: row.category,
     challengeId: row.challenge_id ?? null,
+    heartCount: Number(row.heart_count ?? 0),
     isGuestbook: row.is_guestbook,
     status: row.status,
     width: row.width,
