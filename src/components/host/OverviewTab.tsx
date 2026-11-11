@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/client/api";
 import { formatBytes } from "@/lib/media-config";
 import type { EventStatsDto, ExportItem, HostEventDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
+import { ui } from "@/components/ui/styles";
 
 export function OverviewTab({
   event,
@@ -104,7 +105,7 @@ export function OverviewTab({
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
             <label className="flex items-center gap-3 text-sm text-stone-800">
-              <input type="checkbox" checked={event.uploadsEnabled} onChange={(e) => void onToggleUploads(e.target.checked)} className="h-5 w-5 accent-stone-900" />
+              <input type="checkbox" checked={event.uploadsEnabled} onChange={(e) => void onToggleUploads(e.target.checked)} className={ui.checkbox} />
               {t("Misafir yüklemeleri açık")}
             </label>
             <ZipDownloadButton

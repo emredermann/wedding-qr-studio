@@ -9,6 +9,7 @@ import { apiFetch, errorMessage } from "@/lib/client/api";
 import { streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, HostEventDto, MediaDto, MediaPage, MediaStatus } from "@/types/domain";
 import { useLang, useT } from "@/lib/i18n/provider";
+import { ui } from "@/components/ui/styles";
 
 export function GuestbookModerationTab({
   event,
@@ -112,7 +113,7 @@ export function GuestbookModerationTab({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <section>
-        <h3 className="mb-3 font-serif text-lg text-stone-900">{t("Yazılı notlar ({n})", { n: messages.length })}</h3>
+        <h3 className={`mb-3 ${ui.sectionTitle}`}>{t("Yazılı notlar ({n})", { n: messages.length })}</h3>
         {messages.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">{t("Henüz not yok.")}</p>
         ) : (
@@ -133,7 +134,7 @@ export function GuestbookModerationTab({
         )}
       </section>
       <section>
-        <h3 className="mb-3 font-serif text-lg text-stone-900">{t("Sesli & video mesajlar ({n})", { n: media.length })}</h3>
+        <h3 className={`mb-3 ${ui.sectionTitle}`}>{t("Sesli & video mesajlar ({n})", { n: media.length })}</h3>
         {media.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-300 py-10 text-center text-sm text-stone-500">{t("Henüz kayıt yok.")}</p>
         ) : (

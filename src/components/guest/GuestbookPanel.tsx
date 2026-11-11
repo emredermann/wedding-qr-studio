@@ -12,6 +12,7 @@ import { uploadToDrive } from "@/lib/client/drive-upload";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
+import { ui } from "@/components/ui/styles";
 
 type Entry =
   | { type: "text"; createdAt: string; message: GuestbookMessageDto }
@@ -129,7 +130,7 @@ export function GuestbookPanel({
           onChange={(e) => setText(e.target.value.slice(0, 1000))}
           rows={3}
           placeholder={t("Harika bir gündü, her şey için teşekkürler…")}
-          className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-sm outline-none focus:border-stone-500"
+          className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
         />
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[11px] text-stone-400">{text.length}/1000</span>
@@ -168,7 +169,7 @@ export function GuestbookPanel({
       )}
 
       <section>
-        <h3 className="mb-3 font-serif text-lg text-stone-900">{t("Anı Defteri")}</h3>
+        <h3 className={`mb-3 ${ui.sectionTitle}`}>{t("Anı Defteri")}</h3>
         {loading ? (
           <div className="flex justify-center py-10 text-stone-400">
             <Loader2 className="h-5 w-5 animate-spin" />

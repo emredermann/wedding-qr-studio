@@ -11,6 +11,7 @@ import { saveBlob } from "@/lib/client/download";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
+import { ui } from "@/components/ui/styles";
 
 type TemplateId = "klasik" | "modern" | "botanik" | "gece";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
@@ -515,8 +516,8 @@ export function QrCardDesigner({
     }
   };
 
-  const field = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
-  const label = "mb-1 block text-xs font-semibold text-stone-600";
+  const field = ui.inputCompact;
+  const label = ui.label;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
@@ -602,8 +603,8 @@ export function QrCardDesigner({
             <span className={label}>{t("Tarih")}</span>
             <input value={date} maxLength={40} onChange={(e) => setDate(e.target.value)} className={field} />
           </label>
-          <label className="flex items-end gap-2 pb-2 text-sm text-stone-700">
-            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className="h-4 w-4" /> {t("Bağlantıyı kartta göster")}
+          <label className="flex cursor-pointer items-end gap-2 pb-2.5 text-sm text-stone-700">
+            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className={ui.checkbox} /> {t("Bağlantıyı kartta göster")}
           </label>
           <label className="block sm:col-span-2">
             <span className={label}>{t("Açıklama")}</span>

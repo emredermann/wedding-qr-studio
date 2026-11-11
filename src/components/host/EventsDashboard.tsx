@@ -13,6 +13,7 @@ import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { Challenge, ScheduleItem } from "@/lib/event-extras";
 import { DEFAULT_CATEGORIES, DEFAULT_CATEGORIES_EN, type DriveConnectionStatusDto, type HostEventDto, type HostEventListItem } from "@/types/domain";
 import { useLang, useT } from "@/lib/i18n/provider";
+import { ui } from "@/components/ui/styles";
 
 export function EventsDashboard() {
   const router = useRouter();
@@ -102,7 +103,7 @@ export function EventsDashboard() {
     }
   };
 
-  const field = "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-stone-500";
+  const field = ui.input;
 
   return (
     <div className="min-h-dvh bg-stone-50">
@@ -154,25 +155,25 @@ export function EventsDashboard() {
 
         <aside>
           <form onSubmit={create} className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-1 flex items-center gap-2 font-serif text-xl text-stone-900">
-              <Plus className="h-5 w-5" /> {t("Yeni etkinlik")}
+            <h2 className={`mb-1 flex items-center gap-2 ${ui.sectionTitle}`}>
+              <Plus className="h-4 w-4" /> {t("Yeni etkinlik")}
             </h2>
-            <p className="mb-4 text-xs text-stone-500">{t("Google Drive’ınızda otomatik olarak Photos / Videos / VoiceNotes klasörleri açılır.")}</p>
+            <p className={`mb-4 ${ui.hint}`}>{t("Google Drive’ınızda otomatik olarak Photos / Videos / VoiceNotes klasörleri açılır.")}</p>
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Etkinlik adı *")}</span>
+                <span className={ui.label}>{t("Etkinlik adı *")}</span>
                 <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t("ör. Ayşe & Mehmet Düğünü, Şirket Yılbaşı Partisi")} className={field} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Başlıkta görünecek isim (isteğe bağlı)")}</span>
+                <span className={ui.label}>{t("Başlıkta görünecek isim (isteğe bağlı)")}</span>
                 <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} placeholder={t("Ayşe & Mehmet")} className={field} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Tarih")}</span>
+                <span className={ui.label}>{t("Tarih")}</span>
                 <input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} className={field} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Bağlantı adresi (isteğe bağlı)")}</span>
+                <span className={ui.label}>{t("Bağlantı adresi (isteğe bağlı)")}</span>
                 <div className="flex items-center rounded-xl border border-stone-300 bg-white pl-3 text-sm focus-within:border-stone-500">
                   <span className="text-stone-400">/e/</span>
                   <input
@@ -180,7 +181,7 @@ export function EventsDashboard() {
                     onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
                     maxLength={64}
                     placeholder="ayse-mehmet"
-                    className="w-full rounded-r-xl bg-transparent px-1 py-2.5 outline-none"
+                    className="w-full rounded-r-xl bg-transparent px-1 py-2.5 text-base outline-none sm:text-sm"
                   />
                 </div>
                 <span className="mt-1 block text-[11px] text-stone-500">{t("Boş bırakırsanız tahmin edilemeyen bir adres oluşturulur (önerilir).")}</span>

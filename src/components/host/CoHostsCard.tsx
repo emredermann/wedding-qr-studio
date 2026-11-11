@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { useT } from "@/lib/i18n/provider";
+import { ui } from "@/components/ui/styles";
 
 interface Cohost {
   userId: string;
@@ -72,9 +73,9 @@ export function CoHostsCard({
   };
 
   return (
-    <div className="rounded-3xl border border-stone-200 bg-white p-5">
-      <h3 className="font-serif text-lg text-stone-900">{t("Ortak yöneticiler")}</h3>
-      <p className="mt-1 text-xs text-stone-500">
+    <div className={ui.card}>
+      <h3 className={ui.sectionTitle}>{t("Ortak yöneticiler")}</h3>
+      <p className={`mt-1 ${ui.hint}`}>
         {t("Mira hesabı olan birini giriş yaptığı kullanıcı adı (ya da e-posta) ile ekleyin. Moderasyon, ayarlar ve indirme yapabilir; etkinliği silemez, yönetici ekleyemez. Dosyalar her zaman sizin Drive’ınızda kalır.")}
       </p>
       <ul className="mt-3 space-y-1.5">
@@ -102,7 +103,7 @@ export function CoHostsCard({
           }}
           placeholder={t("Kullanıcı adı veya e-posta")}
           autoCapitalize="none"
-          className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-stone-500"
+          className={ui.input}
         />
         <button type="button" disabled={busy || !username.trim()} onClick={() => void add()} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-3 text-sm disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} {t("Ekle")}

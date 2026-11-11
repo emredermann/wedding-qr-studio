@@ -134,7 +134,7 @@ export function GuestsTab({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-2 text-sm">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-2 text-base sm:text-sm">
           <Search className="h-4 w-4 shrink-0 text-stone-400" />
           <input
             value={query}
@@ -148,7 +148,7 @@ export function GuestsTab({
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
           aria-label={t("Sıralama")}
-          className="rounded-full border border-stone-300 bg-white px-3 py-2 text-sm"
+          className="rounded-full border border-stone-300 bg-white px-3 py-2 text-base sm:text-sm"
         >
           <option value="recent">{t("Son etkinliğe göre")}</option>
           <option value="uploads">{t("En çok yükleyen")}</option>

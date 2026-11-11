@@ -138,7 +138,7 @@ export function Lightbox({
         )}
         {item.kind === "audio" && (
           <div className="w-full max-w-md rounded-2xl bg-white/10 p-6 text-center">
-            <p className="mb-4 font-serif text-lg">{t("{name} bir sesli mesaj bıraktı", { name: item.guestName ?? t("Misafir") })}</p>
+            <p className="mb-4 text-base font-medium">{t("{name} bir sesli mesaj bıraktı", { name: item.guestName ?? t("Misafir") })}</p>
             <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay className="w-full" />
           </div>
         )}

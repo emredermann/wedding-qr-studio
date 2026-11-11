@@ -14,6 +14,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
+import { ui } from "@/components/ui/styles";
 
 function authErrorMessage(err: unknown): MsgKey {
   const message = err instanceof Error ? err.message : "";
@@ -68,7 +69,7 @@ export function LoginForm() {
     }
   };
 
-  const field = "w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none focus:border-stone-500";
+  const field = `${ui.input} py-3`;
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center bg-stone-50 px-5 py-10">
@@ -80,7 +81,7 @@ export function LoginForm() {
         <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
           <form onSubmit={submit} className="space-y-4" noValidate>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-stone-600">{t("Kullanıcı adı")}</span>
+              <span className={ui.label}>{t("Kullanıcı adı")}</span>
               <input
                 required
                 autoComplete="username"
@@ -94,7 +95,7 @@ export function LoginForm() {
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-stone-600">{t("Şifre")}</span>
+              <span className={ui.label}>{t("Şifre")}</span>
               <span className="relative block">
                 <input
                   type={showPassword ? "text" : "password"}

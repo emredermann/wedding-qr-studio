@@ -11,6 +11,8 @@ import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
+import { ui } from "@/components/ui/styles";
+import { ToggleRow } from "@/components/ui/ToggleRow";
 
 export function SettingsTab({
   event,
@@ -98,7 +100,7 @@ export function SettingsTab({
     }
   };
 
-  const field = "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-stone-500";
+  const field = ui.input;
   const toggles: Array<[keyof typeof form, MsgKey, MsgKey]> = [
     ["uploadsEnabled", "Misafir yüklemeleri açık", "Kapatırsanız misafirler sadece galeriyi görür."],
     ["requireApproval", "Yayından önce onay iste", "Yeni fotoğraf ve mesajlar siz onaylayana kadar gizli kalır."],
@@ -109,32 +111,32 @@ export function SettingsTab({
 
   return (
     <form onSubmit={save} className="grid gap-6 lg:grid-cols-2">
-      <section className="space-y-4 rounded-3xl border border-stone-200 bg-white p-5">
-        <h3 className="font-serif text-lg text-stone-900">{t("Etkinlik bilgileri")}</h3>
+      <section className={`space-y-4 ${ui.card}`}>
+        <h3 className={ui.sectionTitle}>{t("Etkinlik bilgileri")}</h3>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Etkinlik adı")}</span>
+          <span className={ui.label}>{t("Etkinlik adı")}</span>
           <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={field} />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Başlıkta görünecek isim")}</span>
+          <span className={ui.label}>{t("Başlıkta görünecek isim")}</span>
           <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} className={field} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Tarih")}</span>
+            <span className={ui.label}>{t("Tarih")}</span>
             <input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} className={field} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Tema rengi")}</span>
+            <span className={ui.label}>{t("Tema rengi")}</span>
             <input type="color" value={form.themeColor} onChange={(e) => setForm({ ...form, themeColor: e.target.value })} className="h-[42px] w-full cursor-pointer rounded-xl border border-stone-300 bg-white p-1" />
           </label>
         </div>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Karşılama mesajı")}</span>
+          <span className={ui.label}>{t("Karşılama mesajı")}</span>
           <textarea maxLength={500} rows={3} value={form.welcomeMessage} onChange={(e) => setForm({ ...form, welcomeMessage: e.target.value })} className={field} />
         </label>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Albüm kategorileri")}</span>
+          <span className={ui.label}>{t("Albüm kategorileri")}</span>
           <div className="mb-2 flex flex-wrap gap-2">
             {form.categories.map((c) => (
               <span key={c} className="inline-flex items-center gap-1 rounded-full bg-stone-100 py-1 pr-1 pl-3 text-xs text-stone-800">
@@ -165,45 +167,35 @@ export function SettingsTab({
           </div>
         </div>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Program akışı (isteğe bağlı)")}</span>
-          <p className="mb-2 text-xs text-stone-500">{t("Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.")}</p>
+          <span className={ui.label}>{t("Program akışı (isteğe bağlı)")}</span>
+          <p className={`mb-2 ${ui.hint}`}>{t("Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.")}</p>
           <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} />
         </div>
         <div>
-          <span className="mb-1 block text-xs font-semibold text-stone-600">{t("Fotoğraf görevleri (isteğe bağlı)")}</span>
-          <p className="mb-2 text-xs text-stone-500">{t("Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.")}</p>
+          <span className={ui.label}>{t("Fotoğraf görevleri (isteğe bağlı)")}</span>
+          <p className={`mb-2 ${ui.hint}`}>{t("Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.")}</p>
           <ChallengesEditor value={challenges} onChange={setChallenges} />
         </div>
       </section>
 
       <section className="space-y-4">
-        <div className="space-y-1 rounded-3xl border border-stone-200 bg-white p-5">
-          <h3 className="mb-2 font-serif text-lg text-stone-900">{t("Özellikler & moderasyon")}</h3>
+        <div className={`space-y-1 ${ui.card}`}>
+          <h3 className={`mb-2 ${ui.sectionTitle}`}>{t("Özellikler & moderasyon")}</h3>
           {toggles.map(([key, label, hint]) => (
-            <label key={key} className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
-              <input type="checkbox" checked={Boolean(form[key])} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="mt-0.5 h-5 w-5 accent-stone-900" />
-              <span>
-                <span className="block text-sm font-medium text-stone-900">{t(label)}</span>
-                <span className="block text-xs text-stone-500">{t(hint)}</span>
-              </span>
-            </label>
+            <ToggleRow key={key} checked={Boolean(form[key])} onChange={(checked) => setForm({ ...form, [key]: checked })} label={t(label)} hint={t(hint)} />
           ))}
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
-            <input type="checkbox" checked={heartsNamed} onChange={(e) => setHeartsNamed(e.target.checked)} className="mt-0.5 h-5 w-5 accent-stone-900" />
-            <span>
-              <span className="block text-sm font-medium text-stone-900">{t("Beğenenlerin adını göster")}</span>
-              <span className="block text-xs text-stone-500">
-                {t("Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.")}
-              </span>
-            </span>
-          </label>
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
-            <input type="checkbox" checked={tableNumbers} onChange={(e) => setTableNumbers(e.target.checked)} className="mt-0.5 h-5 w-5 accent-stone-900" />
-            <span>
-              <span className="block text-sm font-medium text-stone-900">🪑 {t("Masa numaraları")}</span>
-              <span className="block text-xs text-stone-500">{t("Açıksa her masanın kartına o masanın numarasını taşıyan ayrı bir QR basılır; yüklemeler masa numarasıyla kaydedilir ve galeride masaya göre filtrelenebilir. Kapalıysa tüm kartlarda aynı QR kullanılır.")}</span>
-            </span>
-          </label>
+          <ToggleRow
+            checked={heartsNamed}
+            onChange={setHeartsNamed}
+            label={t("Beğenenlerin adını göster")}
+            hint={t("Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.")}
+          />
+          <ToggleRow
+            checked={tableNumbers}
+            onChange={setTableNumbers}
+            label={t("Masa numaraları")}
+            hint={t("Açıksa her masanın kartına o masanın numarasını taşıyan ayrı bir QR basılır; yüklemeler masa numarasıyla kaydedilir ve galeride masaya göre filtrelenebilir. Kapalıysa tüm kartlarda aynı QR kullanılır.")}
+          />
         </div>
         <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t("Kaydet")}

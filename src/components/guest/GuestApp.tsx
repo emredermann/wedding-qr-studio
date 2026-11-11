@@ -170,7 +170,7 @@ export function GuestApp({ slug }: { slug: string }) {
       <header className="eqr-safe-top border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <h1 className="truncate font-serif text-xl text-stone-900">{displayName}</h1>
+            <h1 className="truncate font-serif text-2xl leading-tight text-stone-900">{displayName}</h1>
             {dateText && <p className="text-xs text-stone-500">{dateText}</p>}
           </div>
           <div className="flex min-w-0 shrink-0 items-center gap-2">

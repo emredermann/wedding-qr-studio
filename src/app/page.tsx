@@ -305,7 +305,7 @@ export default async function HomePage() {
               <li key={s.title} className="flex gap-6 border-b border-stone-200 py-6">
                 <span className="w-6 shrink-0 pt-1 text-sm text-stone-400 tabular-nums">{i + 1}</span>
                 <div>
-                  <h3 className="font-serif text-xl">{t(s.title)}</h3>
+                  <h3 className="font-serif text-2xl">{t(s.title)}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-stone-600">{t(s.text)}</p>
                 </div>
               </li>
@@ -352,7 +352,7 @@ export default async function HomePage() {
         <div className="grid gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="border-t border-stone-200 py-6">
-              <h3 className="font-serif text-xl">{t(f.title)}</h3>
+              <h3 className="font-serif text-2xl">{t(f.title)}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{t(f.text)}</p>
             </div>
           ))}
@@ -370,7 +370,7 @@ export default async function HomePage() {
               <thead>
                 <tr className="border-b border-stone-900">
                   <th className="py-4 pr-6 font-normal text-stone-500" />
-                  <th className="py-4 pr-6 font-serif text-xl font-normal">{BRAND.name}</th>
+                  <th className="py-4 pr-6 font-serif text-2xl font-normal">{BRAND.name}</th>
                   <th className="py-4 pr-6 font-normal text-stone-500">{t("Fotoğraf uygulamaları")}</th>
                   <th className="py-4 font-normal text-stone-500">{t("Paylaşılan albümler")}</th>
                 </tr>
@@ -431,7 +431,7 @@ export default async function HomePage() {
             {FAQ.map((f) => (
               <details key={f.q} className="group border-b border-stone-200">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-stone-900 [&::-webkit-details-marker]:hidden">
-                  <span className="font-serif text-xl">{t(f.q)}</span>
+                  <span className="font-serif text-2xl">{t(f.q)}</span>
                   <Plus className="h-4 w-4 shrink-0 text-stone-400 transition group-open:rotate-45" strokeWidth={1.5} />
                 </summary>
                 <p className="pb-6 text-sm leading-relaxed text-stone-600">{t(f.a)}</p>

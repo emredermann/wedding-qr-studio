@@ -10,6 +10,7 @@ import { BRAND } from "@/lib/brand";
 import type { DriveConnectionStatusDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
+import { ui } from "@/components/ui/styles";
 
 const CONNECT_URL = "/api/host/drive/connect";
 
@@ -92,7 +93,7 @@ export function DriveConnectionCard({
           <HardDrive className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-stone-900">{t("Google Drive depolama")}</h2>
+          <h2 className={ui.sectionTitle}>{t("Google Drive depolama")}</h2>
           {!status ? (
             <p className="flex items-center gap-1.5 text-sm text-stone-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("Kontrol ediliyor…")}
@@ -119,7 +120,7 @@ export function DriveConnectionCard({
           {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
         </div>
         {status && (
-          <div className="flex shrink-0 gap-2">
+          <div className="flex w-full shrink-0 gap-2 sm:w-auto">
             {status.connected ? (
               <button
                 type="button"

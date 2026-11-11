@@ -123,7 +123,7 @@ export function FaceSearchPanel({
         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-white" style={{ backgroundColor: "var(--accent)" }}>
           <ScanFace className="h-7 w-7" />
         </span>
-        <h2 className="font-serif text-xl text-stone-900">{t("Fotoğraflarımı Bul")}</h2>
+        <h2 className="text-lg font-semibold text-stone-900">{t("Fotoğraflarımı Bul")}</h2>
         <p className="mx-auto mt-1 max-w-sm text-sm text-stone-600">
           {t("Bir selfie çekin; yapay zekâ etkinlikteki yüzlerle karşılaştırıp sizin olduğunuz fotoğrafları getirsin. Selfie’niz cihazınızdan çıkmaz.")}
         </p>

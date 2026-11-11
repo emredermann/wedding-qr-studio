@@ -15,8 +15,9 @@ import {
 } from "@/lib/event-extras";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
+import { ui } from "@/components/ui/styles";
 
-const input = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
+const input = ui.inputCompact;
 
 /** Emoji button that opens a small picker; "Otomatik" goes back to the title-based emoji. */
 function EmojiPicker({ item, onPick }: { item: ScheduleItem; onPick: (emoji: string | null) => void }) {

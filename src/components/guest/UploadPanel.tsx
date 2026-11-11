@@ -348,7 +348,7 @@ export function UploadPanel({
           onChange={(e) => setNote(e.target.value.slice(0, 500))}
           rows={2}
           placeholder={t("Bu fotoğrafla ilgili kısa bir not bırakın…")}
-          className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-stone-500"
+          className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
         />
         <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · {t("seçeceğiniz dosyalara eklenir")}</span>
       </label>
