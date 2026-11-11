@@ -3,6 +3,7 @@
 import { Check, CheckSquare, EyeOff, Heart, Loader2, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { HeartersList } from "@/components/host/HeartersList";
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { trackEvent } from "@/lib/client/analytics";
@@ -249,6 +250,8 @@ function MediaFeed({
             setOpenIndex(null);
           }}
           footer={(item) => (
+            <>
+            <HeartersList key={item.id} eventId={event.id} item={item} />
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
               {item.status !== "approved" && (
                 <button type="button" onClick={() => single(() => setStatus(item, "approved"), "Onaylandı")} className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">
@@ -274,6 +277,7 @@ function MediaFeed({
                 ))}
               </select>
             </div>
+            </>
           )}
         />
       )}

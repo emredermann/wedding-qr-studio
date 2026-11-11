@@ -202,7 +202,7 @@ export function GuestApp({ slug }: { slug: string }) {
             />
           </div>
         )}
-        {activeTab === "gallery" && <GalleryPanel event={event} recentUploads={recentUploads} onMessage={onMessage} />}
+        {activeTab === "gallery" && <GalleryPanel event={event} recentUploads={recentUploads} guestName={guestName} onMessage={onMessage} />}
         {activeTab === "find" && <FaceSearchPanel event={event} onMessage={onMessage} />}
         {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} onMessage={onMessage} />}
       </div>

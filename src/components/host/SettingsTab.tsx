@@ -35,6 +35,7 @@ export function SettingsTab({
   });
   const [schedule, setSchedule] = useState(event.schedule);
   const [challenges, setChallenges] = useState(event.challenges);
+  const [heartsNamed, setHeartsNamed] = useState(event.heartsNamed);
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -47,12 +48,19 @@ export function SettingsTab({
       // settings never touches them.
       const scheduleChanged = JSON.stringify(schedule) !== JSON.stringify(event.schedule);
       const challengesChanged = JSON.stringify(challenges) !== JSON.stringify(event.challenges);
+      const heartsNamedChanged = heartsNamed !== event.heartsNamed;
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
         method: "PATCH",
-        json: { ...form, ...(scheduleChanged ? { schedule } : {}), ...(challengesChanged ? { challenges } : {}) },
+        json: {
+          ...form,
+          ...(scheduleChanged ? { schedule } : {}),
+          ...(challengesChanged ? { challenges } : {}),
+          ...(heartsNamedChanged ? { heartsNamed } : {}),
+        },
       });
       setSchedule(res.event.schedule);
       setChallenges(res.event.challenges);
+      setHeartsNamed(res.event.heartsNamed);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage("Ayarlar kaydedildi.", "success");
@@ -173,6 +181,15 @@ export function SettingsTab({
               </span>
             </label>
           ))}
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-stone-50">
+            <input type="checkbox" checked={heartsNamed} onChange={(e) => setHeartsNamed(e.target.checked)} className="mt-0.5 h-5 w-5 accent-stone-900" />
+            <span>
+              <span className="block text-sm font-medium text-stone-900">Beğenenlerin adını göster</span>
+              <span className="block text-xs text-stone-500">
+                Açıksa bir fotoğrafa kimlerin kalp bıraktığını Medya sekmesinde görürsünüz. Kapalıyken beğeniler anonim görünür. Bu ayar kapalıyken bırakılan kalplerin adları, sonradan açsanız da gösterilmez.
+              </span>
+            </span>
+          </label>
         </div>
         <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} Kaydet

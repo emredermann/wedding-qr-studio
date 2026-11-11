@@ -15,8 +15,11 @@ export function HeartButton({
   onChange,
   onError,
   variant = "grid",
+  guestName,
 }: {
   item: MediaDto;
+  /** Recorded with the heart; shown to the host only if the event allows it. */
+  guestName?: string;
   onChange: (id: string, patch: Pick<MediaDto, "heartCount" | "heartedByMe">) => void;
   onError?: (message: string) => void;
   variant?: "grid" | "lightbox";
@@ -31,7 +34,10 @@ export function HeartButton({
     const before = { heartCount: item.heartCount, heartedByMe: hearted };
     onChange(item.id, { heartCount: Math.max(0, item.heartCount + (hearted ? -1 : 1)), heartedByMe: !hearted });
     try {
-      const res = await apiFetch<{ hearted: boolean; heartCount: number }>(`/api/media/${item.id}/heart`, { method: "POST" });
+      const res = await apiFetch<{ hearted: boolean; heartCount: number }>(`/api/media/${item.id}/heart`, {
+        method: "POST",
+        json: { name: guestName ?? "" },
+      });
       onChange(item.id, { heartCount: res.heartCount, heartedByMe: res.hearted });
     } catch (error) {
       onChange(item.id, before);

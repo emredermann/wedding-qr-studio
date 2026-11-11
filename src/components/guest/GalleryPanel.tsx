@@ -26,9 +26,11 @@ function GalleryFeed({
   popular,
   mineOnly,
   extraItems,
+  guestName,
   onMessage,
 }: {
   event: PublicEventDto;
+  guestName: string;
   category: string | null;
   challenge: string | null;
   popular: boolean;
@@ -156,7 +158,7 @@ function GalleryFeed({
         <MediaGrid
           items={visible}
           onOpen={setOpenIndex}
-          renderOverlay={(m) => (canHeart(m) ? <HeartButton item={m} onChange={onHeart} onError={(t) => onMessage(t, "error")} /> : null)}
+          renderOverlay={(m) => (canHeart(m) ? <HeartButton item={m} guestName={guestName} onChange={onHeart} onError={(t) => onMessage(t, "error")} /> : null)}
         />
       )}
 
@@ -185,7 +187,7 @@ function GalleryFeed({
           footer={(m) =>
             canHeart(m) ? (
               <div className="mb-1 flex justify-center">
-                <HeartButton item={m} variant="lightbox" onChange={onHeart} onError={(t) => onMessage(t, "error")} />
+                <HeartButton item={m} guestName={guestName} variant="lightbox" onChange={onHeart} onError={(t) => onMessage(t, "error")} />
               </div>
             ) : null
           }
@@ -198,10 +200,12 @@ function GalleryFeed({
 export function GalleryPanel({
   event,
   recentUploads,
+  guestName,
   onMessage,
 }: {
   event: PublicEventDto;
   recentUploads: MediaDto[];
+  guestName: string;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const [category, setCategory] = useState<string | null>(null);
@@ -281,6 +285,7 @@ export function GalleryPanel({
         </div>
       )}
       <GalleryFeed
+        guestName={guestName}
         key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}:${popular}`}
         event={event}
         category={category}

@@ -33,6 +33,8 @@ export const eventSettingsSchema = z.object({
   galleryPublic: z.boolean(),
   faceSearchEnabled: z.boolean(),
   guestbookEnabled: z.boolean(),
+  /** Hosts may see who hearted what (0003 migration). Only sent when changed. */
+  heartsNamed: z.boolean(),
   schedule: scheduleSchema,
   challenges: challengesSchema,
 });
@@ -63,6 +65,7 @@ export function settingsPatchToColumns(patch: EventSettingsPatch): Record<string
     galleryPublic: "gallery_public",
     faceSearchEnabled: "face_search_enabled",
     guestbookEnabled: "guestbook_enabled",
+    heartsNamed: "hearts_named",
     schedule: "schedule",
     challenges: "challenges",
   };

@@ -39,6 +39,8 @@ export interface EventRow {
   schedule?: unknown;
   /** jsonb (0002 migration); read through `readChallenges`. */
   challenges?: unknown;
+  /** Hosts may see heart names (0003 migration); absent on old schemas = anonymous. */
+  hearts_named?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -106,8 +108,20 @@ export interface HostEventDto extends PublicEventDto {
   role: "owner" | "cohost";
   driveFolderUrl: string;
   driveAccount: "app" | "host";
+  /** Whether hosts see who hearted each item. */
+  heartsNamed: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Who hearted one item, as the host sees it (names only when allowed). */
+export interface MediaHeartsDto {
+  /** Current event setting. */
+  named: boolean;
+  /** Visible names, newest first. */
+  people: Array<{ name: string; at: string }>;
+  /** Hearts whose name the host may not see (anonymous mode, or given before names were turned on). */
+  anonymousCount: number;
 }
 
 export interface EventStatsDto {

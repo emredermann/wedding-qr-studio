@@ -44,6 +44,7 @@ export function toHostEventDto(event: EventRow, role: HostEventDto["role"] = "ow
     role,
     driveFolderUrl: driveFolderUrl(event.drive_folder_id),
     driveAccount: event.drive_account,
+    heartsNamed: event.hearts_named === true,
     createdAt: event.created_at,
     updatedAt: event.updated_at,
   };
