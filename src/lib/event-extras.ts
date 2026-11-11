@@ -15,6 +15,8 @@ export interface ScheduleItem {
   title: string;
   /** Album category to preselect while this item is happening (must be one of the event's categories). */
   category: string | null;
+  /** Host-picked emoji (one of SCHEDULE_EMOJI_CHOICES); null/absent = inferred from the title. */
+  emoji?: string | null;
 }
 
 export interface Challenge {
@@ -23,6 +25,15 @@ export interface Challenge {
 }
 
 export const MAX_SCHEDULE_ITEMS = 30;
+
+/** Emojis a host can pick for a program item (validated server-side against this list). */
+export const SCHEDULE_EMOJI_CHOICES = [
+  "💍", "👰", "🤵", "💃", "🕺", "🥂", "🍽️", "🎂",
+  "💐", "💛", "🪔", "🎶", "🎤", "📸", "🎁", "🎉",
+  "🎆", "☕", "🍰", "🌙", "⛪", "🕌", "🚗", "👋",
+  "❤️", "🥳", "🌹", "✨",
+] as const;
+const SCHEDULE_EMOJI_SET: ReadonlySet<string> = new Set(SCHEDULE_EMOJI_CHOICES);
 export const MAX_CHALLENGES = 20;
 export const EXTRA_ID_PATTERN = /^[a-z0-9]{4,16}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -48,7 +59,7 @@ function withUniqueIds<T extends { id?: string | null }>(items: T[]): Array<T & 
 
 export function normaliseSchedule(items: Array<Omit<ScheduleItem, "id"> & { id?: string | null }>): ScheduleItem[] {
   return withUniqueIds(items)
-    .map(({ id, time, title, category }) => ({ id, time, title, category: category || null }))
+    .map(({ id, time, title, category, emoji }) => ({ id, time, title, category: category || null, emoji: emoji ?? null }))
     .sort((a, b) => a.time.localeCompare(b.time));
 }
 
@@ -73,6 +84,12 @@ const scheduleItemInput = z.object({
     .max(40)
     .nullish()
     .transform((v) => (v ? v : null)),
+  // Unknown values are dropped (→ auto emoji) instead of failing the whole item.
+  emoji: z
+    .string()
+    .max(16)
+    .nullish()
+    .transform((v) => (v && SCHEDULE_EMOJI_SET.has(v) ? v : null)),
 });
 
 const challengeInput = z.object({
@@ -175,6 +192,11 @@ const SCHEDULE_EMOJI: Array<[RegExp, string]> = [
   [/veda|uğurlama|çıkış|kapanış|final/, "👋"],
   [/giriş|gelin|damat|çift/, "👰"],
 ];
+
+/** The emoji guests see: the host's pick, else one inferred from the title. */
+export function itemEmoji(item: Pick<ScheduleItem, "title" | "emoji">): string {
+  return item.emoji && SCHEDULE_EMOJI_SET.has(item.emoji) ? item.emoji : scheduleEmoji(item.title);
+}
 
 export function scheduleEmoji(title: string): string {
   const text = title.toLocaleLowerCase("tr-TR");

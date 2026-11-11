@@ -3,7 +3,7 @@
 import { Camera, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { formatMinutes, programPhase, scheduleEmoji, type ProgramPhase, type ScheduleItem } from "@/lib/event-extras";
+import { formatMinutes, itemEmoji, programPhase, type ProgramPhase, type ScheduleItem } from "@/lib/event-extras";
 
 /** Re-renders once a minute so "now" / "next" follow the clock on the event day. */
 export function useMinuteClock(): Date {
@@ -27,28 +27,28 @@ function headline(phase: ProgramPhase, schedule: ScheduleItem[]) {
       };
     case "warmup": {
       const next = find(phase.nextId);
-      return { emoji: "🎈", eyebrow: "Birazdan başlıyoruz", title: `${scheduleEmoji(next.title)} ${next.title}`, chip: formatMinutes(phase.minutesToNext) };
+      return { emoji: "🎈", eyebrow: "Birazdan başlıyoruz", title: `${itemEmoji(next)} ${next.title}`, chip: formatMinutes(phase.minutesToNext) };
     }
     case "live": {
       const current = find(phase.currentId);
       const next = find(phase.nextId);
       return {
-        emoji: scheduleEmoji(current.title),
+        emoji: itemEmoji(current),
         eyebrow: "Şimdi",
         title: current.title,
         chip: null,
-        sub: `Sıradaki ${scheduleEmoji(next.title)} ${next.title} · ${formatMinutes(phase.minutesToNext)}`,
+        sub: `Sıradaki ${itemEmoji(next)} ${next.title} · ${formatMinutes(phase.minutesToNext)}`,
       };
     }
     case "finale": {
       const current = find(phase.currentId);
-      return { emoji: scheduleEmoji(current.title), eyebrow: "Son durak", title: current.title, chip: null, sub: "Gece daha bitmedi 🎉" };
+      return { emoji: itemEmoji(current), eyebrow: "Son durak", title: current.title, chip: null, sub: "Gece daha bitmedi 🎉" };
     }
     default:
       return {
         emoji: "🗓️",
         eyebrow: "Program",
-        title: `${scheduleEmoji(schedule[0].title)} ${schedule[0].time} ${schedule[0].title}`,
+        title: `${itemEmoji(schedule[0])} ${schedule[0].time} ${schedule[0].title}`,
         chip: schedule.length > 1 ? `+${schedule.length - 1}` : null,
       };
   }
@@ -133,7 +133,7 @@ export function ScheduleCard({
                     style={isCurrent ? { backgroundColor: "var(--accent)" } : undefined}
                     aria-hidden
                   >
-                    {isPast ? "✓" : scheduleEmoji(item.title)}
+                    {isPast ? "✓" : itemEmoji(item)}
                   </span>
                   {!last && <span className={`my-1 w-0.5 flex-1 rounded-full ${isPast || isCurrent ? "" : "bg-stone-200"}`} style={isPast || isCurrent ? { backgroundColor: "var(--accent)", opacity: 0.4 } : undefined} />}
                 </span>
