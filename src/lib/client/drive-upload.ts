@@ -35,6 +35,8 @@ export interface UploadOptions {
   guestName?: string;
   note?: string;
   category?: string | null;
+  /** Photo challenge the guest joined (validated again on the server). */
+  challengeId?: string | null;
   isGuestbook?: boolean;
   /** Resolved in parallel with the byte upload (e.g. face descriptors). */
   extras?: Promise<UploadExtras>;
@@ -174,7 +176,7 @@ async function readMagicHex(file: Blob): Promise<string | undefined> {
 }
 
 export async function uploadToDrive(options: UploadOptions): Promise<MediaDto> {
-  const { file, fileName, eventSlug, guestName, note, category, isGuestbook = false, extras, onProgress, onBytesUploaded, signal } = options;
+  const { file, fileName, eventSlug, guestName, note, category, challengeId, isGuestbook = false, extras, onProgress, onBytesUploaded, signal } = options;
   const report = onProgress ?? (() => undefined);
 
   const session = await apiFetch<UploadSessionResponse>("/api/drive/upload-session", {
@@ -207,6 +209,7 @@ export async function uploadToDrive(options: UploadOptions): Promise<MediaDto> {
         guestName: guestName || undefined,
         note: note || undefined,
         category: category || undefined,
+        challengeId: challengeId || undefined,
         faces: extra.faces ?? [],
         width: extra.width,
         height: extra.height,

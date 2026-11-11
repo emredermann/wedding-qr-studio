@@ -6,6 +6,7 @@ import type { DriveClient } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { MEDIA_COLUMNS, toMediaDto } from "@/lib/events";
 import { readGuestSession } from "@/lib/guest-session";
+import { EXTRA_ID_PATTERN, knownChallengeId, readChallenges } from "@/lib/event-extras";
 import { detectMimeFromMagicBytes } from "@/lib/media-config";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyToken } from "@/lib/signing";
@@ -40,6 +41,8 @@ const schema = z.object({
     .max(40)
     .optional()
     .transform((v) => (v ? v : null)),
+  /** Optional photo challenge id; kept only if it belongs to the event. */
+  challengeId: z.string().regex(EXTRA_ID_PATTERN).optional(),
   faces: z.array(descriptorSchema).max(30).default([]),
   width: z.number().int().positive().max(100_000).optional(),
   height: z.number().int().positive().max(100_000).optional(),
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     const body = await parseJsonBody(request, schema, 192 * 1024);
     if (!body.ok) return body.response;
-    const { uploadToken, fileId, guestName, note, category, faces, width, height } = body.data;
+    const { uploadToken, fileId, guestName, note, category, challengeId, faces, width, height } = body.data;
 
     const token = verifyToken<UploadTokenPayload>("upload", uploadToken);
     if (!token || token.x < Date.now()) {
@@ -131,6 +134,8 @@ export async function POST(request: NextRequest) {
     }
 
     const safeCategory = category && event.categories.includes(category) ? category : null;
+    // Guestbook recordings never join a challenge.
+    const safeChallenge = token.b ? null : knownChallengeId(readChallenges(event.challenges), challengeId);
     const status = event.require_approval ? "pending" : "approved";
 
     const facesToStore = token.k === "photo" ? faces : [];
@@ -147,6 +152,8 @@ export async function POST(request: NextRequest) {
         guest_session_id: guest.sessionId,
         note,
         category: safeCategory,
+        // Only written when set, so uploads keep working before the 0002 migration.
+        ...(safeChallenge ? { challenge_id: safeChallenge } : {}),
         is_guestbook: token.b,
         status,
         width: width ?? file.imageMediaMetadata?.width ?? file.videoMediaMetadata?.width ?? null,

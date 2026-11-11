@@ -17,6 +17,7 @@ function MediaFeed({
   status,
   kind,
   category,
+  challenge,
   onMessage,
   onChanged,
 }: {
@@ -24,6 +25,7 @@ function MediaFeed({
   status: StatusFilter;
   kind: KindFilter;
   category: string | null;
+  challenge: string | null;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
   onChanged: () => void;
 }) {
@@ -40,6 +42,7 @@ function MediaFeed({
     if (status !== "all") params.set("status", status);
     if (kind !== "all") params.set("kind", kind);
     if (category) params.set("category", category);
+    if (challenge) params.set("challenge", challenge);
     for (const [k, v] of Object.entries(extra)) if (v) params.set(k, v);
     return `/api/host/events/${event.id}/media?${params.toString()}`;
   };
@@ -52,6 +55,7 @@ function MediaFeed({
         if (status !== "all") params.set("status", status);
         if (kind !== "all") params.set("kind", kind);
         if (category) params.set("category", category);
+        if (challenge) params.set("challenge", challenge);
         const page = await apiFetch<MediaPage>(`/api/host/events/${event.id}/media?${params.toString()}`);
         if (cancelled) return;
         setItems(page.items);
@@ -65,7 +69,7 @@ function MediaFeed({
     return () => {
       cancelled = true;
     };
-  }, [event.id, status, kind, category, onMessage]);
+  }, [event.id, status, kind, category, challenge, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -230,6 +234,7 @@ function MediaFeed({
           index={openIndex}
           onIndexChange={setOpenIndex}
           onClose={() => setOpenIndex(null)}
+          challenges={event.challenges}
           onDelete={async (item) => {
             await single(() => remove(item), "Drive çöp kutusuna taşındı");
             setOpenIndex(null);
@@ -281,6 +286,7 @@ export function MediaModerationTab({
   const [status, setStatus] = useState<StatusFilter>(pendingCount > 0 ? "pending" : "all");
   const [kind, setKind] = useState<KindFilter>("all");
   const [category, setCategory] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<string | null>(null);
 
   const chip = (active: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`;
@@ -318,7 +324,25 @@ export function MediaModerationTab({
           ))}
         </div>
       )}
-      <MediaFeed key={`${status}:${kind}:${category ?? ""}`} event={event} status={status} kind={kind} category={category} onMessage={onMessage} onChanged={onChanged} />
+      {event.challenges.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {[null, ...event.challenges].map((c) => (
+            <button key={c?.id ?? "_"} type="button" onClick={() => setChallenge(c?.id ?? null)} className={chip(challenge === (c?.id ?? null))}>
+              {c ? c.title : "Tüm görevler"}
+            </button>
+          ))}
+        </div>
+      )}
+      <MediaFeed
+        key={`${status}:${kind}:${category ?? ""}:${challenge ?? ""}`}
+        event={event}
+        status={status}
+        kind={kind}
+        category={category}
+        challenge={challenge}
+        onMessage={onMessage}
+        onChanged={onChanged}
+      />
     </div>
   );
 }

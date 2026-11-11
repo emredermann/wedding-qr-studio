@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DriveConnectionCard } from "@/components/host/DriveConnectionCard";
-import { ScheduleEditor } from "@/components/host/EventExtrasEditors";
+import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { HostHeader } from "@/components/host/HostHeader";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
-import type { ScheduleItem } from "@/lib/event-extras";
+import type { Challenge, ScheduleItem } from "@/lib/event-extras";
 import { DEFAULT_CATEGORIES, type DriveConnectionStatusDto, type HostEventDto, type HostEventListItem } from "@/types/domain";
 
 export function EventsDashboard() {
@@ -21,6 +21,7 @@ export function EventsDashboard() {
   const [form, setForm] = useState({ title: "", coupleNames: "", eventDate: "", slug: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [drive, setDrive] = useState<DriveConnectionStatusDto | null>(null);
   const [driveReload, setDriveReload] = useState(0);
 
@@ -69,6 +70,7 @@ export function EventsDashboard() {
           eventDate: form.eventDate || undefined,
           slug: form.slug || undefined,
           ...(schedule.length > 0 ? { schedule } : {}),
+          ...(challenges.length > 0 ? { challenges } : {}),
         },
       });
       trackEvent("event_created", { drive: res.event.driveAccount });
@@ -166,6 +168,17 @@ export function EventsDashboard() {
                 </summary>
                 <div className="pt-3">
                   <ScheduleEditor value={schedule} onChange={setSchedule} categories={DEFAULT_CATEGORIES} />
+                </div>
+              </details>
+              <details className="group rounded-xl border border-stone-200 px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-stone-600 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-1">
+                    <Plus className="h-3.5 w-3.5 transition group-open:rotate-45" /> Fotoğraf görevleri (isteğe bağlı)
+                  </span>
+                  {challenges.length > 0 && <span className="ml-1 font-normal text-stone-400">· {challenges.length} görev</span>}
+                </summary>
+                <div className="pt-3">
+                  <ChallengesEditor value={challenges} onChange={setChallenges} />
                 </div>
               </details>
               {formError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>}

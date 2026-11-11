@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonOk } from "@/lib/api/http";
+import { EXTRA_ID_PATTERN } from "@/lib/event-extras";
 import { encodeMediaCursor, MEDIA_COLUMNS, mediaCursorFilter, parseMediaCursor, toMediaDto } from "@/lib/events";
 import { requireOwnedEvent } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ eve
     const status = params.get("status");
     const kind = params.get("kind");
     const category = params.get("category")?.slice(0, 40);
+    const challenge = params.get("challenge");
     const guestbook = params.get("guestbook");
     const cursor = parseMediaCursor(params.get("cursor"));
     const limit = Math.min(Math.max(Number(params.get("limit")) || 60, 1), 100);
@@ -27,6 +29,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ eve
     if (MEDIA_STATUSES.includes(status as MediaStatus)) query = query.eq("status", status as MediaStatus);
     if (MEDIA_KINDS.includes(kind as MediaKind)) query = query.eq("kind", kind as MediaKind);
     if (category) query = query.eq("category", category);
+    if (challenge && EXTRA_ID_PATTERN.test(challenge)) query = query.eq("challenge_id", challenge);
     if (guestbook === "1" || guestbook === "0") query = query.eq("is_guestbook", guestbook === "1");
     if (cursor) {
       query = cursor.id ? query.or(mediaCursorFilter({ ...cursor, id: cursor.id })) : query.lt("created_at", cursor.createdAt);

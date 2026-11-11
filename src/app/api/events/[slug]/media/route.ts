@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonError, jsonOk } from "@/lib/api/http";
+import { EXTRA_ID_PATTERN } from "@/lib/event-extras";
 import {
   encodeMediaCursor,
   findEventBySlug,
@@ -44,6 +45,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     const mineOnly = params.get("mine") === "1";
     const guestbook = params.get("guestbook") === "1";
     const category = params.get("category")?.slice(0, 40) || null;
+    const challengeParam = params.get("challenge");
+    const challenge = challengeParam && EXTRA_ID_PATTERN.test(challengeParam) ? challengeParam : null;
     const kindParam = params.get("kind");
     const kind = MEDIA_KINDS.includes(kindParam as MediaKind) ? (kindParam as MediaKind) : null;
     const cursor = parseMediaCursor(params.get("cursor"));
@@ -87,6 +90,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       query = query.eq("status", "approved");
     }
     if (category) query = query.eq("category", category);
+    if (challenge) query = query.eq("challenge_id", challenge);
     if (kind) query = query.eq("kind", kind);
 
     if (cursor) {

@@ -30,6 +30,7 @@ interface QueueItem {
   progress: number;
   error: string | null;
   category: string | null;
+  challengeId: string | null;
   note: string;
 }
 
@@ -67,6 +68,7 @@ export function UploadPanel({
 }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [category, setCategory] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   // Program-based preselection: only until the guest picks a category themselves.
   const categoryPickedRef = useRef(false);
   const now = useMinuteClock();
@@ -125,6 +127,7 @@ export function UploadPanel({
         guestName,
         note: item.note,
         category: item.category,
+        challengeId: item.challengeId,
         extras,
         onProgress: (fraction) => patch(item.id, { progress: fraction }),
         onBytesUploaded: () => {
@@ -188,6 +191,7 @@ export function UploadPanel({
         progress: 0,
         error: null,
         category,
+        challengeId,
         note: note.trim(),
       });
     }
@@ -195,6 +199,8 @@ export function UploadPanel({
     if (accepted.length === 0) return;
     mutate((prev) => [...accepted, ...prev]);
     setNote("");
+    // A challenge applies to the files picked for it, not to every later upload.
+    setChallengeId(null);
     pump();
   }
 
@@ -294,6 +300,32 @@ export function UploadPanel({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {event.challenges.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">Bir göreve katıl (isteğe bağlı)</p>
+          <div className="flex flex-wrap gap-2">
+            {event.challenges.map((c) => {
+              const active = challengeId === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setChallengeId(active ? null : c.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    active ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+                  }`}
+                  style={active ? { backgroundColor: "var(--accent)" } : undefined}
+                >
+                  {c.title}
+                </button>
+              );
+            })}
+          </div>
+          {challengeId && <p className="mt-1.5 text-[11px] text-stone-500">Şimdi seçeceğiniz fotoğraflar bu göreve eklenecek.</p>}
         </div>
       )}
 

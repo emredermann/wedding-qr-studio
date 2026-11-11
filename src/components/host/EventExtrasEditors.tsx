@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 
-import { MAX_SCHEDULE_ITEMS, newExtraId, type ScheduleItem } from "@/lib/event-extras";
+import { MAX_CHALLENGES, MAX_SCHEDULE_ITEMS, newExtraId, type Challenge, type ScheduleItem } from "@/lib/event-extras";
 
 const input = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
 
@@ -74,6 +74,64 @@ export function ScheduleEditor({
         </button>
       )}
       <p className="text-[11px] text-stone-500">Kategori seçerseniz, o saatte yükleme yapan misafirlerde bu kategori önceden seçili gelir.</p>
+    </div>
+  );
+}
+
+const CHALLENGE_SUGGESTIONS = [
+  "Gelinle bir selfie",
+  "Damatla bir selfie",
+  "Dans pistinden bir kare",
+  "Masandaki herkes tek karede",
+  "Günün en komik anı",
+  "En şık misafir",
+];
+
+/** Editable list of photo challenges guests can join while uploading. */
+export function ChallengesEditor({ value, onChange }: { value: Challenge[]; onChange: (next: Challenge[]) => void }) {
+  const add = (title = "") => {
+    if (value.length >= MAX_CHALLENGES) return;
+    onChange([...value, { id: newExtraId(), title }]);
+  };
+  const used = new Set(value.map((c) => c.title.trim().toLocaleLowerCase("tr-TR")));
+  const suggestions = CHALLENGE_SUGGESTIONS.filter((s) => !used.has(s.toLocaleLowerCase("tr-TR")));
+
+  return (
+    <div className="space-y-2">
+      {value.length === 0 && <p className="text-xs text-stone-500">Misafirler yüklerken bir göreve katılabilir; galeri görevlere göre filtrelenir.</p>}
+      {value.map((item) => (
+        <div key={item.id} className="flex gap-2">
+          <input
+            required
+            maxLength={80}
+            value={item.title}
+            onChange={(e) => onChange(value.map((c) => (c.id === item.id ? { ...c, title: e.target.value } : c)))}
+            placeholder="ör. Dans pistinden bir kare"
+            className={input}
+            aria-label="Görev"
+          />
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((c) => c.id !== item.id))}
+            className="rounded-xl px-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+            aria-label={`${item.title || "Görev"} kaldır`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      {value.length < MAX_CHALLENGES && (
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => add()} className="inline-flex items-center gap-1 rounded-xl border border-stone-300 px-3 py-1.5 text-xs text-stone-700 hover:border-stone-500">
+            <Plus className="h-3.5 w-3.5" /> Görev ekle
+          </button>
+          {suggestions.slice(0, 4).map((s) => (
+            <button key={s} type="button" onClick={() => add(s)} className="rounded-xl bg-stone-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-stone-200">
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { ScheduleItem } from "@/lib/event-extras";
+import type { Challenge, ScheduleItem } from "@/lib/event-extras";
 
 /**
  * Domain types shared by API routes (server) and pages (client).
@@ -37,6 +37,8 @@ export interface EventRow {
   drive_account: "app" | "host";
   /** jsonb (0002 migration); read through `readSchedule`, may be absent on old schemas. */
   schedule?: unknown;
+  /** jsonb (0002 migration); read through `readChallenges`. */
+  challenges?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +60,8 @@ export interface MediaItemRow {
   width: number | null;
   height: number | null;
   face_count: number;
+  /** Photo challenge the guest joined (0002 migration). */
+  challenge_id?: string | null;
   published_at: string | null;
   created_at: string;
 }
@@ -89,6 +93,8 @@ export interface PublicEventDto {
   guestbookEnabled: boolean;
   /** Optional program schedule (empty when the host did not set one). */
   schedule: ScheduleItem[];
+  /** Optional photo challenges guests can join while uploading. */
+  challenges: Challenge[];
 }
 
 /** Host-facing event info (includes Drive links and stats). */
@@ -134,6 +140,7 @@ export interface MediaDto {
   guestName: string | null;
   note: string | null;
   category: string | null;
+  challengeId: string | null;
   isGuestbook: boolean;
   status: MediaStatus;
   width: number | null;

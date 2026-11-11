@@ -4,7 +4,7 @@ import { Loader2, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ScheduleEditor } from "@/components/host/EventExtrasEditors";
+import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
@@ -33,6 +33,7 @@ export function SettingsTab({
     guestbookEnabled: event.guestbookEnabled,
   });
   const [schedule, setSchedule] = useState(event.schedule);
+  const [challenges, setChallenges] = useState(event.challenges);
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -44,11 +45,13 @@ export function SettingsTab({
       // Optional extras are only sent when they changed, so saving the other
       // settings never touches them.
       const scheduleChanged = JSON.stringify(schedule) !== JSON.stringify(event.schedule);
+      const challengesChanged = JSON.stringify(challenges) !== JSON.stringify(event.challenges);
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
         method: "PATCH",
-        json: { ...form, ...(scheduleChanged ? { schedule } : {}) },
+        json: { ...form, ...(scheduleChanged ? { schedule } : {}), ...(challengesChanged ? { challenges } : {}) },
       });
       setSchedule(res.event.schedule);
+      setChallenges(res.event.challenges);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage("Ayarlar kaydedildi.", "success");
@@ -149,6 +152,11 @@ export function SettingsTab({
           <span className="mb-1 block text-xs font-semibold text-stone-600">Program akışı (isteğe bağlı)</span>
           <p className="mb-2 text-xs text-stone-500">Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.</p>
           <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} />
+        </div>
+        <div>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">Fotoğraf görevleri (isteğe bağlı)</span>
+          <p className="mb-2 text-xs text-stone-500">Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.</p>
+          <ChallengesEditor value={challenges} onChange={setChallenges} />
         </div>
       </section>
 

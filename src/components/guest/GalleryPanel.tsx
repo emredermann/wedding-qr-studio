@@ -21,12 +21,14 @@ function buildQuery(params: Record<string, string | null | undefined>): string {
 function GalleryFeed({
   event,
   category,
+  challenge,
   mineOnly,
   extraItems,
   onMessage,
 }: {
   event: PublicEventDto;
   category: string | null;
+  challenge: string | null;
   mineOnly: boolean;
   extraItems: MediaDto[];
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
@@ -38,13 +40,13 @@ function GalleryFeed({
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const baseUrl = `/api/events/${encodeURIComponent(event.slug)}/media`;
-  const filters = { category, mine: mineOnly ? "1" : null };
+  const filters = { category, challenge, mine: mineOnly ? "1" : null };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const page = await apiFetch<MediaPage>(`${baseUrl}${buildQuery({ category, mine: mineOnly ? "1" : null })}`);
+        const page = await apiFetch<MediaPage>(`${baseUrl}${buildQuery({ category, challenge, mine: mineOnly ? "1" : null })}`);
         if (cancelled) return;
         setItems(page.items);
         setCursor(page.nextCursor);
@@ -57,7 +59,7 @@ function GalleryFeed({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, category, mineOnly, onMessage]);
+  }, [baseUrl, category, challenge, mineOnly, onMessage]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -75,7 +77,11 @@ function GalleryFeed({
 
   const visible = [
     ...extraItems.filter(
-      (x) => !items.some((i) => i.id === x.id) && (!category || x.category === category) && !x.isGuestbook,
+      (x) =>
+        !items.some((i) => i.id === x.id) &&
+        (!category || x.category === category) &&
+        (!challenge || x.challengeId === challenge) &&
+        !x.isGuestbook,
     ),
     ...items,
   ];
@@ -160,6 +166,7 @@ function GalleryFeed({
           onIndexChange={setOpenIndex}
           onClose={() => setOpenIndex(null)}
           onDelete={visible[openIndex]?.isMine ? handleDelete : undefined}
+          challenges={event.challenges}
         />
       )}
     </div>
@@ -177,6 +184,7 @@ export function GalleryPanel({
 }) {
   const [category, setCategory] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(!event.galleryPublic);
+  const [challenge, setChallenge] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -211,10 +219,30 @@ export function GalleryPanel({
           </button>
         ))}
       </div>
+      {event.challenges.length > 0 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {[null, ...event.challenges].map((c) => {
+            const active = challenge === (c?.id ?? null);
+            return (
+              <button
+                key={c?.id ?? "_all"}
+                type="button"
+                onClick={() => setChallenge(c?.id ?? null)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  active ? "border-stone-900 bg-stone-900 text-white" : "border-dashed border-stone-300 bg-white text-stone-700"
+                }`}
+              >
+                {c ? c.title : "Tüm görevler"}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <GalleryFeed
-        key={`${category ?? "_"}:${mineOnly}`}
+        key={`${category ?? "_"}:${challenge ?? "_"}:${mineOnly}`}
         event={event}
         category={category}
+        challenge={challenge}
         mineOnly={mineOnly}
         extraItems={recentUploads}
         onMessage={onMessage}

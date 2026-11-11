@@ -8,6 +8,7 @@ import { trackEvent } from "@/lib/client/analytics";
 import { downloadOriginal } from "@/lib/client/download";
 import { formatBytes } from "@/lib/media-config";
 import { FULL_IMAGE_SIZE, mediaImageSrc, streamUrl } from "@/lib/media-urls";
+import type { Challenge } from "@/lib/event-extras";
 import type { MediaDto } from "@/types/domain";
 
 export function Lightbox({
@@ -17,6 +18,7 @@ export function Lightbox({
   onIndexChange,
   onDelete,
   footer,
+  challenges,
 }: {
   items: MediaDto[];
   index: number;
@@ -24,8 +26,11 @@ export function Lightbox({
   onIndexChange: (index: number) => void;
   onDelete?: (item: MediaDto) => Promise<void> | void;
   footer?: (item: MediaDto) => React.ReactNode;
+  /** The event's photo challenges, to show which one an item joined. */
+  challenges?: Challenge[];
 }) {
   const item = items[index];
+  const challengeTitle = item?.challengeId ? challenges?.find((c) => c.id === item.challengeId)?.title : undefined;
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const touchStart = useRef<number | null>(null);
@@ -95,7 +100,8 @@ export function Lightbox({
           <p className="truncate font-medium text-white">{item.guestName ?? "Misafir"}</p>
           <p className="truncate">
             {new Date(item.createdAt).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}
-            {item.category ? ` · ${item.category}` : ""} · {formatBytes(item.sizeBytes)}
+            {item.category ? ` · ${item.category}` : ""}
+            {challengeTitle ? ` · ${challengeTitle}` : ""} · {formatBytes(item.sizeBytes)}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
