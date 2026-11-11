@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     const body = await parseJsonBody(request, createEventSchema, 8 * 1024);
     if (!body.ok) return body.response;
-    const { title, coupleNames, eventDate } = body.data;
+    const { title, coupleNames, eventDate, schedule } = body.data;
 
     let base = body.data.slug ?? slugify(coupleNames || title);
     if (base.length < 3) base = "etkinlik";
@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
         drive_voice_folder_id: folders.voiceId,
         drive_account: account,
         theme_color: BRAND.defaultEventColor,
+        // Optional extras are only written when set, so creating a plain event
+        // keeps working even before the 0002 migration has been run.
+        ...(schedule && schedule.length > 0 ? { schedule } : {}),
       })
       .select("*")
       .single();

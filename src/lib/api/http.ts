@@ -105,7 +105,7 @@ export function handleRouteError(scope: string, error: unknown): NextResponse<Ap
     return jsonError(
       503,
       "DB_SCHEMA_OUTDATED",
-      "Veritabanı şeması eksik veya eski. Supabase SQL Editor'da supabase/migrations/0001_event_qr_drive.sql dosyasını çalıştırın.",
+      "Veritabanı şeması eksik veya eski. Supabase SQL Editor'da supabase/migrations klasöründeki dosyaları sırayla (0001, 0002, …) çalıştırın.",
       process.env.NODE_ENV === "production" ? undefined : { debug: [detail] },
     );
   }

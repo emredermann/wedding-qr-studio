@@ -23,7 +23,7 @@ cp .env.example .env.local      # Windows PowerShell: Copy-Item .env.example .en
 ## 1. Supabase (veritabanı + etkinlik sahibi girişi)
 
 1. https://supabase.com → **New project**. Bölge olarak size en yakın olanı seçin (Türkiye için **Frankfurt (eu-central-1)**). Veritabanı şifresini bir yere not edin.
-2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_event_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir.
+2. Proje açılınca **SQL Editor → New query** sayfasına gidin. `supabase/migrations/0001_event_qr_drive.sql` dosyasının **tamamını** yapıştırıp **Run**’a basın. Script `vector` eklentisini, tabloları, RLS’i ve fonksiyonları oluşturur. Birden fazla kez çalıştırmak güvenlidir. Ardından aynı şekilde `supabase/migrations/0002_engagement_features.sql` dosyasını çalıştırın (program akışı, fotoğraf görevleri, kalpler ve ortak yöneticiler).
 3. **Project Settings → API** sayfasındaki değerleri `.env.local` dosyasına kopyalayın:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` / *publishable* key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -205,7 +205,7 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 
 ---
 
-> **Şemayı güncellediyseniz:** `supabase/migrations/0001_event_qr_drive.sql` yeniden çalıştırılabilir (idempotent). Yükleme kotası (`upload_quota`, `reserve_upload_quota`) ve istatistik (`event_media_stats`) fonksiyonları bu dosyadadır; eski bir kurulumda dosyayı SQL Editor'da bir kez daha çalıştırın.
+> **Şemayı güncellediyseniz:** `supabase/migrations` klasöründeki dosyalar sırayla (0001, 0002, …) yeniden çalıştırılabilir (idempotent). Yeni bir migration içeren kodu yayına almadan **önce** o migration'ı çalıştırın; dosyalar yalnızca ekleme yaptığı için mevcut sürümü etkilemez. Yükleme kotası (`upload_quota`, `reserve_upload_quota`) ve istatistik (`event_media_stats`) fonksiyonları bu dosyadadır; eski bir kurulumda dosyayı SQL Editor'da bir kez daha çalıştırın.
 
 ## 10. Güvenlik özeti
 

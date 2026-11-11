@@ -3,7 +3,9 @@
 import { AlertCircle, Camera, CheckCircle2, ImagePlus, Loader2, RotateCcw, Trash2, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useMinuteClock } from "@/components/guest/ScheduleCard";
 import { trackEvent } from "@/lib/client/analytics";
+import { scheduleStatus } from "@/lib/event-extras";
 import { errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
 import { analyzePhoto } from "@/lib/faceRecognition";
@@ -65,6 +67,17 @@ export function UploadPanel({
 }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [category, setCategory] = useState<string | null>(null);
+  // Program-based preselection: only until the guest picks a category themselves.
+  const categoryPickedRef = useRef(false);
+  const now = useMinuteClock();
+  const programCategory = (() => {
+    const { currentId } = scheduleStatus(event.schedule, event.eventDate, now);
+    const current = event.schedule.find((item) => item.id === currentId);
+    return current?.category && event.categories.includes(current.category) ? current.category : null;
+  })();
+  useEffect(() => {
+    if (!categoryPickedRef.current && programCategory) setCategory(programCategory);
+  }, [programCategory]);
   const [note, setNote] = useState("");
   const queueRef = useRef<QueueItem[]>([]);
   const startedRef = useRef<Set<string>>(new Set());
@@ -268,7 +281,10 @@ export function UploadPanel({
               <button
                 key={cat ?? "_none"}
                 type="button"
-                onClick={() => setCategory(cat)}
+                onClick={() => {
+                  categoryPickedRef.current = true;
+                  setCategory(cat);
+                }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                   category === cat ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
                 }`}

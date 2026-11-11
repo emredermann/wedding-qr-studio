@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FaceSearchPanel } from "@/components/guest/FaceSearchPanel";
 import { GalleryPanel } from "@/components/guest/GalleryPanel";
 import { GuestbookPanel } from "@/components/guest/GuestbookPanel";
+import { ScheduleCard } from "@/components/guest/ScheduleCard";
 import { UploadPanel } from "@/components/guest/UploadPanel";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
 import { BrandMark } from "@/components/brand/BrandMark";
@@ -177,6 +178,7 @@ export function GuestApp({ slug }: { slug: string }) {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pt-5">
+        <ScheduleCard schedule={event.schedule} eventDate={event.eventDate} />
         {/* Kept mounted while other tabs are open so in-flight uploads, the queue
             and progress bars survive a tab switch (no orphaned XHRs). */}
         {event.uploadsEnabled && (

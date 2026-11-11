@@ -1,3 +1,5 @@
+import type { ScheduleItem } from "@/lib/event-extras";
+
 /**
  * Domain types shared by API routes (server) and pages (client).
  * Database rows use snake_case; DTOs sent to the browser use camelCase and
@@ -33,6 +35,8 @@ export interface EventRow {
   drive_voice_folder_id: string;
   /** "app" = platform Drive from the env, "host" = the owner's connected Drive. */
   drive_account: "app" | "host";
+  /** jsonb (0002 migration); read through `readSchedule`, may be absent on old schemas. */
+  schedule?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +87,8 @@ export interface PublicEventDto {
   galleryPublic: boolean;
   faceSearchEnabled: boolean;
   guestbookEnabled: boolean;
+  /** Optional program schedule (empty when the host did not set one). */
+  schedule: ScheduleItem[];
 }
 
 /** Host-facing event info (includes Drive links and stats). */

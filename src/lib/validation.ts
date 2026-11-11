@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Relative ".ts" import: this file is also loaded directly by `node --test`.
+import { scheduleSchema } from "./event-extras.ts";
+
 export const eventSettingsSchema = z.object({
   title: z.string().trim().min(2, "En az 2 karakter").max(120),
   coupleNames: z
@@ -30,6 +33,7 @@ export const eventSettingsSchema = z.object({
   galleryPublic: z.boolean(),
   faceSearchEnabled: z.boolean(),
   guestbookEnabled: z.boolean(),
+  schedule: scheduleSchema,
 });
 
 export type EventSettingsInput = z.infer<typeof eventSettingsSchema>;
@@ -58,6 +62,7 @@ export function settingsPatchToColumns(patch: EventSettingsPatch): Record<string
     galleryPublic: "gallery_public",
     faceSearchEnabled: "face_search_enabled",
     guestbookEnabled: "guestbook_enabled",
+    schedule: "schedule",
   };
   const update: Record<string, unknown> = {};
   for (const [key, column] of Object.entries(columns) as Array<[keyof EventSettingsInput, string]>) {
@@ -85,6 +90,8 @@ export const createEventSchema = z.object({
     .optional()
     .or(z.literal(""))
     .transform((v) => (v ? v : null)),
+  /** Optional program schedule; omitted or empty = no schedule. */
+  schedule: scheduleSchema.optional(),
   slug: z
     .string()
     .trim()

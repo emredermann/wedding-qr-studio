@@ -4,6 +4,7 @@ import { Loader2, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
@@ -31,6 +32,7 @@ export function SettingsTab({
     faceSearchEnabled: event.faceSearchEnabled,
     guestbookEnabled: event.guestbookEnabled,
   });
+  const [schedule, setSchedule] = useState(event.schedule);
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -39,7 +41,14 @@ export function SettingsTab({
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, { method: "PATCH", json: form });
+      // Optional extras are only sent when they changed, so saving the other
+      // settings never touches them.
+      const scheduleChanged = JSON.stringify(schedule) !== JSON.stringify(event.schedule);
+      const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
+        method: "PATCH",
+        json: { ...form, ...(scheduleChanged ? { schedule } : {}) },
+      });
+      setSchedule(res.event.schedule);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage("Ayarlar kaydedildi.", "success");
@@ -135,6 +144,11 @@ export function SettingsTab({
               <Plus className="h-4 w-4" /> Ekle
             </button>
           </div>
+        </div>
+        <div>
+          <span className="mb-1 block text-xs font-semibold text-stone-600">Program akışı (isteğe bağlı)</span>
+          <p className="mb-2 text-xs text-stone-500">Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.</p>
+          <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} />
         </div>
       </section>
 

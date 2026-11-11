@@ -1,6 +1,7 @@
 import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
+import { readSchedule, withKnownCategories } from "@/lib/event-extras";
 import { getAdminDb } from "@/lib/supabase/server";
 import type {
   EventRow,
@@ -31,6 +32,7 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
     galleryPublic: event.gallery_public,
     faceSearchEnabled: event.face_search_enabled,
     guestbookEnabled: event.guestbook_enabled,
+    schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
   };
 }
 

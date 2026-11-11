@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DriveConnectionCard } from "@/components/host/DriveConnectionCard";
+import { ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { HostHeader } from "@/components/host/HostHeader";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
-import type { DriveConnectionStatusDto, HostEventDto, HostEventListItem } from "@/types/domain";
+import type { ScheduleItem } from "@/lib/event-extras";
+import { DEFAULT_CATEGORIES, type DriveConnectionStatusDto, type HostEventDto, type HostEventListItem } from "@/types/domain";
 
 export function EventsDashboard() {
   const router = useRouter();
@@ -18,6 +20,7 @@ export function EventsDashboard() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: "", coupleNames: "", eventDate: "", slug: "" });
   const [formError, setFormError] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [drive, setDrive] = useState<DriveConnectionStatusDto | null>(null);
   const [driveReload, setDriveReload] = useState(0);
 
@@ -65,6 +68,7 @@ export function EventsDashboard() {
           coupleNames: form.coupleNames || undefined,
           eventDate: form.eventDate || undefined,
           slug: form.slug || undefined,
+          ...(schedule.length > 0 ? { schedule } : {}),
         },
       });
       trackEvent("event_created", { drive: res.event.driveAccount });
@@ -153,6 +157,17 @@ export function EventsDashboard() {
                 </div>
                 <span className="mt-1 block text-[11px] text-stone-500">Boş bırakırsanız tahmin edilemeyen bir adres oluşturulur (önerilir).</span>
               </label>
+              <details className="group rounded-xl border border-stone-200 px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-stone-600 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-1">
+                    <Plus className="h-3.5 w-3.5 transition group-open:rotate-45" /> Program akışı (isteğe bağlı)
+                  </span>
+                  {schedule.length > 0 && <span className="ml-1 font-normal text-stone-400">· {schedule.length} madde</span>}
+                </summary>
+                <div className="pt-3">
+                  <ScheduleEditor value={schedule} onChange={setSchedule} categories={DEFAULT_CATEGORIES} />
+                </div>
+              </details>
               {formError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{formError}</p>}
               {needsDrive && (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">Etkinlik oluşturmak için önce “Google Drive depolama” kartından Drive’ınızı bağlayın.</p>
