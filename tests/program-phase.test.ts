@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatMinutes, programPhase, readSchedule, scheduleEmoji } from "../src/lib/event-extras.ts";
+import { formatMinutes, itemEmoji, programPhase, readSchedule, scheduleEmoji, scheduleSchema } from "../src/lib/event-extras.ts";
 
 const schedule = readSchedule([
   { id: "aaaa1111", time: "19:00", title: "Nikah" },
@@ -52,5 +52,26 @@ describe("programPhase", () => {
     assert.deepEqual(programPhase(schedule, "2026-06-20", at(21, 10, 0)), { kind: "static" });
     assert.deepEqual(programPhase(schedule, null, at(20, 20, 0)), { kind: "static" });
     assert.deepEqual(programPhase([], "2026-06-20", at(20, 20, 0)), { kind: "static" });
+  });
+});
+
+describe("host-picked emoji", () => {
+  it("keeps a picked emoji from the allowed list and drops unknown ones", () => {
+    const out = scheduleSchema.parse([
+      { time: "19:00", title: "Nikah", emoji: "🌹" },
+      { time: "20:00", title: "Yemek", emoji: "<script>" },
+      { time: "21:00", title: "Dans" },
+    ]);
+    assert.deepEqual(out.map((i) => i.emoji), ["🌹", null, null]);
+  });
+
+  it("reads old rows without an emoji and prefers the host's pick", () => {
+    const [old, picked] = readSchedule([
+      { id: "aaaa1111", time: "19:00", title: "Nikah" },
+      { id: "bbbb2222", time: "20:00", title: "Nikah", emoji: "⛪" },
+    ]);
+    assert.equal(itemEmoji(old), "💍");
+    assert.equal(itemEmoji(picked), "⛪");
+    assert.equal(itemEmoji({ title: "Nikah", emoji: "not-allowed" }), "💍");
   });
 });
