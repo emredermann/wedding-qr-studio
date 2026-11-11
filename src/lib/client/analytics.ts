@@ -17,6 +17,7 @@ export interface AnalyticsEvents {
   guest_joined: Record<string, never>;
   upload_completed: { kind: MediaKind };
   upload_failed: { kind: MediaKind };
+  upload_deleted: { kind: MediaKind };
   face_search: { found: boolean };
   guestbook_note_sent: Record<string, never>;
   guestbook_recording_sent: { kind: "audio" | "video" };

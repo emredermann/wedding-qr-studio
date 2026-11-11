@@ -13,7 +13,7 @@ import { verifyToken } from "@/lib/signing";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { UploadTokenPayload } from "@/lib/upload-token";
 import type { EventRow, MediaDto, MediaItemRow } from "@/types/domain";
-import { hasTableNoColumn, mediaColumns } from "@/lib/schema-features";
+import { hasGuestDeleteColumn, hasTableNoColumn, mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
@@ -160,6 +160,8 @@ export async function POST(request: NextRequest) {
         ...(safeChallenge ? { challenge_id: safeChallenge } : {}),
         // Only when the event uses table numbers (and the 0004 migration has been run).
         ...(tableNo !== undefined && event.table_numbers === true && (await hasTableNoColumn()) ? { table_no: tableNo } : {}),
+        // Deletable by this guest until they continue (0005 migration); see /api/media/lock.
+        ...((await hasGuestDeleteColumn()) ? { guest_can_delete: true } : {}),
         is_guestbook: token.b,
         status,
         width: width ?? file.imageMediaMetadata?.width ?? file.videoMediaMetadata?.width ?? null,

@@ -615,4 +615,9 @@ export const EN = {
   "Henüz katılan misafir yok.": "No guests have taken part yet.",
   "Aramayla eşleşen misafir yok.": "No guests match your search.",
   "Son etkinlik": "Last activity",
+  // ── guest: delete until continue
+  "Bu fotoğraf artık silinemez. Kaldırılmasını istiyorsanız etkinlik sahibine haber verin.": "This photo can no longer be deleted. Ask the host if you'd like it removed.",
+  "Yanlış bir şey mi yüklediniz? Devam etmeden önce buradan silebilirsiniz; devam ettikten sonra silinemez.": "Uploaded something by mistake? You can delete it here before you continue; after that it can't be deleted.",
+  "Bu dosya silinsin mi? Bu işlem geri alınamaz.": "Delete this file? This can't be undone.",
+  "Yüklemeyi sil": "Delete upload",
 } as const;

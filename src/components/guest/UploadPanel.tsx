@@ -7,7 +7,7 @@ import { useMinuteClock } from "@/components/guest/ScheduleCard";
 import { trackEvent } from "@/lib/client/analytics";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { scheduleStatus } from "@/lib/event-extras";
-import { errorMessage } from "@/lib/client/api";
+import { ApiError, apiFetch, errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
 import { analyzePhoto } from "@/lib/faceRecognition";
 import {
@@ -33,6 +33,11 @@ interface QueueItem {
   category: string | null;
   challengeId: string | null;
   note: string;
+  /** Server id once uploaded. */
+  mediaId: string | null;
+  /** The guest moved on: this upload can no longer be deleted by them. */
+  locked: boolean;
+  deleting: boolean;
 }
 
 let faceLock: Promise<unknown> = Promise.resolve();
@@ -60,14 +65,20 @@ export function UploadPanel({
   event,
   guestName,
   tableNo,
+  active,
   onUploaded,
+  onDeleted,
   onMessage,
 }: {
   event: PublicEventDto;
   guestName: string;
   /** Table from the guest's QR card; sent with every upload. */
   tableNo: number | null;
+  /** Whether the upload tab is on screen; leaving it locks finished uploads. */
+  active: boolean;
   onUploaded: (media: MediaDto) => void;
+  /** A finished upload was deleted by the guest (before it was locked). */
+  onDeleted: (mediaId: string) => void;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
@@ -89,6 +100,7 @@ export function UploadPanel({
   }, [programCategory]);
   const [note, setNote] = useState("");
   const queueRef = useRef<QueueItem[]>([]);
+  const activeRef = useRef(active);
   const startedRef = useRef<Set<string>>(new Set());
   /** Items whose bytes reached Drive; they stay "uploading" until confirmed. */
   const bytesDoneRef = useRef<Set<string>>(new Set());
@@ -96,6 +108,19 @@ export function UploadPanel({
   const galleryRef = useRef<HTMLInputElement>(null);
 
   const busy = items.some((item) => item.status === "queued" || item.status === "uploading");
+
+  // Leaving the upload tab = moving on: finished uploads can no longer be deleted.
+  const lockRef = useRef<(viaBeacon?: boolean) => void>(() => undefined);
+  useEffect(() => {
+    activeRef.current = active;
+    if (!active) lockRef.current();
+  }, [active]);
+  // Closing or leaving the page locks them too (beacon survives the unload).
+  useEffect(() => {
+    const onHide = () => lockRef.current(true);
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, []);
 
   useEffect(() => {
     if (!busy) return;
@@ -144,7 +169,10 @@ export function UploadPanel({
           pump();
         },
       });
-      patch(item.id, { status: "done", progress: 1 });
+      // Finishing in the background (guest is on another tab) counts as having moved on.
+      const lockNow = !activeRef.current;
+      patch(item.id, { status: "done", progress: 1, mediaId: media.id, locked: lockNow });
+      if (lockNow) sendLock([media.id]);
       trackEvent("upload_completed", { kind: item.kind });
       onUploaded(media);
     } catch (error) {
@@ -176,8 +204,50 @@ export function UploadPanel({
     }
   }
 
+  /** Tells the server these uploads can no longer be deleted by the guest (one-way). */
+  function sendLock(ids: string[], viaBeacon = false) {
+    if (ids.length === 0) return;
+    const body = JSON.stringify({ ids });
+    if (viaBeacon && typeof navigator.sendBeacon === "function") {
+      navigator.sendBeacon("/api/media/lock", new Blob([body], { type: "application/json" }));
+      return;
+    }
+    void apiFetch("/api/media/lock", { method: "POST", json: { ids } }).catch(() => undefined);
+  }
+
+  /** The guest continued: lock every finished, still-deletable upload. */
+  function lockFinished(viaBeacon = false) {
+    const ids = queueRef.current.filter((i) => i.status === "done" && i.mediaId && !i.locked).map((i) => i.mediaId as string);
+    if (ids.length === 0) return;
+    mutate((prev) => prev.map((i) => (i.mediaId && ids.includes(i.mediaId) ? { ...i, locked: true } : i)));
+    sendLock(ids, viaBeacon);
+  }
+
+  useEffect(() => {
+    lockRef.current = lockFinished;
+  });
+
+  async function deleteUploaded(item: QueueItem) {
+    if (!item.mediaId || item.locked || item.deleting) return;
+    if (!window.confirm(t("Bu dosya silinsin mi? Bu işlem geri alınamaz."))) return;
+    patch(item.id, { deleting: true });
+    try {
+      await apiFetch(`/api/media/${item.mediaId}`, { method: "DELETE" });
+      removeItem(item.id);
+      onDeleted(item.mediaId);
+      trackEvent("upload_deleted", { kind: item.kind });
+      onMessage(t("Silindi."), "success");
+    } catch (error) {
+      const locked = error instanceof ApiError && error.code === "DELETE_LOCKED";
+      patch(item.id, { deleting: false, ...(locked ? { locked: true } : {}) });
+      onMessage(errorMessage(error), "error");
+    }
+  }
+
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
+    // Picking new files means the guest has moved on from the previous ones.
+    lockFinished();
     const accepted: QueueItem[] = [];
     let rejected = 0;
     for (const file of Array.from(list)) {
@@ -201,6 +271,9 @@ export function UploadPanel({
         category,
         challengeId,
         note: note.trim(),
+        mediaId: null,
+        locked: false,
+        deleting: false,
       });
     }
     if (rejected > 0) onMessage(t("{n} dosya desteklenmiyor (yalnızca fotoğraf ve video).", { n: rejected }), "error");
@@ -218,6 +291,7 @@ export function UploadPanel({
   }
 
   function clearFinished() {
+    lockFinished();
     mutate((prev) => {
       for (const item of prev) if (item.status === "done" && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       return prev.filter((item) => item.status !== "done");
@@ -365,6 +439,11 @@ export function UploadPanel({
               </button>
             )}
           </div>
+          {items.some((i) => i.status === "done" && !i.locked) && (
+            <p className="mb-2 px-1 text-[11px] leading-relaxed text-stone-500">
+              {t("Yanlış bir şey mi yüklediniz? Devam etmeden önce buradan silebilirsiniz; devam ettikten sonra silinemez.")}
+            </p>
+          )}
           <ul className="space-y-2">
             {items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 rounded-2xl bg-stone-50 p-2">
@@ -399,7 +478,24 @@ export function UploadPanel({
                 </div>
                 <div className="shrink-0">
                   {item.status === "uploading" && <Loader2 className="h-5 w-5 animate-spin text-stone-400" />}
-                  {item.status === "done" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                  {item.status === "done" &&
+                    (item.locked ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <button
+                          type="button"
+                          onClick={() => void deleteUploaded(item)}
+                          disabled={item.deleting}
+                          aria-label={t("Yüklemeyi sil")}
+                          title={t("Yüklemeyi sil")}
+                          className="rounded-full p-1.5 text-stone-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                        >
+                          {item.deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ))}
                   {item.status === "error" && (
                     <div className="flex gap-1">
                       <button type="button" onClick={() => retry(item.id)} aria-label={t("Tekrar dene")} className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">

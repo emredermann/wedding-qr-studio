@@ -212,7 +212,9 @@ export function GuestApp({ slug }: { slug: string }) {
               event={event}
               guestName={guestName}
               tableNo={tableNo}
+              active={activeTab === "upload"}
               onUploaded={(media) => setRecentUploads((prev) => [media, ...prev])}
+              onDeleted={(mediaId) => setRecentUploads((prev) => prev.filter((m) => m.id !== mediaId))}
               onMessage={onMessage}
             />
           </div>

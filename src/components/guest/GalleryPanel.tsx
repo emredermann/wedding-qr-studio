@@ -123,16 +123,6 @@ function GalleryFeed({
     }));
   };
 
-  const handleDelete = async (item: MediaDto) => {
-    try {
-      await apiFetch(`/api/media/${item.id}`, { method: "DELETE" });
-      setItems((prev) => prev.filter((m) => m.id !== item.id));
-      setOpenIndex(null);
-      onMessage(t("Silindi."), "success");
-    } catch (error) {
-      onMessage(errorMessage(error), "error");
-    }
-  };
 
   if (loading) {
     return (
@@ -189,7 +179,6 @@ function GalleryFeed({
           index={openIndex}
           onIndexChange={setOpenIndex}
           onClose={() => setOpenIndex(null)}
-          onDelete={visible[openIndex]?.isMine ? handleDelete : undefined}
           challenges={event.challenges}
           footer={(m) =>
             canHeart(m) ? (
