@@ -619,4 +619,14 @@ export const EN = {
   "Yanlış bir şey mi yüklediniz? Devam etmeden önce buradan silebilirsiniz; devam ettikten sonra silinemez.": "Uploaded something by mistake? You can delete it here before you continue; after that it can't be deleted.",
   "Bu dosya silinsin mi? Bu işlem geri alınamaz.": "Delete this file? This can't be undone.",
   "Yüklemeyi sil": "Delete upload",
+  // ── host: entrance board
+  "Masa kartları": "Table cards",
+  "Giriş panosu": "Entrance board",
+  "Kapıya konacak tek bir QR. Okutan misafirin yüklemeleri ana albüme gider (masa numarası olmadan).": "One QR code for the entrance. Uploads from guests who scan it go to the main album (without a table number).",
+  "Bu günün fotoğraflarını, videolarını ve dileklerinizi QR kodu okutarak bizimle paylaşın.": "Scan the QR code to share today's photos, videos and wishes with us.",
+  "A4 (21×29,7 cm)": "A4 (21×29.7 cm)",
+  "A3 (29,7×42 cm)": "A3 (29.7×42 cm)",
+  "Poster (50×70 cm)": "Poster (50×70 cm)",
+  "Giriş panosu önizlemesi": "Entrance board preview",
+  "Büyük boy baskıya hazır PDF. Matbaada “Gerçek boyut” ile basın; QR kodu bastıktan sonra telefonla test edin.": "Print-ready large-format PDF. Print at “Actual size”; test the QR code with a phone after printing.",
 } as const;

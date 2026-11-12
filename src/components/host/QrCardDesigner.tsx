@@ -17,6 +17,24 @@ type TemplateId = "klasik" | "modern" | "botanik" | "gece";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
 type CenterMode = "harfler" | "kalp" | "foto" | "yok";
 type PaperSize = "A6" | "A5" | "A4x4";
+type BoardPaper = "A4" | "A3" | "P50x70";
+type DesignKind = "tables" | "board";
+
+/**
+ * Entrance board sizes. A4 at 300 DPI; the larger ones are capped near
+ * 12 MP (≈250 DPI for A3, ≈150 DPI for 50×70 cm, plenty at viewing distance)
+ * so phones can still render them (iOS limits canvases to ~16.7 MP).
+ */
+const BOARD_PX: Record<BoardPaper, { width: number; height: number }> = {
+  A4: { width: 2480, height: 3508 },
+  A3: { width: 2924, height: 4134 },
+  P50x70: { width: 2953, height: 4134 },
+};
+
+/** Entrance board link. With table numbers on it tells the guest page to forget a remembered table. */
+export function boardUrl(url: string, perTable: boolean): string {
+  return perTable ? `${url}${url.includes("?") ? "&" : "?"}entry=1` : url;
+}
 
 /** Guest link for one table card (`?table=N`), or the plain link. */
 export function tableUrl(url: string, table: string | null, perTable: boolean): string {
@@ -366,6 +384,13 @@ export function QrCardDesigner({
   const [tableTo, setTableTo] = useState("");
   const [showUrl, setShowUrl] = useState(true);
   const [paper, setPaper] = useState<PaperSize>("A6");
+  const [kind, setKind] = useState<DesignKind>("tables");
+  const [boardPaper, setBoardPaper] = useState<BoardPaper>("A3");
+  const [boardTop, setBoardTop] = useState(() => t("Hoş geldiniz"));
+  const [boardDescription, setBoardDescription] = useState(() =>
+    t("Bu günün fotoğraflarını, videolarını ve dileklerinizi QR kodu okutarak bizimle paylaşın."),
+  );
+  const isBoard = kind === "board";
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [exporting, setExporting] = useState<"png" | "pdf" | null>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
@@ -380,15 +405,15 @@ export function QrCardDesigner({
       leaves: tpl.leaves,
       center,
       initials,
-      topText,
+      topText: isBoard ? boardTop : topText,
       names,
       dateText: date,
-      description,
+      description: isBoard ? boardDescription : description,
       tableLabel,
       showUrl,
       url,
     }),
-    [palette, frame, tpl.serifNames, tpl.leaves, center, initials, topText, names, date, description, tableLabel, showUrl, url],
+    [palette, frame, tpl.serifNames, tpl.leaves, center, initials, isBoard, boardTop, topText, names, date, boardDescription, description, tableLabel, showUrl, url],
   );
 
   const tables = useMemo(() => {
@@ -403,11 +428,11 @@ export function QrCardDesigner({
     const canvas = previewRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const size = paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
+    const size = isBoard ? BOARD_PX[boardPaper] : paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
     canvas.width = size.width;
     canvas.height = size.height;
-    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, tables[0] ?? null);
-  }, [options, photo, tables, paper]);
+    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, isBoard ? null : (tables[0] ?? null));
+  }, [options, photo, tables, paper, isBoard, boardPaper]);
 
   const applyTemplate = (id: TemplateId) => {
     setTemplate(id);
@@ -449,7 +474,30 @@ export function QrCardDesigner({
     return canvas;
   };
 
+  /** Entrance board: one page, one shared QR (no table number). */
+  const exportBoard = async (format: "png" | "pdf") => {
+    setExporting(format);
+    try {
+      const px = BOARD_PX[boardPaper];
+      const canvas = await renderCardCanvas(null, px);
+      if (format === "png") {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (blob) saveBlob(blob, `giris-panosu-${slug}.png`);
+      } else {
+        const pt = PAGE_SIZES_PT[boardPaper];
+        saveBlob(
+          buildPdf([{ jpeg: await canvasToJpegBytes(canvas), pixelWidth: px.width, pixelHeight: px.height, pageWidthPt: pt.width, pageHeightPt: pt.height }]),
+          `giris-panosu-${slug}.pdf`,
+        );
+      }
+      trackEvent("qr_card_exported", { format, cards: 1 });
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const exportPng = async () => {
+    if (isBoard) return exportBoard("png");
     setExporting("png");
     try {
       const canvas = await renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
@@ -464,6 +512,7 @@ export function QrCardDesigner({
   };
 
   const exportPdf = async () => {
+    if (isBoard) return exportBoard("pdf");
     setExporting("pdf");
     try {
       const list: Array<string | null> = tables.length > 0 ? tables : [null];
@@ -522,10 +571,31 @@ export function QrCardDesigner({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="hidden">
-        <QRCodeCanvas ref={qrRef} value={tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
+        <QRCodeCanvas ref={qrRef} value={isBoard ? boardUrl(url, tableNumbers) : tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
       </div>
 
       <div className="order-2 space-y-5 lg:order-1">
+        <section>
+          <div className="flex rounded-full border border-stone-200 bg-white p-1 text-sm font-medium" role="tablist">
+            {([
+              ["tables", t("Masa kartları")],
+              ["board", t("Giriş panosu")],
+            ] as Array<[DesignKind, string]>).map(([id, text]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={kind === id}
+                onClick={() => setKind(id)}
+                className={`flex-1 rounded-full px-3 py-2 transition ${kind === id ? "bg-stone-900 text-white" : "text-stone-600 hover:text-stone-900"}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+          {isBoard && <p className={`mt-2 ${ui.hint}`}>🚪 {t("Kapıya konacak tek bir QR. Okutan misafirin yüklemeleri ana albüme gider (masa numarası olmadan).")}</p>}
+        </section>
+
         <section>
           <p className={label}>{t("Şablon")}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -593,7 +663,7 @@ export function QrCardDesigner({
         <section className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={label}>{t("Üst başlık")}</span>
-            <input value={topText} maxLength={40} onChange={(e) => setTopText(e.target.value)} className={field} />
+            <input value={isBoard ? boardTop : topText} maxLength={40} onChange={(e) => (isBoard ? setBoardTop : setTopText)(e.target.value)} className={field} />
           </label>
           <label className="block">
             <span className={label}>{t("İsimler")}</span>
@@ -608,11 +678,12 @@ export function QrCardDesigner({
           </label>
           <label className="block sm:col-span-2">
             <span className={label}>{t("Açıklama")}</span>
-            <textarea value={description} maxLength={160} rows={2} onChange={(e) => setDescription(e.target.value)} className={field} />
+            <textarea value={isBoard ? boardDescription : description} maxLength={160} rows={2} onChange={(e) => (isBoard ? setBoardDescription : setDescription)(e.target.value)} className={field} />
           </label>
         </section>
 
-        <section className="grid grid-cols-3 gap-3">
+        <section className={isBoard ? "hidden" : "grid grid-cols-3 gap-3"}>
+          {!isBoard && (<>
           <p className="col-span-full rounded-xl bg-stone-100 px-3 py-2 text-[11px] text-stone-600">
             🪑 {tableNumbers ? t("Masa numaraları açık: her kartın QR kodu kendi masasını taşır. Masa no aralığını girin.") : t("Tüm kartlarda aynı QR kodu kullanılır. Masaya özel QR için Ayarlar’da “Masa numaraları”nı açın.")}
           </p>
@@ -628,10 +699,24 @@ export function QrCardDesigner({
             <span className={label}>{t("Bitiş (isteğe bağlı)")}</span>
             <input value={tableTo} inputMode="numeric" placeholder={t("ör. 20")} onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
           </label>
+          </>)}
         </section>
 
         <section>
           <p className={label}>{t("Kâğıt boyutu")}</p>
+          {isBoard ? (
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["A4", t("A4 (21×29,7 cm)")],
+              ["A3", t("A3 (29,7×42 cm)")],
+              ["P50x70", t("Poster (50×70 cm)")],
+            ] as Array<[BoardPaper, string]>).map(([id, text]) => (
+              <button key={id} type="button" onClick={() => setBoardPaper(id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${boardPaper === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`}>
+                {text}
+              </button>
+            ))}
+          </div>
+          ) : (
           <div className="flex flex-wrap gap-2">
             {([
               ["A6", t("A6 (10,5×14,8 cm)")],
@@ -643,13 +728,14 @@ export function QrCardDesigner({
               </button>
             ))}
           </div>
+          )}
         </section>
       </div>
 
       <div className="order-1 lg:order-2">
         <div className="sticky top-4 space-y-3">
-          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label={t("Masa kartı önizlemesi")} />
-          {tables.length > 1 && <p className="text-center text-xs text-stone-500">{t("{n} masa kartı oluşturulacak (önizleme: {label} {first})", { n: tables.length, label: tableLabel, first: tables[0] })}</p>}
+          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label={isBoard ? t("Giriş panosu önizlemesi") : t("Masa kartı önizlemesi")} />
+          {!isBoard && tables.length > 1 && <p className="text-center text-xs text-stone-500">{t("{n} masa kartı oluşturulacak (önizleme: {label} {first})", { n: tables.length, label: tableLabel, first: tables[0] })}</p>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={exportPng} disabled={exporting !== null} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800">
               {exporting === "png" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PNG
@@ -659,7 +745,10 @@ export function QrCardDesigner({
             </button>
           </div>
           <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-stone-500">
-            <Printer className="mt-px h-3.5 w-3.5 shrink-0" /> {t("300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.")}
+            <Printer className="mt-px h-3.5 w-3.5 shrink-0" />{" "}
+            {isBoard
+              ? t("Büyük boy baskıya hazır PDF. Matbaada “Gerçek boyut” ile basın; QR kodu bastıktan sonra telefonla test edin.")
+              : t("300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.")}
           </p>
         </div>
       </div>

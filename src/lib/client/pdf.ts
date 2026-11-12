@@ -9,6 +9,9 @@ export const PAGE_SIZES_PT = {
   A6: { width: 297.64, height: 419.53 },
   A5: { width: 419.53, height: 595.28 },
   A4: { width: 595.28, height: 841.89 },
+  A3: { width: 841.89, height: 1190.55 },
+  /** 50×70 cm poster. */
+  P50x70: { width: 1417.32, height: 1984.25 },
 } as const;
 
 export interface PdfPage {
