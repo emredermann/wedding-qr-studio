@@ -162,7 +162,7 @@ export function HostEventApp({ eventId }: { eventId: string }) {
         {tab === "guestbook" && <GuestbookModerationTab event={event} onMessage={onMessage} />}
         {tab === "guests" && <GuestsTab event={event} onMessage={onMessage} />}
         {tab === "qr" && (
-          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} />
+          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} eventDate={event.eventDate} />
         )}
         {tab === "settings" && <SettingsTab key={event.updatedAt} event={event} onSaved={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
       </main>

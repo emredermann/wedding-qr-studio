@@ -633,4 +633,25 @@ export const EN = {
   "El çizimi": "Hand-drawn",
   "Çiçek dalı": "Flower sprig",
   "Kalpler": "Hearts",
+  // ── host: QR designer
+  "Boş (sade QR)": "None (plain QR)",
+  // ── host: hand-drawn card templates
+  "Anı kartı": "Memory card",
+  "Düğün Anılarınız Burada": "Your Wedding Memories Are Here",
+  // ── host: QR only
+  "Sadece QR": "QR only",
+  "Kart olmadan yalnızca QR kodunu indirin; tasarımcınız istediği tasarıma yerleştirebilir. Ortası boş, sade bir QR üretilir.": "Download just the QR code, without a card, so your designer can place it in any design. A plain QR with nothing in the middle is generated.",
+  "Dosya biçimi": "File format",
+  "SVG (vektörel, önerilen)": "SVG (vector, recommended)",
+  "PNG (2048 px)": "PNG (2048 px)",
+  "Zemin": "Background",
+  "Beyaz": "White",
+  "Şeffaf": "Transparent",
+  "Kenar boşluğu bırak (önerilir)": "Keep a quiet margin (recommended)",
+  "Masa numaraları açık: genel QR ve girdiğiniz masaların QR'ları tek bir ZIP dosyası olarak iner.": "Table numbers are on: the general QR and one QR per table you enter download as a single ZIP file.",
+  "QR önizlemesi": "QR preview",
+  "{n} QR kodu indirilecek (genel + masalar)": "{n} QR codes will be downloaded (general + tables)",
+  "QR'ları indir (ZIP)": "Download QR codes (ZIP)",
+  "QR'ı indir": "Download QR",
+  "Basmadan önce QR'ı telefonla okutarak test edin. Çok açık renkler okunmayı zorlaştırır.": "Test the QR with a phone before printing. Very light colours make it harder to scan.",
 } as const;

@@ -29,7 +29,7 @@ export interface AnalyticsEvents {
   drive_connected: Record<string, never>;
   event_created: { drive: "app" | "host" };
   guest_link_shared: { method: "copy" | "whatsapp" };
-  qr_card_exported: { format: "png" | "pdf"; cards: number };
+  qr_card_exported: { format: "png" | "pdf" | "svg"; cards: number };
   moderation_bulk: { action: "approve" | "hide" | "delete"; items: number };
   settings_saved: Record<string, never>;
   live_wall_opened: Record<string, never>;
