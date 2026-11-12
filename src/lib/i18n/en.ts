@@ -629,4 +629,8 @@ export const EN = {
   "Poster (50×70 cm)": "Poster (50×70 cm)",
   "Giriş panosu önizlemesi": "Entrance board preview",
   "Büyük boy baskıya hazır PDF. Matbaada “Gerçek boyut” ile basın; QR kodu bastıktan sonra telefonla test edin.": "Print-ready large-format PDF. Print at “Actual size”; test the QR code with a phone after printing.",
+  // ── host: hand-drawn card templates
+  "El çizimi": "Hand-drawn",
+  "Çiçek dalı": "Flower sprig",
+  "Kalpler": "Hearts",
 } as const;

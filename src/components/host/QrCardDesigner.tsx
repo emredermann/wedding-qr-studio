@@ -8,12 +8,14 @@ import { createRoot } from "react-dom/client";
 
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
+import { loadScriptFonts, SCRIPT_FAMILY, SCRIPT_WEIGHT, type ScriptFont } from "@/lib/card-fonts";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
 import { ui } from "@/components/ui/styles";
 
-type TemplateId = "klasik" | "modern" | "botanik" | "gece";
+type TemplateId = "cizim" | "cicek" | "kalpler" | "klasik" | "modern" | "botanik" | "gece";
+type CardArt = "camera" | "flowers" | "hearts";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
 type CenterMode = "harfler" | "kalp" | "foto" | "yok";
 type PaperSize = "A6" | "A5" | "A4x4";
@@ -47,11 +49,11 @@ export function tableUrl(url: string, table: string | null, perTable: boolean): 
  * Used when every table card needs its own code (qrcode.react paints in an
  * effect, so we give it a tick before copying).
  */
-async function renderQrCanvas(value: string, fgColor: string): Promise<HTMLCanvasElement> {
+async function renderQrCanvas(value: string, fgColor: string, bgColor: string): Promise<HTMLCanvasElement> {
   const host = document.createElement("div");
   const root = createRoot(host);
   try {
-    flushSync(() => root.render(<QRCodeCanvas value={value} size={1024} level="H" fgColor={fgColor} bgColor="#FFFFFF" marginSize={0} />));
+    flushSync(() => root.render(<QRCodeCanvas value={value} size={1024} level="H" fgColor={fgColor} bgColor={bgColor} marginSize={0} />));
     await new Promise((resolve) => setTimeout(resolve, 0));
     const source = host.querySelector("canvas");
     if (!source) throw new Error("Canvas desteklenmiyor.");
@@ -72,7 +74,46 @@ interface Palette {
   qr: string;
 }
 
-const TEMPLATES: Record<TemplateId, { name: MsgKey; palette: Palette; frame: FrameStyle; serifNames: boolean; leaves: boolean }> = {
+interface TemplateDef {
+  name: MsgKey;
+  palette: Palette;
+  frame: FrameStyle;
+  serifNames: boolean;
+  leaves: boolean;
+  /** Hand-drawn layout: line illustration, curved handwritten heading, QR printed straight on paper. */
+  script?: { art: CardArt; font: ScriptFont };
+  /** Swatch glyph in the template picker. */
+  glyph?: string;
+}
+
+const TEMPLATES: Record<TemplateId, TemplateDef> = {
+  cizim: {
+    name: "El çizimi",
+    palette: { background: "#F6F3F7", text: "#1F2A5A", accent: "#B7A6D3", qr: "#1F2A5A" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "camera", font: "caveat" },
+    glyph: "📷",
+  },
+  cicek: {
+    name: "Çiçek dalı",
+    palette: { background: "#F8F5EE", text: "#3B4636", accent: "#9DB08A", qr: "#2F3B2C" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "flowers", font: "vibes" },
+    glyph: "🌿",
+  },
+  kalpler: {
+    name: "Kalpler",
+    palette: { background: "#FBF6F2", text: "#5A2E36", accent: "#D7A39E", qr: "#5A2E36" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "hearts", font: "caveat" },
+    glyph: "♡",
+  },
   klasik: { name: "Klasik", palette: { background: "#FFFDF8", text: "#1C1917", accent: "#B45309", qr: "#1C1917" }, frame: "cift", serifNames: true, leaves: false },
   modern: { name: "Modern", palette: { background: "#FFFFFF", text: "#111827", accent: "#111827", qr: "#111827" }, frame: "ince", serifNames: false, leaves: false },
   botanik: { name: "Botanik", palette: { background: "#F7F5EE", text: "#1F2A1F", accent: "#4D6B48", qr: "#1F2A1F" }, frame: "kose", serifNames: true, leaves: true },
@@ -89,6 +130,8 @@ const CARD_PX = {
 } as const;
 
 interface CardOptions {
+  /** Set for hand-drawn templates. */
+  script: { art: CardArt; family: string; weight: string } | null;
   palette: Palette;
   frame: FrameStyle;
   serifNames: boolean;
@@ -222,6 +265,349 @@ function drawFrame(ctx: CanvasRenderingContext2D, w: number, h: number, style: F
   }
 }
 
+/**
+ * Centre badge on the QR: initials, heart or photo. The QR uses error
+ * correction level H, so ~20% of its area may be covered safely.
+ */
+function drawCenterBadge(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  o: CardOptions,
+  photo: HTMLImageElement | null,
+  ringColor: string,
+) {
+  if (o.center === "yok") return;
+  ctx.fillStyle = ringColor;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
+  ctx.fill();
+  if (o.center === "foto" && photo) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    const side = Math.min(photo.naturalWidth, photo.naturalHeight);
+    ctx.drawImage(photo, (photo.naturalWidth - side) / 2, (photo.naturalHeight - side) / 2, side, side, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+    return;
+  }
+  ctx.fillStyle = o.palette.accent === "#FFFFFF" ? "#111111" : o.palette.accent;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#FFFFFF";
+  if (o.center === "kalp" || o.center === "foto") {
+    drawHeart(ctx, cx, cy + r * 0.05, r * 1.1);
+  } else {
+    const text = o.initials.slice(0, 5) || "♥";
+    ctx.textBaseline = "middle";
+    fitFont(ctx, text, o.script ? o.script.family : SERIF, o.script ? o.script.weight : "400", r * (o.script ? 1.15 : 0.95), r * 1.6);
+    ctx.fillText(text, cx, cy + r * 0.04);
+    ctx.textBaseline = "alphabetic";
+  }
+}
+
+/** Small deterministic pseudo-random sequence (same texture on every render). */
+function seeded(seed: number) {
+  let x = seed;
+  return () => {
+    x = (x * 16807) % 2147483647;
+    return (x - 1) / 2147483646;
+  };
+}
+
+/** Soft paper: a faint vignette and a few marbled veins. Kept light so the QR still scans. */
+function drawPaper(ctx: CanvasRenderingContext2D, w: number, h: number, base: string) {
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
+  const glow = ctx.createRadialGradient(w * 0.5, h * 0.42, w * 0.1, w * 0.5, h * 0.5, h * 0.75);
+  glow.addColorStop(0, "rgba(255,255,255,0.55)");
+  glow.addColorStop(1, "rgba(120,110,130,0.05)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+  const rnd = seeded(7);
+  ctx.lineCap = "round";
+  for (let i = 0; i < 9; i += 1) {
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + rnd() * 0.3})`;
+    ctx.lineWidth = w * (0.0015 + rnd() * 0.003);
+    ctx.beginPath();
+    const y0 = h * rnd();
+    ctx.moveTo(-w * 0.1, y0);
+    ctx.bezierCurveTo(w * 0.3, y0 + h * (rnd() - 0.5) * 0.4, w * 0.6, y0 + h * (rnd() - 0.5) * 0.4, w * 1.1, y0 + h * (rnd() - 0.5) * 0.3);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 5; i += 1) {
+    ctx.strokeStyle = "rgba(90,80,100,0.05)";
+    ctx.lineWidth = w * 0.0012;
+    ctx.beginPath();
+    const x0 = w * rnd();
+    ctx.moveTo(x0, -h * 0.05);
+    ctx.bezierCurveTo(x0 + w * (rnd() - 0.5) * 0.6, h * 0.35, x0 + w * (rnd() - 0.5) * 0.6, h * 0.65, x0 + w * (rnd() - 0.5) * 0.4, h * 1.05);
+    ctx.stroke();
+  }
+}
+
+/** Line-art camera with flash sparks and a dotted strap. */
+function drawCameraArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, lensFill: string) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.12);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = s * 0.018;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const bw = s;
+  const bh = s * 0.62;
+  // body + top hump
+  roundRect(ctx, -bw / 2, -bh / 2, bw, bh, s * 0.08);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.22, -bh / 2);
+  ctx.lineTo(-bw * 0.16, -bh / 2 - s * 0.12);
+  ctx.lineTo(bw * 0.12, -bh / 2 - s * 0.12);
+  ctx.lineTo(bw * 0.18, -bh / 2);
+  ctx.stroke();
+  // shutter button and viewfinder
+  roundRect(ctx, bw * 0.26, -bh / 2 - s * 0.07, s * 0.14, s * 0.07, s * 0.02);
+  ctx.stroke();
+  roundRect(ctx, -bw * 0.42, -bh * 0.36, s * 0.16, s * 0.1, s * 0.02);
+  ctx.stroke();
+  // grip line
+  ctx.beginPath();
+  ctx.moveTo(-bw / 2, bh * 0.18);
+  ctx.lineTo(bw / 2, bh * 0.18);
+  ctx.stroke();
+  // lens
+  ctx.beginPath();
+  ctx.arc(0, s * 0.02, s * 0.27, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, s * 0.02, s * 0.19, 0, Math.PI * 2);
+  ctx.fillStyle = lensFill;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-s * 0.06, -s * 0.05, s * 0.045, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fill();
+  // dotted strap below
+  ctx.fillStyle = ink;
+  for (let i = 0; i < 14; i += 1) {
+    ctx.beginPath();
+    ctx.arc(-bw * 0.45 + (i * bw * 0.9) / 13, bh / 2 + s * 0.09, s * 0.012, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // flash sparks
+  ctx.lineWidth = s * 0.016;
+  for (const [a, len] of [[-1.15, 0.13], [-0.75, 0.17], [-0.35, 0.13]] as const) {
+    const r0 = s * 0.2;
+    const ox = bw * 0.33;
+    const oy = -bh / 2 - s * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(ox + Math.cos(a) * r0, oy + Math.sin(a) * r0);
+    ctx.lineTo(ox + Math.cos(a) * (r0 + s * len), oy + Math.sin(a) * (r0 + s * len));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** One outline flower (five round petals) for the sprig. */
+function drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, r * 0.5, r * 0.32, a, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Two crossing line-art sprigs with leaves and small flowers. */
+function drawFlowerArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, accent: string) {
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = accent;
+  ctx.lineCap = "round";
+  ctx.lineWidth = s * 0.014;
+  for (const dir of [-1, 1]) {
+    ctx.save();
+    ctx.translate(cx, cy + s * 0.25);
+    ctx.scale(dir, 1);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(s * 0.15, -s * 0.2, s * 0.35, -s * 0.35, s * 0.62, -s * 0.42);
+    ctx.stroke();
+    for (const [t, side] of [[0.25, 1], [0.42, -1], [0.58, 1], [0.74, -1]] as const) {
+      const px = s * 0.62 * t;
+      const py = -s * 0.42 * t - s * 0.06 * Math.sin(t * Math.PI);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(-0.6 + side * 0.9);
+      ctx.beginPath();
+      ctx.ellipse(s * 0.06, 0, s * 0.07, s * 0.028, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    drawFlower(ctx, s * 0.64, -s * 0.43, s * 0.09);
+    drawFlower(ctx, s * 0.33, -s * 0.33, s * 0.06);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/** Three outline hearts with a few sparkles. */
+function drawHeartsArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, accent: string) {
+  const outline = (x: number, y: number, size: number, rot: number, fill: string | null) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    const t = size / 2;
+    ctx.moveTo(0, t * 0.75);
+    ctx.bezierCurveTo(-t * 1.15, -t * 0.05, -t * 0.55, -t * 0.95, 0, -t * 0.35);
+    ctx.bezierCurveTo(t * 0.55, -t * 0.95, t * 1.15, -t * 0.05, 0, t * 0.75);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = s * 0.016;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  outline(cx - s * 0.32, cy + s * 0.06, s * 0.32, -0.25, null);
+  outline(cx, cy - s * 0.05, s * 0.48, 0.05, accent);
+  outline(cx + s * 0.34, cy + s * 0.1, s * 0.26, 0.3, null);
+  for (const [x, y, r] of [[-0.55, -0.2, 0.05], [0.55, -0.22, 0.06], [0.2, -0.38, 0.04]] as const) {
+    const px = cx + s * x;
+    const py = cy + s * y;
+    ctx.beginPath();
+    ctx.moveTo(px - s * r, py);
+    ctx.lineTo(px + s * r, py);
+    ctx.moveTo(px, py - s * r);
+    ctx.lineTo(px, py + s * r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Text along a gentle upward arc (each glyph rotated to the curve). */
+function drawArcText(ctx: CanvasRenderingContext2D, text: string, cx: number, baselineY: number, radius: number) {
+  const chars = [...text];
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0);
+  const span = total / radius;
+  let angle = -Math.PI / 2 - span / 2;
+  const ox = cx;
+  const oy = baselineY + radius;
+  ctx.save();
+  ctx.textAlign = "center";
+  chars.forEach((c, i) => {
+    const half = widths[i] / 2 / radius;
+    angle += half;
+    ctx.save();
+    ctx.translate(ox + Math.cos(angle) * radius, oy + Math.sin(angle) * radius);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.fillText(c, 0, 0);
+    ctx.restore();
+    angle += half;
+  });
+  ctx.restore();
+}
+
+/** Hand-drawn layout: illustration, curved handwritten heading, QR straight on the paper, signature line. */
+function drawScriptCard(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  o: CardOptions,
+  qr: HTMLCanvasElement | null,
+  photo: HTMLImageElement | null,
+  tableNumber: string | null,
+) {
+  const script = o.script!;
+  const font = (size: number) => `${script.weight} ${size}px ${script.family}`;
+  ctx.save();
+  drawPaper(ctx, w, h, o.palette.background);
+  drawFrame(ctx, w, h, o.frame, o.palette.accent);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  const maxText = w * 0.8;
+
+  // Illustration
+  if (script.art === "camera") drawCameraArt(ctx, w * 0.55, h * 0.185, w * 0.25, o.palette.text, o.palette.qr);
+  else if (script.art === "flowers") drawFlowerArt(ctx, w * 0.5, h * 0.14, w * 0.42, o.palette.text, o.palette.accent);
+  else drawHeartsArt(ctx, w * 0.5, h * 0.17, w * 0.4, o.palette.text, o.palette.accent);
+
+  // Curved handwritten heading
+  if (o.topText) {
+    ctx.fillStyle = o.palette.text;
+    let size = w * 0.085;
+    ctx.font = font(size);
+    while (ctx.measureText(o.topText).width > w * 0.78 && size > w * 0.035) {
+      size *= 0.94;
+      ctx.font = font(size);
+    }
+    drawArcText(ctx, o.topText, w / 2, h * 0.345, w * 0.95);
+  }
+
+  // QR printed straight on the paper (transparent background, no box)
+  const qrSize = w * 0.46;
+  const qrX = (w - qrSize) / 2;
+  const qrY = h * 0.375;
+  if (qr) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+    ctx.imageSmoothingEnabled = true;
+  }
+  drawCenterBadge(ctx, qrX + qrSize / 2, qrY + qrSize / 2, qrSize * 0.11, o, photo, o.palette.background);
+
+  let y = qrY + qrSize + w * 0.075;
+  if (o.description) {
+    ctx.fillStyle = o.palette.text;
+    ctx.globalAlpha = 0.72;
+    ctx.font = `400 ${w * 0.026}px ${SANS}`;
+    for (const line of wrapLines(ctx, o.description, w * 0.74, 3)) {
+      ctx.fillText(line, w / 2, y);
+      y += w * 0.038;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  if (tableNumber) {
+    ctx.fillStyle = o.palette.text;
+    const label = `${o.tableLabel} ${tableNumber}`.trim();
+    fitFont(ctx, label, script.family, script.weight, w * 0.08, maxText);
+    ctx.fillText(label, w / 2, h * 0.84);
+  }
+
+  // Signature line: names and date in handwriting
+  const signature = [o.names, o.dateText].filter(Boolean).join("   ");
+  if (signature) {
+    ctx.fillStyle = o.palette.text;
+    fitFont(ctx, signature, script.family, script.weight, w * 0.065, maxText);
+    ctx.fillText(signature, w / 2, h * (tableNumber ? 0.905 : 0.895));
+  }
+
+  if (o.showUrl && o.url) {
+    ctx.fillStyle = o.palette.text;
+    ctx.globalAlpha = 0.5;
+    const shortUrl = o.url.replace(/^https?:\/\//, "");
+    fitFont(ctx, shortUrl, SANS, "400", w * 0.02, maxText);
+    ctx.fillText(shortUrl, w / 2, h * 0.945);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 function drawCard(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -231,6 +617,10 @@ function drawCard(
   photo: HTMLImageElement | null,
   tableNumber: string | null,
 ) {
+  if (o.script) {
+    drawScriptCard(ctx, w, h, o, qr, photo, tableNumber);
+    return;
+  }
   ctx.save();
   ctx.fillStyle = o.palette.background;
   ctx.fillRect(0, 0, w, h);
@@ -286,40 +676,7 @@ function drawCard(
     ctx.imageSmoothingEnabled = true;
   }
 
-  // Center badge (QR uses level H, so ~20% of the area may be covered safely)
-  if (o.center !== "yok") {
-    const cx = qrX + qrSize / 2;
-    const cy = qrY + qrSize / 2;
-    const r = qrSize * 0.12;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
-    ctx.fill();
-    if (o.center === "foto" && photo) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.clip();
-      const side = Math.min(photo.naturalWidth, photo.naturalHeight);
-      ctx.drawImage(photo, (photo.naturalWidth - side) / 2, (photo.naturalHeight - side) / 2, side, side, cx - r, cy - r, r * 2, r * 2);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = o.palette.accent === "#FFFFFF" ? "#111111" : o.palette.accent;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#FFFFFF";
-      if (o.center === "kalp" || (o.center === "foto" && !photo)) {
-        drawHeart(ctx, cx, cy + r * 0.05, r * 1.1);
-      } else {
-        const text = o.initials.slice(0, 5) || "♥";
-        ctx.textBaseline = "middle";
-        fitFont(ctx, text, SERIF, "400", r * 0.95, r * 1.6);
-        ctx.fillText(text, cx, cy + r * 0.04);
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-  }
+  drawCenterBadge(ctx, qrX + qrSize / 2, qrY + qrSize / 2, qrSize * 0.12, o, photo, "#FFFFFF");
 
   const afterQr = boxY + qrSize + pad * 2;
   if (o.description) {
@@ -370,9 +727,20 @@ export function QrCardDesigner({
   tableNumbers: boolean;
 }) {
   const t = useT();
-  const [template, setTemplate] = useState<TemplateId>("klasik");
-  const [palette, setPalette] = useState<Palette>({ ...TEMPLATES.klasik.palette, accent: themeColor });
-  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES.klasik.frame);
+  const [template, setTemplate] = useState<TemplateId>("cizim");
+  const [palette, setPalette] = useState<Palette>({ ...TEMPLATES.cizim.palette });
+  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES.cizim.frame);
+  // Handwritten faces must be loaded before the canvas can use them.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void loadScriptFonts().then(() => {
+      if (!cancelled) setFontsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [center, setCenter] = useState<CenterMode>("harfler");
   const [initials, setInitials] = useState(() => initialsFrom(coupleNames));
   const [topText, setTopText] = useState(() => t("Anılarımızı paylaşın"));
@@ -397,8 +765,11 @@ export function QrCardDesigner({
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const tpl = TEMPLATES[template];
+  // Hand-drawn templates print the QR straight on the paper (no white box).
+  const qrBackground = tpl.script ? "rgba(0,0,0,0)" : "#FFFFFF";
   const options: CardOptions = useMemo(
     () => ({
+      script: tpl.script ? { art: tpl.script.art, family: SCRIPT_FAMILY[tpl.script.font], weight: SCRIPT_WEIGHT[tpl.script.font] } : null,
       palette,
       frame,
       serifNames: tpl.serifNames,
@@ -413,7 +784,7 @@ export function QrCardDesigner({
       showUrl,
       url,
     }),
-    [palette, frame, tpl.serifNames, tpl.leaves, center, initials, isBoard, boardTop, topText, names, date, boardDescription, description, tableLabel, showUrl, url],
+    [tpl.script, palette, frame, tpl.serifNames, tpl.leaves, center, initials, isBoard, boardTop, topText, names, date, boardDescription, description, tableLabel, showUrl, url],
   );
 
   const tables = useMemo(() => {
@@ -432,7 +803,8 @@ export function QrCardDesigner({
     canvas.width = size.width;
     canvas.height = size.height;
     drawCard(ctx, size.width, size.height, options, qrRef.current, photo, isBoard ? null : (tables[0] ?? null));
-  }, [options, photo, tables, paper, isBoard, boardPaper]);
+    // fontsReady: redraw once the handwritten faces have loaded.
+  }, [options, photo, tables, paper, isBoard, boardPaper, fontsReady]);
 
   const applyTemplate = (id: TemplateId) => {
     setTemplate(id);
@@ -469,7 +841,8 @@ export function QrCardDesigner({
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas desteklenmiyor.");
     // With table numbers on, every card carries its own code; otherwise one shared code.
-    const qr = tableNumbers && tableNumber ? await renderQrCanvas(tableUrl(url, tableNumber, true), palette.qr) : qrRef.current;
+    await loadScriptFonts();
+    const qr = tableNumbers && tableNumber ? await renderQrCanvas(tableUrl(url, tableNumber, true), palette.qr, qrBackground) : qrRef.current;
     drawCard(ctx, size.width, size.height, options, qr, photo, tableNumber);
     return canvas;
   };
@@ -571,7 +944,7 @@ export function QrCardDesigner({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="hidden">
-        <QRCodeCanvas ref={qrRef} value={isBoard ? boardUrl(url, tableNumbers) : tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
+        <QRCodeCanvas ref={qrRef} value={isBoard ? boardUrl(url, tableNumbers) : tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor={qrBackground} marginSize={0} />
       </div>
 
       <div className="order-2 space-y-5 lg:order-1">
@@ -607,7 +980,7 @@ export function QrCardDesigner({
                 className={`rounded-xl border p-2 text-left text-xs font-medium ${template === id ? "border-stone-900 ring-2 ring-stone-900" : "border-stone-300"}`}
               >
                 <span className="mb-1.5 flex h-8 items-center justify-center rounded-lg" style={{ backgroundColor: TEMPLATES[id].palette.background, color: TEMPLATES[id].palette.accent, border: `1px solid ${TEMPLATES[id].palette.accent}` }}>
-                  ♥
+                  {TEMPLATES[id].glyph ?? "♥"}
                 </span>
                 {t(TEMPLATES[id].name)}
               </button>
