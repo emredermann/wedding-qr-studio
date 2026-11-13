@@ -6,9 +6,7 @@ import { useEffect, useState } from "react";
 import { HeartButton } from "@/components/media/HeartButton";
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
-import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
 import { apiFetch, errorMessage } from "@/lib/client/api";
-import type { DownloadableFile } from "@/lib/client/download";
 import type { MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
 
@@ -106,24 +104,6 @@ function GalleryFeed({
   const visible = merged.map((m) => (heartPatches[m.id] ? { ...m, ...heartPatches[m.id] } : m));
   const canHeart = (m: MediaDto) => m.status === "approved" && m.kind !== "audio";
 
-  const loadAllForZip = async (): Promise<DownloadableFile[]> => {
-    const all: MediaDto[] = [];
-    let next: string | null = null;
-    do {
-      const page: MediaPage = await apiFetch<MediaPage>(`${baseUrl}${buildQuery({ ...filters, cursor: next, limit: "100" })}`);
-      all.push(...page.items);
-      next = page.nextCursor;
-    } while (next);
-    return all.map((m) => ({
-      fileId: m.fileId,
-      name: m.originalName,
-      sizeBytes: m.sizeBytes,
-      folder: m.category ?? undefined,
-      createdAt: m.createdAt,
-    }));
-  };
-
-
   if (loading) {
     return (
       <div className="flex justify-center py-16 text-stone-400">
@@ -134,22 +114,6 @@ function GalleryFeed({
 
   return (
     <div className="space-y-4">
-      {/* Guests can ZIP only their own uploads. A whole-album ZIP per guest would
-          pull every original through /api/drive/stream (Vercel origin transfer)
-          and can exhaust a Hobby quota after a single event; hosts download the
-          full album from the dashboard or straight from the Drive folder. */}
-      {mineOnly && visible.length > 0 && (
-        <div className="flex justify-end">
-          <ZipDownloadButton
-            scope="mine"
-            baseName={`${event.slug}${category ? `-${category}` : ""}`}
-            label={t("Yüklediklerimi indir")}
-            loadFiles={loadAllForZip}
-            onMessage={onMessage}
-          />
-        </div>
-      )}
-
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-stone-300 bg-white/60 px-6 py-14 text-center text-stone-500">
           <Images className="h-8 w-8" />

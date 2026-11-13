@@ -41,9 +41,13 @@ export async function authorizeMediaAccess(request: NextRequest, fileId: string)
   const guest = readGuestSession(request);
   if (guest && media.guest_session_id === guest.sessionId) return { media, event, isPublic: false };
 
-  const host = await getHostUser().catch(() => null);
-  if (host && (await eventRoleFor({ id: media.event_id, owner_id: event.owner_id }, host.id).catch(() => null))) {
-    return { media, event, isPublic: false };
-  }
+  if (await managesMediaEvent(media, event)) return { media, event, isPublic: false };
   return null;
+}
+
+/** True when the signed-in host is the event's owner or a co-host. */
+export async function managesMediaEvent(media: Pick<MediaItemRow, "event_id">, event: MediaEventRef): Promise<boolean> {
+  const host = await getHostUser().catch(() => null);
+  if (!host) return false;
+  return Boolean(await eventRoleFor({ id: media.event_id, owner_id: event.owner_id }, host.id).catch(() => null));
 }

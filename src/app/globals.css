@@ -124,6 +124,14 @@ body {
   );
 }
 
+/* Guest media: no long-press "Save image" sheet on iOS, no drag-out. A
+   deterrent only (screenshots still work); downloads are host-only. */
+.eqr-no-save {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* iOS Safari & Android Chrome Safe-Area Inset Utilities */
 .eqr-safe-top {
   padding-top: env(safe-area-inset-top, 0px);

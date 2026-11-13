@@ -22,7 +22,7 @@ export interface AnalyticsEvents {
   guestbook_note_sent: Record<string, never>;
   guestbook_recording_sent: { kind: "audio" | "video" };
   original_downloaded: { kind: MediaKind };
-  zip_downloaded: { scope: "mine" | "faces" | "host"; files: number };
+  zip_downloaded: { scope: "host"; files: number };
   // Host
   host_signed_in: Record<string, never>;
   drive_connect_started: Record<string, never>;

@@ -20,6 +20,7 @@ export function Lightbox({
   onDelete,
   footer,
   challenges,
+  allowDownload = false,
 }: {
   items: MediaDto[];
   index: number;
@@ -29,6 +30,8 @@ export function Lightbox({
   footer?: (item: MediaDto) => React.ReactNode;
   /** The event's photo challenges, to show which one an item joined. */
   challenges?: Challenge[];
+  /** Hosts only: show the original-quality download button. Guests cannot download. */
+  allowDownload?: boolean;
 }) {
   const item = items[index];
   const challengeTitle = item?.challengeId ? challenges?.find((c) => c.id === item.challengeId)?.title : undefined;
@@ -114,9 +117,11 @@ export function Lightbox({
               {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
             </button>
           )}
-          <button type="button" onClick={handleDownload} disabled={downloading} aria-label={t("Orijinal kalitede indir")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
-            {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
-          </button>
+          {allowDownload && (
+            <button type="button" onClick={handleDownload} disabled={downloading} aria-label={t("Orijinal kalitede indir")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+              {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+            </button>
+          )}
           <button type="button" onClick={onClose} aria-label={t("Kapat")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
@@ -130,16 +135,28 @@ export function Lightbox({
             src={mediaImageSrc(item, FULL_IMAGE_SIZE)}
             alt={item.note ?? item.originalName}
             referrerPolicy="no-referrer"
-            className="max-h-full max-w-full object-contain"
+            draggable={allowDownload}
+            onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()}
+            className={`max-h-full max-w-full object-contain ${allowDownload ? "" : "eqr-no-save"}`}
           />
         )}
         {item.kind === "video" && (
-          <video key={item.id} src={streamUrl(item.fileId)} controls playsInline autoPlay className="max-h-full max-w-full" />
+          <video
+            key={item.id}
+            src={streamUrl(item.fileId)}
+            controls
+            playsInline
+            autoPlay
+            controlsList={allowDownload ? undefined : "nodownload"}
+            disablePictureInPicture={!allowDownload}
+            onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()}
+            className="max-h-full max-w-full"
+          />
         )}
         {item.kind === "audio" && (
           <div className="w-full max-w-md rounded-2xl bg-white/10 p-6 text-center">
             <p className="mb-4 text-base font-medium">{t("{name} bir sesli mesaj bıraktı", { name: item.guestName ?? t("Misafir") })}</p>
-            <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay className="w-full" />
+            <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay allowDownload={allowDownload} className="w-full" />
           </div>
         )}
         {items.length > 1 && (

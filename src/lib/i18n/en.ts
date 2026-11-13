@@ -48,7 +48,6 @@ export const EN = {
   "“Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır.": "Face analysis for “Find Me” happens only on your phone.",
   // ── guest: gallery
   "Silindi.": "Deleted.",
-  "Yüklediklerimi indir": "Download my uploads",
   "Tümünü indir (ZIP)": "Download all (ZIP)",
   "Henüz bir şey yüklemediniz.": "You haven't uploaded anything yet.",
   "İlk anıyı siz paylaşın!": "Be the first to share a memory!",
@@ -77,7 +76,6 @@ export const EN = {
   "Selfie çek": "Take a selfie",
   "Fotoğraf yükle": "Upload a photo",
   "{n} fotoğrafta sizi bulduk": "We found you in {n} {n|photo|photos}",
-  "Hepsini indir": "Download all",
   // ── guest: guestbook & recorder
   "Mesajınız onaydan sonra görünecek. Teşekkürler!": "Your message will appear after approval. Thank you!",
   "Mesajınız anı defterine eklendi 💛": "Your message was added to the guestbook 💛",
@@ -533,6 +531,7 @@ export const EN = {
   "Kaydırın": "Scroll",
   // ── server messages (API errors; translated on the client by translateLoose)
   "Dosya bulunamadı.": "File not found.",
+  "İndirme yalnızca etkinlik sahibine açık.": "Only the event host can download.",
   "Önizleme henüz hazır değil.": "The preview isn't ready yet.",
   "Bu istek yalnızca uygulamanın kendi sayfasından yapılabilir.": "This request can only be made from the app's own page.",
   "Bu dosya türü desteklenmiyor (fotoğraf, video veya ses yükleyin).": "This file type isn't supported (upload a photo, video or audio).",

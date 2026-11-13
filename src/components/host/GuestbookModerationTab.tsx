@@ -142,7 +142,7 @@ export function GuestbookModerationTab({
             {media.map((item) => (
               <li key={item.id} className="rounded-2xl border border-stone-200 bg-white p-3">
                 {item.kind === "audio" ? (
-                  <AudioPlayer src={streamUrl(item.fileId)} className="w-full" />
+                  <AudioPlayer src={streamUrl(item.fileId)} allowDownload className="w-full" />
                 ) : (
                   <video src={streamUrl(item.fileId)} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
                 )}

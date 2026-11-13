@@ -191,7 +191,7 @@ export function GuestbookPanel({
                   {entry.media.kind === "audio" ? (
                     <AudioPlayer src={streamUrl(entry.media.fileId)} className="w-full" />
                   ) : (
-                    <video src={streamUrl(entry.media.fileId)} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
+                    <video src={streamUrl(entry.media.fileId)} controls controlsList="nodownload" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />
                   )}
                   <p className="mt-2 flex items-center gap-2 text-xs text-stone-500">
                     — {entry.media.guestName ?? t("Misafir")} <StatusBadge status={entry.media.status} />

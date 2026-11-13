@@ -246,6 +246,7 @@ function MediaFeed({
 
       {openIndex !== null && items[openIndex] && (
         <Lightbox
+          allowDownload
           items={items}
           index={openIndex}
           onIndexChange={setOpenIndex}

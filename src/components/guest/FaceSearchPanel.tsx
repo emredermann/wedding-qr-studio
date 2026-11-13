@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { Lightbox } from "@/components/media/Lightbox";
 import { MediaGrid } from "@/components/media/MediaGrid";
-import { ZipDownloadButton } from "@/components/media/ZipDownloadButton";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { useT } from "@/lib/i18n/provider";
@@ -164,16 +163,7 @@ export function FaceSearchPanel({
 
       {phase === "results" && results.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-stone-800">{t("{n} fotoğrafta sizi bulduk", { n: results.length })}</p>
-            <ZipDownloadButton
-              scope="faces"
-              baseName={`${event.slug}-fotograflarim`}
-              label={t("Hepsini indir")}
-              loadFiles={async () => results.map((m) => ({ fileId: m.fileId, name: m.originalName, sizeBytes: m.sizeBytes, createdAt: m.createdAt }))}
-              onMessage={onMessage}
-            />
-          </div>
+          <p className="text-sm font-semibold text-stone-800">{t("{n} fotoğrafta sizi bulduk", { n: results.length })}</p>
           <MediaGrid items={results} onOpen={setOpenIndex} />
         </div>
       )}

@@ -33,7 +33,9 @@ export function MediaThumb({ item, size = 600, className = "" }: { item: MediaDt
           decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
-          className="h-full w-full object-cover"
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+          className="eqr-no-save h-full w-full object-cover"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-stone-800 text-[11px] text-stone-300">
