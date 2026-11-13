@@ -182,7 +182,8 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 1. **QR & Masa Kartı** sekmesinde şablonu seçin, masa numarası aralığını girin (ör. 1–20) ve **PDF (baskı)** indirin. Yazdırırken “Gerçek boyut / %100” seçin ve QR’ı bir telefonla test edin.
 2. Salondaki projeksiyon bilgisayarında **Canlı Etkinlik Ekranı** bağlantısını açın ve tam ekran düğmesine basın.
 3. Gerekirse **Ayarlar → Yayından önce onay iste** seçeneğini açın; yeni içerikler siz onaylayana kadar galeride ve canlı ekranda görünmez.
-4. Etkinlikten sonra **Özet → Tüm medyayı indir (ZIP)** ile her şeyi orijinal kalitede indirin veya doğrudan **Google Drive klasörü**nü açın.
+4. Etkinlikten sonra albümün tamamını **Google Drive klasörü**nden indirin (klasöre sağ tıklayın → İndir). **Özet → Tüm medyayı indir (ZIP)** de çalışır, ancak her dosya Vercel üzerinden geçer ve Vercel'in aylık Fast Origin Transfer kotasından düşer (Hobby: 10 GB; aşılırsa proje durdurulur). Bu yüzden büyük albümlerde Drive'dan indirmek daha güvenlidir.
+   Misafirler galeride yalnızca **kendi yüklediklerini** ve yüz aramasıyla bulunan fotoğrafları ZIP olarak indirebilir; tüm albümü toplu indirme butonu misafirlere gösterilmez.
 
 ---
 

@@ -134,12 +134,16 @@ function GalleryFeed({
 
   return (
     <div className="space-y-4">
-      {visible.length > 0 && (
+      {/* Guests can ZIP only their own uploads. A whole-album ZIP per guest would
+          pull every original through /api/drive/stream (Vercel origin transfer)
+          and can exhaust a Hobby quota after a single event; hosts download the
+          full album from the dashboard or straight from the Drive folder. */}
+      {mineOnly && visible.length > 0 && (
         <div className="flex justify-end">
           <ZipDownloadButton
-            scope={mineOnly ? "mine" : "gallery"}
+            scope="mine"
             baseName={`${event.slug}${category ? `-${category}` : ""}`}
-            label={mineOnly ? t("Yüklediklerimi indir") : t("Tümünü indir (ZIP)")}
+            label={t("Yüklediklerimi indir")}
             loadFiles={loadAllForZip}
             onMessage={onMessage}
           />
