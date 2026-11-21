@@ -48,6 +48,8 @@ npm run typecheck       # next typegen + tsc --noEmit
 npm test                # birim testleri (node:test, bağımlılıksız)
 npm run build           # production build
 npm run check           # lint + typecheck + test + build
+npm run db:backup       # veritabanı yedeği (şifreli), bkz. docs/CIKIS_PLANI.md
+docker build -t mira .  # Vercel'siz çalıştırma (Docker), bkz. docs/CIKIS_PLANI.md
 ```
 
 ## Klasör yapısı

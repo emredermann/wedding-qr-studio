@@ -216,3 +216,10 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 - Stream ve küçük resim proxy’leri yalnızca veritabanında kayıtlı dosyaları sunar; onaylanmamış dosyalara yalnızca yükleyen misafir veya etkinlik sahibi erişebilir.
 - Moderasyonda “Gizle”, Drive’daki “bağlantıya sahip herkes” iznini de kaldırır.
 - Postgres tabanlı rate limit tüm serverless örneklerinde ortak çalışır.
+
+---
+
+## 11. Vercel / Supabase olmadan: çıkış planı
+
+Uygulama bir Docker imajı olarak da çalışır (`Dockerfile`, `deploy/docker-compose.yml`); veritabanı `npm run db:backup` / `npm run db:restore` ile yedeklenip başka bir Supabase'e (bulut ya da kendi sunucunda) taşınabilir. Adım adım anlatım, haftalık şifreli yedek kurulumu ve geçiş günü kontrol listesi: **[docs/CIKIS_PLANI.md](docs/CIKIS_PLANI.md)**.
+

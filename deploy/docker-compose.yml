@@ -1,0 +1,41 @@
+# Single-server setup: the Mira container behind Caddy, which obtains and
+# renews the HTTPS certificate for your domain automatically.
+#
+#   1. Point your domain's DNS (A record) at this server's IP.
+#   2. Copy .env.example to deploy/.env.production and fill it in
+#      (NEXT_PUBLIC_APP_URL=https://alanadiniz.com).
+#   3. DOMAIN=alanadiniz.com docker compose --env-file .env.production up -d --build
+#
+# Run from the deploy/ folder. See docs/CIKIS_PLANI.md.
+services:
+  app:
+    build:
+      context: ..
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN: ${NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN:-}
+    env_file: .env.production
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set, e.g. DOMAIN=alanadiniz.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

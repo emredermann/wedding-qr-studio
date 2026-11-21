@@ -1,0 +1,7 @@
+# Caddy terminates HTTPS (Let's Encrypt, automatic renewal) and forwards to Mira.
+# It appends the visitor's IP to X-Forwarded-For; the app reads the rightmost
+# entry (src/lib/client-ip.ts), so no TRUSTED_IP_HEADER is needed here.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

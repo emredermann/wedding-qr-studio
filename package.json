@@ -14,7 +14,9 @@
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "drive:token": "node scripts/generate-drive-token.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
-    "user": "node scripts/manage-users.mjs"
+    "user": "node scripts/manage-users.mjs",
+    "db:backup": "bash scripts/db-backup.sh",
+    "db:restore": "bash scripts/db-restore.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -1,0 +1,61 @@
+name: Database backup
+
+# Weekly encrypted backup of the Mira database (scripts/db-backup.sh), kept as
+# a workflow artifact for 30 days. Needs two repository secrets:
+#   SUPABASE_DB_URL     Supabase → Project Settings → Database → Connection
+#                       string → "Session pooler" URI (GitHub runners are IPv4-only)
+#   BACKUP_PASSPHRASE   long random passphrase; store it outside GitHub too —
+#                       without it the backups cannot be restored
+# Without both secrets the job does nothing. Schedules only run on the
+# default branch. See docs/CIKIS_PLANI.md.
+
+on:
+  schedule:
+    - cron: "17 2 * * 0" # Sundays 02:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check secrets
+        id: check
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "SUPABASE_DB_URL and BACKUP_PASSPHRASE are not both set; skipping (backups are never uploaded unencrypted)."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.run == 'true'
+
+      - name: Install pg_dump 17
+        if: steps.check.outputs.run == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Back up
+        if: steps.check.outputs.run == 'true'
+        env:
+          PG_DUMP: /usr/lib/postgresql/17/bin/pg_dump
+        run: scripts/db-backup.sh backups
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.run == 'true'
+        with:
+          name: mira-db-backup-${{ github.run_number }}
+          path: backups/*.gpg
+          retention-days: 30
+          if-no-files-found: error

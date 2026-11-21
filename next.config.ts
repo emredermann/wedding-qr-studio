@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-hosting (Docker): NEXT_OUTPUT=standalone bundles a minimal server.js
+  // with only the files it needs. Unset on Vercel, so that build is unchanged.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
