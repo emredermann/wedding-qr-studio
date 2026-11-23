@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { CoHostsCard } from "@/components/host/CoHostsCard";
 import { BrandKitCard } from "@/components/host/BrandKitCard";
+import { ProLock } from "@/components/host/ProGate";
 import { EventTypePicker, ThemeSwatches } from "@/components/host/EventPresetPickers";
 import { ShareFrameEditor } from "@/components/host/ShareFrameEditor";
 import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
@@ -50,6 +51,8 @@ export function SettingsTab({
   const [themeId, setThemeId] = useState<ThemeId>(themeFor(event.themeId).id);
   const [modules, setModules] = useState<EventModules>(event.modules);
   const [shareFrame, setShareFrame] = useState(event.shareFrameSettings);
+  // Changing settings needs the owner's Pro package; the rest of the event keeps working.
+  const locked = event.plan !== "pro";
   const preset = presetFor(eventType);
   const pickTheme = (id: ThemeId) => {
     setThemeId(id);
@@ -142,6 +145,12 @@ export function SettingsTab({
 
   return (
     <form onSubmit={save} className="grid gap-6 lg:grid-cols-2">
+      {locked && (
+        <div className="lg:col-span-2">
+          <ProLock text={t("Etkinlik ayarlarını değiştirmek için Pro paket gerekir. Ayarları görebilir; moderasyon, galeri, QR kartları ve diğer araçları kullanmaya devam edebilirsiniz.")} />
+        </div>
+      )}
+      <fieldset disabled={locked} className={`contents ${locked ? "[&_section]:opacity-70" : ""}`}>
       <section className={`space-y-4 ${ui.card}`}>
         <h3 className={ui.sectionTitle}>{t("Etkinlik bilgileri")}</h3>
         <label className="block">
@@ -228,8 +237,10 @@ export function SettingsTab({
           )}
         </div>
       </section>
+      </fieldset>
 
       <section className="space-y-4">
+        <fieldset disabled={locked} className={`space-y-4 ${locked ? "opacity-70" : ""}`}>
         <div className={`space-y-4 ${ui.card}`}>
           <div>
             <h3 className={`mb-1 ${ui.sectionTitle}`}>{t("Etkinlik türü & tema")}</h3>
@@ -270,6 +281,7 @@ export function SettingsTab({
         {/* Only the brand changes here, so unsaved edits in the form above are kept. */}
         <BrandKitCard event={event} onSaved={(saved) => onSaved({ ...event, brand: saved.brand })} onMessage={onMessage} />
         {event.role === "owner" && <CoHostsCard eventId={event.id} onMessage={onMessage} />}
+        </fieldset>
         {event.role === "owner" && (
           <div className="rounded-3xl border border-rose-200 bg-rose-50/60 p-5">
             <h3 className="text-sm font-semibold text-rose-800">{t("Etkinliği sil")}</h3>

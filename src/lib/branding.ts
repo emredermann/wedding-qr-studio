@@ -1,5 +1,5 @@
 /**
- * Brand kit (Pro) and share frames. Stored on the event as jsonb (0008
+ * Brand kit and share frames. Stored on the event as jsonb (0008
  * migration): `branding` holds small logo images as data URLs (resized in
  * the browser before upload), `share_frame` the frame settings.
  *
@@ -10,7 +10,6 @@
  */
 import { z } from "zod";
 
-import type { Plan } from "./plans.ts";
 
 /* ------------------------------------------------------------ share frame */
 
@@ -46,22 +45,8 @@ export function readShareFrame(value: unknown): ShareFrameSettings {
   return parsed.success ? parsed.data : { ...DEFAULT_SHARE_FRAME };
 }
 
-/** What the browser needs to draw a frame, with Pro-only options applied per package. */
-export interface ShareFrameDto extends ShareFrameSettings {
-  /** Free package: a small "Mira ile" mark is always added. */
-  watermark: boolean;
-}
-
-export function shareFrameForPlan(settings: ShareFrameSettings, plan: Plan): ShareFrameDto {
-  const pro = plan === "pro";
-  return {
-    style: settings.style,
-    text: pro ? settings.text : null,
-    guestShare: settings.guestShare,
-    showLogo: pro && settings.showLogo,
-    watermark: !pro,
-  };
-}
+/** What the browser needs to draw a frame (same on every package). */
+export type ShareFrameDto = ShareFrameSettings;
 
 /* -------------------------------------------------------------- brand kit */
 
@@ -139,9 +124,9 @@ export function brandAssetUrl(slug: string, asset: string, version: number): str
   return `/api/events/${encodeURIComponent(slug)}/brand?a=${encodeURIComponent(asset)}&v=${version}`;
 }
 
-/** Null on the free package or when nothing is set. */
-export function brandForPlan(slug: string, branding: BrandingMeta | null, plan: Plan): BrandDto | null {
-  if (plan !== "pro" || !branding) return null;
+/** Null when nothing is set. */
+export function brandFor(slug: string, branding: BrandingMeta | null): BrandDto | null {
+  if (!branding) return null;
   if (!branding.hasLogo && branding.sponsors.length === 0) return null;
   return {
     logoUrl: branding.hasLogo ? brandAssetUrl(slug, "logo", branding.version) : null,

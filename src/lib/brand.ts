@@ -3,7 +3,7 @@ export const BRAND = {
   name: "Mira",
   tagline: "mīrus / mīra : Hayranlık uyandıran, harika, olağanüstü ve mucizevi.",
   description:
-    "Düğün, kurumsal etkinlik, doğum günü ya da festival: misafirleriniz QR kodu okutur; fotoğraf, video ve mesajlarını uygulama indirmeden orijinal kalitede sizin Google Drive’ınıza bırakır. Yüz tanıma, canlı ekran, fotoğraf görevleri, sesli anı defteri ve QR kart tasarlayıcı — ücretsiz başlayın.",
+    "Düğün, kurumsal etkinlik, doğum günü ya da festival: misafirleriniz QR kodu okutur; fotoğraf, video ve mesajlarını uygulama indirmeden orijinal kalitede sizin Google Drive’ınıza bırakır. Yüz tanıma, canlı ekran, fotoğraf görevleri, sesli anı defteri ve QR kart tasarlayıcı tek bir yerde.",
   colors: {
     ink: "#1C1B18",
     ivory: "#F7F5F0",

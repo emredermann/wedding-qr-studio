@@ -3,7 +3,6 @@
 import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { ProBadge, ProLock } from "@/components/host/ProGate";
 import { ToggleRow } from "@/components/ui/ToggleRow";
 import { ui } from "@/components/ui/styles";
 import { MAX_SPONSORS, type BrandingInput } from "@/lib/branding";
@@ -17,7 +16,7 @@ const LOGO_CHARS = 280_000;
 const SPONSOR_CHARS = 150_000;
 
 /**
- * Brand kit (Pro): event logo and sponsor logos. Shown on the guest page,
+ * Brand kit: event logo and sponsor logos. Shown on the guest page,
  * live wall, share frames, highlights video and photobook. Saved on its own
  * (images are uploaded separately from the other settings).
  */
@@ -31,7 +30,6 @@ export function BrandKitCard({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
-  const pro = event.plan === "pro";
   const [draft, setDraft] = useState<BrandingInput | null>(null);
   const [saving, setSaving] = useState(false);
   const [sponsorName, setSponsorName] = useState("");
@@ -44,7 +42,6 @@ export function BrandKitCard({
   });
 
   useEffect(() => {
-    if (!pro) return;
     let cancelled = false;
     apiFetch<{ branding: BrandingInput }>(`/api/host/events/${event.id}/branding`)
       .then((res) => {
@@ -56,7 +53,7 @@ export function BrandKitCard({
     return () => {
       cancelled = true;
     };
-  }, [event.id, pro]);
+  }, [event.id]);
 
   const readImage = async (file: File | undefined, maxChars: number) => {
     if (!file) return null;
@@ -85,16 +82,15 @@ export function BrandKitCard({
   return (
     <div className={`space-y-3 ${ui.card}`}>
       <h3 className={`flex items-center gap-2 ${ui.sectionTitle}`}>
-        {t("Marka kiti")} <ProBadge />
+        {t("Marka kiti")}
       </h3>
       <p className={ui.hint}>{t("Logonuz ve sponsor logoları misafir sayfasında, canlı ekranda, paylaşım çerçevelerinde, öne çıkanlar videosunda ve fotokitapta görünür.")}</p>
-      {!pro && <ProLock text={t("Etkinliğinizi kendi logonuz ve sponsorlarınızla markalayın.")} />}
-      {pro && !draft && (
+      {!draft && (
         <div className="flex justify-center py-6 text-stone-400">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       )}
-      {pro && draft && (
+      {draft && (
         <>
           <div>
             <span className={ui.label}>{t("Etkinlik logosu")}</span>

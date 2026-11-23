@@ -87,11 +87,11 @@ const OCCASIONS: Array<{ icon: typeof Heart; theme: ThemeId; title: MsgKey; text
   },
 ];
 
-const AFTER_EVENT: Array<{ icon: typeof Heart; title: MsgKey; text: MsgKey; pro: boolean }> = [
-  { icon: Clapperboard, title: "Öne çıkanlar videosu", text: "En çok kalp alan karelerden müziksiz, dikey ya da yatay kısa bir video; tek dokunuşla.", pro: false },
-  { icon: FileBarChart, title: "Katılım raporu", text: "Kaç misafir, kaç kare, en yoğun saatler, görevler ve en sevilenler; tek sayfalık PDF.", pro: false },
-  { icon: Frame, title: "Paylaşım çerçeveleri", text: "Kareler etkinlik adınızla çerçevelenerek paylaşılır; orijinaller Drive’da olduğu gibi kalır.", pro: false },
-  { icon: BookOpen, title: "Fotokitap", text: "Seçtiğiniz karelerden kapaklı, baskıya hazır bir PDF albüm; dilediğiniz matbaada bastırın.", pro: true },
+const AFTER_EVENT: Array<{ icon: typeof Heart; title: MsgKey; text: MsgKey }> = [
+  { icon: Clapperboard, title: "Öne çıkanlar videosu", text: "En çok kalp alan karelerden müziksiz, dikey ya da yatay kısa bir video; tek dokunuşla." },
+  { icon: FileBarChart, title: "Katılım raporu", text: "Kaç misafir, kaç kare, en yoğun saatler, görevler ve en sevilenler; tek sayfalık PDF." },
+  { icon: Frame, title: "Paylaşım çerçeveleri", text: "Kareler etkinlik adınızla çerçevelenerek paylaşılır; orijinaller Drive’da olduğu gibi kalır." },
+  { icon: BookOpen, title: "Fotokitap", text: "Seçtiğiniz karelerden kapaklı, baskıya hazır bir PDF albüm; dilediğiniz matbaada bastırın." },
 ];
 
 const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
@@ -103,7 +103,7 @@ const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
 ];
 
 const CARD_OPTIONS: Array<{ title: MsgKey; text: MsgKey; note: MsgKey }> = [
-  { title: "Kart atölyesi", text: "Rengi, çerçeveyi, monogramı ve yazıyı seçin; önizleme siz değiştirdikçe güncellenir.", note: "Panelde · ücretsiz" },
+  { title: "Kart atölyesi", text: "Rengi, çerçeveyi, monogramı ve yazıyı seçin; önizleme siz değiştirdikçe güncellenir.", note: "Panelde" },
   { title: "Baskıya hazır", text: "A6, A5 ya da bir A4’e dört kart; 300 DPI PNG veya PDF. İster evde, ister matbaada basın.", note: "PNG · PDF" },
   { title: "Kendi tasarımınız", text: "Yalnızca QR kodu indirin; davetiyenize ya da kendi kartınıza dilediğiniz gibi yerleştirin.", note: "Tamamen size ait" },
 ];
@@ -147,7 +147,7 @@ const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
   { label: "QR masa kartı", mira: true, apps: false, shared: false },
   { label: "Oturma planı", mira: true, apps: false, shared: false },
   { label: "Dosyalar kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
-  { label: "Ücret", mira: "Ücretsiz başlangıç", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
+  { label: "Ücret", mira: "Pro paket", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
 ];
 
 const INCLUDED: MsgKey[] = [
@@ -164,15 +164,15 @@ const INCLUDED: MsgKey[] = [
   "Depolama kendi Google Drive’ınızda",
   "Görev liderlik tablosu",
   "Öne çıkanlar videosu ve katılım raporu",
-  "Paylaşım çerçeveleri (küçük Mira işaretiyle)",
+  "Marka kiti, paylaşım çerçeveleri ve fotokitap",
 ];
 
-const PRO_INCLUDED: MsgKey[] = [
-  "Ücretsiz paketteki her şey",
-  "Marka kiti: etkinlik logosu ve sponsor logoları",
-  "Logonuz misafir sayfasında, canlı ekranda ve videoda",
-  "İşaretsiz, kendi yazınız ve logonuzla paylaşım çerçeveleri",
-  "Baskıya hazır fotokitap (PDF)",
+const FREE_ACCOUNT: Array<{ text: MsgKey; ok: boolean }> = [
+  { text: "Moderasyon, galeri ve tüm albümü indirme", ok: true },
+  { text: "QR kartları, oturma planı ve canlı ekran", ok: true },
+  { text: "Öne çıkanlar, fotokitap ve katılım raporu", ok: true },
+  { text: "Yeni etkinlik oluşturma", ok: false },
+  { text: "Etkinlik ayarlarını değiştirme", ok: false },
 ];
 
 const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
@@ -199,7 +199,7 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
   { q: "İstemediğim bir fotoğraf yüklenirse?", a: "Panelden tek dokunuşla gizleyebilir ya da silebilirsiniz. Onay modunu açarsanız, siz onaylamadıkça hiçbir kare görünmez." },
   {
     q: "Ücreti ne kadar?",
-    a: "Temel özelliklerin tamamı ücretsiz; misafir ya da kare sınırı yok. Pro paket marka kiti, fotokitap ve işaretsiz çerçeveler ekler. Dosyalar kendi Google Drive’ınızda durduğu için depolama da size ek maliyet çıkarmaz.",
+    a: "Etkinlik oluşturmak ve ayarlarını yönetmek için Pro paket gerekir; Pro’da tüm özellikler açıktır, misafir ya da kare sınırı yoktur. Ortak yönetici olarak davet edildiğiniz etkinlikleri ücretsiz hesapla yönetebilirsiniz. Dosyalar kendi Google Drive’ınızda durduğu için depolama size ek maliyet çıkarmaz.",
   },
 ];
 
@@ -608,12 +608,9 @@ export default async function HomePage() {
             text={t("Kareler toplandıktan sonra onları paylaşmanın, saklamanın ve ölçmenin en kolay yolu.")}
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {AFTER_EVENT.map(({ icon: Icon, title, text, pro }) => (
+            {AFTER_EVENT.map(({ icon: Icon, title, text }) => (
               <article key={title} className="flex flex-col gap-4 rounded-3xl border border-stone-200 bg-white p-6">
-                <div className="flex items-center justify-between">
-                  <Icon className="h-5 w-5 text-stone-400" strokeWidth={1.4} />
-                  {pro && <span className="rounded-full bg-stone-900 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-stone-50 uppercase">Pro</span>}
-                </div>
+                <Icon className="h-5 w-5 text-stone-400" strokeWidth={1.4} />
                 <h3 className="font-brand text-2xl leading-tight">{t(title)}</h3>
                 <p className="text-sm leading-relaxed text-stone-600">{t(text)}</p>
               </article>
@@ -661,41 +658,23 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Pricing: Free and Pro */}
+      {/* Pricing: Pro creates and manages events; free accounts keep using what they have */}
       <section id="paketler" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24 sm:py-32">
         <SectionHead
-          title={t("Ücretsiz başlayın. Pro ile markalayın.")}
-          text={t("Misafir sayısı, kare sayısı ya da süre sınırı yok; dosyalarınız her pakette kendi Google Drive’ınızda.")}
+          title={t("Pro ile etkinliğinizi kurun.")}
+          text={t("Tüm özellikler Pro pakette. Misafir, kare ya da süre sınırı yok; dosyalarınız kendi Google Drive’ınızda.")}
         />
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-8 rounded-3xl border border-stone-200 bg-white p-8 sm:p-10">
-            <div>
-              <p className="text-sm text-stone-500">{t("Ücretsiz")}</p>
-              <p className="mt-4 font-brand text-7xl">{t("0 ₺")}</p>
-              <p className="mt-3 text-sm text-stone-600">{t("Kredi kartı yok, deneme süresi yok. Etkinliğinizi hemen kurun.")}</p>
-            </div>
-            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-700">
-              {INCLUDED.map((i) => (
-                <li key={i} className="flex gap-3">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
-                  {t(i)}
-                </li>
-              ))}
-            </ul>
-            <div>
-              <PrimaryCta>{t("Hemen başlayın")}</PrimaryCta>
-            </div>
-          </div>
+        <div className="grid gap-4 md:grid-cols-[1.5fr_1fr]">
           <div className="flex flex-col gap-8 rounded-3xl bg-stone-900 p-8 text-stone-50 sm:p-10">
             <div>
               <p className="inline-flex items-center gap-1.5 text-sm text-stone-400">
                 <Sparkles className="h-4 w-4" strokeWidth={1.5} /> Pro
               </p>
-              <p className="mt-4 font-brand text-5xl leading-tight sm:text-6xl">{t("Markanızla")}</p>
-              <p className="mt-3 text-sm text-stone-400">{t("Kurumsal etkinlikler, organizatörler ve markasını öne çıkarmak isteyenler için.")}</p>
+              <p className="mt-4 font-brand text-5xl leading-tight sm:text-6xl">{t("Her şey dahil")}</p>
+              <p className="mt-3 text-sm text-stone-400">{t("Etkinlik oluşturun, ayarlarını yönetin ve tüm araçları kullanın.")}</p>
             </div>
-            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-200">
-              {PRO_INCLUDED.map((i) => (
+            <ul className="grid flex-1 content-start gap-x-8 gap-y-3 text-sm text-stone-200 sm:grid-cols-2">
+              {INCLUDED.map((i) => (
                 <li key={i} className="flex gap-3">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" strokeWidth={1.75} />
                   {t(i)}
@@ -710,6 +689,28 @@ export default async function HomePage() {
                 {t("Pro için iletişime geçin")}
                 <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
               </a>
+            </div>
+          </div>
+          <div className="flex flex-col gap-8 rounded-3xl border border-stone-200 bg-white p-8 sm:p-10">
+            <div>
+              <p className="text-sm text-stone-500">{t("Ücretsiz hesap")}</p>
+              <p className="mt-4 font-brand text-5xl leading-tight">{t("0 ₺")}</p>
+              <p className="mt-3 text-sm text-stone-600">{t("Ortak yönetici olarak davet edildiğiniz ya da daha önce kurduğunuz etkinlikler için.")}</p>
+            </div>
+            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-700">
+              {FREE_ACCOUNT.map(({ text, ok }) => (
+                <li key={text} className="flex gap-3">
+                  {ok ? (
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
+                  ) : (
+                    <Minus className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} />
+                  )}
+                  <span className={ok ? "" : "text-stone-500"}>{t(text)}</span>
+                </li>
+              ))}
+            </ul>
+            <div>
+              <PrimaryCta>{t("Giriş yapın")}</PrimaryCta>
             </div>
           </div>
         </div>

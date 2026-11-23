@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ui } from "@/components/ui/styles";
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
-import { drawImageInRect, drawWatermark, loadOptionalImage, loadPhoto } from "@/lib/client/frame";
+import { drawImageInRect, loadOptionalImage, loadPhoto } from "@/lib/client/frame";
 import { mediaImageSrc } from "@/lib/media-urls";
 import { useLang, useT } from "@/lib/i18n/provider";
 import type { HostEventDto, MediaDto } from "@/types/domain";
@@ -138,7 +138,6 @@ export function HighlightsPanel({ event, photos }: { event: HostEventDto; photos
           drawSlide(slides[slides.length - 1], SLIDE_MS, 1);
           drawCard(title, t("Hepsi için teşekkürler"), Math.min(1, local / FADE_MS));
         }
-        if (event.shareFrame.watermark) drawWatermark(ctx, w - unit * 4, h - unit * 4, unit * 1.4, true);
       };
 
       frameAt(0);

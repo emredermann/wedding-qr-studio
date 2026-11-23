@@ -4,7 +4,7 @@ import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/ht
 import { brandingMetaFrom, brandingSchema, readBranding, type BrandingInput } from "@/lib/branding";
 import { toHostEventDto } from "@/lib/events";
 import { requireEventAccess } from "@/lib/host-auth";
-import { planForUser } from "@/lib/host-plan";
+import { planForUser, proRequired } from "@/lib/host-plan";
 import { hasBrandingColumns } from "@/lib/schema-features";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { EventRow, HostEventDto } from "@/types/domain";
@@ -37,14 +37,15 @@ export async function GET(_request: NextRequest, context: Ctx) {
   }
 }
 
-/** PUT — replaces the brand kit (Pro package only). */
+/** PUT — replaces the brand kit (changing settings needs the owner's Pro package). */
 export async function PUT(request: NextRequest, context: Ctx) {
   try {
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
+    const locked = await proRequired(owned.event.owner_id, "editSettings");
+    if (locked) return locked;
     const plan = await planForUser(owned.event.owner_id);
-    if (plan !== "pro") return jsonError(403, "PRO_REQUIRED", "Marka kiti Pro pakette.");
     if (!(await hasBrandingColumns())) {
       return jsonError(503, "MIGRATION_REQUIRED", "Marka kiti için veritabanı güncellemesi (0008) henüz çalıştırılmamış.");
     }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { addCohost, COHOST_ERRORS, listCohosts, removeCohost, type CohostDto } from "@/lib/cohosts";
 import { requireEventAccess } from "@/lib/host-auth";
+import { proRequired } from "@/lib/host-plan";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest, context: Ctx) {
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId, { ownerOnly: true });
     if (!owned.ok) return owned.response;
+    const locked = await proRequired(owned.event.owner_id, "editSettings");
+    if (locked) return locked;
     // Bounds username probing (the error never says whether an account exists).
     const limited = await rateLimit(request, "cohost-add", 20, 600, owned.host.id);
     if (limited) return limited;
@@ -51,6 +54,8 @@ export async function DELETE(request: NextRequest, context: Ctx) {
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId, { ownerOnly: true });
     if (!owned.ok) return owned.response;
+    const locked = await proRequired(owned.event.owner_id, "editSettings");
+    if (locked) return locked;
     const userId = request.nextUrl.searchParams.get("userId") ?? "";
     if (!/^[0-9a-f-]{36}$/i.test(userId)) return jsonError(404, "NOT_FOUND", "Ortak yönetici bulunamadı.");
     await removeCohost(owned.event.id, userId);

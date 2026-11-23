@@ -3,7 +3,6 @@
 import { BookOpen, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { ProBadge, ProLock } from "@/components/host/ProGate";
 import { ui } from "@/components/ui/styles";
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
@@ -23,13 +22,12 @@ const PAGE_PX: Record<BookFormat, { w: number; h: number; pt: { width: number; h
 };
 
 /**
- * Photobook (Pro): a print-ready PDF from chosen photos — cover, photo pages
+ * Photobook: a print-ready PDF from chosen photos — cover, photo pages
  * (1, 2 or 4 per page) and a closing page. Any print shop can print it.
  */
 export function PhotobookPanel({ event, photos }: { event: HostEventDto; photos: MediaDto[] }) {
   const t = useT();
   const { locale } = useLang();
-  const pro = event.plan === "pro";
   const [selected, setSelected] = useState<Set<string>>(() => new Set(photos.slice(0, 24).map((p) => p.id)));
   const [format, setFormat] = useState<BookFormat>("A4");
   const [perPage, setPerPage] = useState<PerPage>(2);
@@ -171,13 +169,11 @@ export function PhotobookPanel({ event, photos }: { event: HostEventDto; photos:
     <section className={`space-y-4 ${ui.card}`}>
       <div>
         <h3 className={`flex items-center gap-2 ${ui.sectionTitle}`}>
-          <BookOpen className="h-4 w-4" /> {t("Fotokitap")} <ProBadge />
+          <BookOpen className="h-4 w-4" /> {t("Fotokitap")}
         </h3>
         <p className={`mt-1 ${ui.hint}`}>{t("Seçtiğiniz karelerden kapaklı, baskıya hazır bir PDF albüm. Dilediğiniz matbaada bastırabilirsiniz.")}</p>
       </div>
-      {!pro ? (
-        <ProLock text={t("Etkinliğin en güzel karelerini baskıya hazır bir fotokitaba dönüştürün.")} />
-      ) : photos.length === 0 ? (
+      {photos.length === 0 ? (
         <p className="rounded-2xl bg-stone-50 p-4 text-sm text-stone-500">{t("Henüz onaylı fotoğraf yok.")}</p>
       ) : (
         <>

@@ -5,7 +5,7 @@ import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { fetchAllRows, toHostEventDto } from "@/lib/events";
 import { requireEventAccess } from "@/lib/host-auth";
-import { planForUser } from "@/lib/host-plan";
+import { planForUser, proRequired } from "@/lib/host-plan";
 import { hasBrandingColumns, hasEventPresetColumns } from "@/lib/schema-features";
 import { getAdminDb } from "@/lib/supabase/server";
 import { BRANDING_SETTING_COLUMNS, eventSettingsPatchSchema, PRESET_SETTING_COLUMNS, settingsPatchToColumns } from "@/lib/validation";
@@ -109,6 +109,9 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
+
+    const locked = await proRequired(owned.event.owner_id, "editSettings");
+    if (locked) return locked;
 
     const body = await parseJsonBody(request, eventSettingsPatchSchema, 16 * 1024);
     if (!body.ok) return body.response;

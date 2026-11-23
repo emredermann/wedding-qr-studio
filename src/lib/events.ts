@@ -2,7 +2,7 @@ import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
 import { readChallenges, readSchedule, withKnownCategories } from "@/lib/event-extras";
-import { brandForPlan, readBranding, readShareFrame, shareFrameForPlan } from "@/lib/branding";
+import { brandFor, readBranding, readShareFrame } from "@/lib/branding";
 import { normaliseEventType, normaliseThemeId, readModules } from "@/lib/event-presets";
 import type { Plan } from "@/lib/plans";
 import { getAdminDb } from "@/lib/supabase/server";
@@ -43,8 +43,8 @@ function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
     themeId: normaliseThemeId(event.theme_id),
     modules: readModules(event.modules),
     plan,
-    brand: brandForPlan(event.slug, readBranding(event.branding), plan),
-    shareFrame: shareFrameForPlan(readShareFrame(event.share_frame), plan),
+    brand: brandFor(event.slug, readBranding(event.branding)),
+    shareFrame: readShareFrame(event.share_frame),
   };
 }
 

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { planFromMetadata, type Plan } from "@/lib/plans";
+import { jsonError } from "@/lib/api/http";
+import { hasFeature, planFromMetadata, type Plan, type ProFeature } from "@/lib/plans";
 import { getAdminDb } from "@/lib/supabase/server";
 
 /**
@@ -25,4 +26,18 @@ export async function planForUser(userId: string): Promise<Plan> {
   if (cache.size > 5000) cache.clear();
   cache.set(userId, { plan, at: Date.now() });
   return plan;
+}
+
+const PRO_REQUIRED: Record<ProFeature, string> = {
+  createEvent: "Yeni etkinlik oluşturmak için Pro paket gerekir.",
+  editSettings: "Etkinlik ayarlarını değiştirmek için Pro paket gerekir.",
+};
+
+/**
+ * 403 response when `userId` (the event owner, or the creator) is not on a
+ * package with `feature`; null when allowed. Co-hosts act under the owner's package.
+ */
+export async function proRequired(userId: string, feature: ProFeature) {
+  if (hasFeature(await planForUser(userId), feature)) return null;
+  return jsonError(403, "PRO_REQUIRED", PRO_REQUIRED[feature]);
 }

@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { ProBadge } from "@/components/host/ProGate";
 import { ToggleRow } from "@/components/ui/ToggleRow";
 import { ui } from "@/components/ui/styles";
-import { FRAME_STYLES, shareFrameForPlan, type FrameStyle, type ShareFrameSettings } from "@/lib/branding";
+import { FRAME_STYLES, type FrameStyle, type ShareFrameSettings } from "@/lib/branding";
 import { drawFramedPhoto, loadOptionalImage, samplePhoto } from "@/lib/client/frame";
 import { useLang, useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
@@ -33,7 +32,6 @@ export function ShareFrameEditor({
 }) {
   const t = useT();
   const { locale } = useLang();
-  const pro = event.plan === "pro";
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
 
@@ -53,11 +51,11 @@ export function ShareFrameEditor({
     const dateText = event.eventDate
       ? new Date(`${event.eventDate}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
       : null;
-    const framed = drawFramedPhoto(samplePhoto(), shareFrameForPlan(value, event.plan), { title: event.coupleNames || event.title, dateText, logo });
+    const framed = drawFramedPhoto(samplePhoto(), value, { title: event.coupleNames || event.title, dateText, logo });
     target.width = framed.width;
     target.height = framed.height;
     target.getContext("2d")?.drawImage(framed, 0, 0);
-  }, [value, event.plan, event.coupleNames, event.title, event.eventDate, logo, locale]);
+  }, [value, event.coupleNames, event.title, event.eventDate, logo, locale]);
 
   return (
     <div className="space-y-3">
@@ -79,22 +77,16 @@ export function ShareFrameEditor({
         <canvas ref={previewRef} className="h-auto w-full rounded-lg border border-stone-200 shadow-sm" aria-label={t("Çerçeve önizlemesi")} />
       </div>
       <label className="block">
-        <span className={`flex items-center gap-1.5 ${ui.label}`}>
-          {t("Çerçeve yazısı")} {!pro && <ProBadge />}
-        </span>
+        <span className={ui.label}>{t("Çerçeve yazısı")}</span>
         <input
           value={value.text ?? ""}
           maxLength={60}
-          disabled={!pro}
           onChange={(e) => onChange({ ...value, text: e.target.value || null })}
           placeholder={t("Boş bırakırsanız etkinlik adı ve tarihi yazılır")}
-          className={`${ui.inputCompact} disabled:opacity-60`}
+          className={ui.inputCompact}
         />
       </label>
-      {!pro && <p className={ui.hint}>{t("Ücretsiz pakette kopyalara küçük bir “Mira” işareti eklenir. Pro ile işaretsiz, kendi yazınız ve logonuzla.")}</p>}
-      {pro && (
-        <ToggleRow checked={value.showLogo} onChange={(on) => onChange({ ...value, showLogo: on })} label={t("Çerçevede logoyu göster")} hint={event.brand?.logoUrl ? undefined : t("Önce Marka kitinden bir logo yükleyin.")} />
-      )}
+      <ToggleRow checked={value.showLogo} onChange={(on) => onChange({ ...value, showLogo: on })} label={t("Çerçevede logoyu göster")} hint={event.brand?.logoUrl ? undefined : t("Önce Marka kitinden bir logo yükleyin.")} />
       <ToggleRow
         checked={value.guestShare}
         onChange={(on) => onChange({ ...value, guestShare: on })}

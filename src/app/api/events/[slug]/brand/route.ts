@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { handleRouteError, jsonError } from "@/lib/api/http";
 import { decodeDataUrl } from "@/lib/branding";
 import { findEventBySlug } from "@/lib/events";
-import { planForUser } from "@/lib/host-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 
@@ -11,7 +10,7 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/events/:slug/brand?a=logo|<sponsorId>&v=<version>
- * Brand kit images (Pro). URLs carry the branding version, so responses can be
+ * Brand kit images. URLs carry the branding version, so responses can be
  * cached for a long time; a new upload changes the URL.
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
@@ -23,7 +22,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     if (!/^(logo|[a-z0-9]{4,16})$/.test(asset)) return jsonError(404, "NOT_FOUND", "Görsel bulunamadı.");
 
     const event = await findEventBySlug(slug);
-    if (!event || (await planForUser(event.owner_id)) !== "pro") return jsonError(404, "NOT_FOUND", "Görsel bulunamadı.");
+    if (!event) return jsonError(404, "NOT_FOUND", "Görsel bulunamadı.");
     const { data, error } = await getAdminDb()
       .from("event_brand_assets")
       .select("data")

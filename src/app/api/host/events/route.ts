@@ -8,7 +8,7 @@ import { normaliseEventType, presetFor, themeFor } from "@/lib/event-presets";
 import { hasEventPresetColumns } from "@/lib/schema-features";
 import { randomSlugSuffix } from "@/lib/slug";
 import { getHostUser } from "@/lib/host-auth";
-import { planForUser } from "@/lib/host-plan";
+import { planForUser, proRequired } from "@/lib/host-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { createEventSchema } from "@/lib/validation";
@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
   try {
     const host = await getHostUser();
     if (!host) return jsonError(401, "UNAUTHENTICATED", "Lütfen giriş yapın.");
+    const locked = await proRequired(host.id, "createEvent");
+    if (locked) return locked;
     const limited = await rateLimit(request, "create-event", 10, 3600, host.id);
     if (limited) return limited;
 

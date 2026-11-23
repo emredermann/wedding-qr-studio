@@ -16,7 +16,7 @@ import { apiFetch, errorMessage } from "@/lib/client/api";
 import { newExtraId, type Challenge, type ScheduleItem } from "@/lib/event-extras";
 import { EVENT_PRESETS, presetFor, type EventType, type ThemeId } from "@/lib/event-presets";
 import type { Plan } from "@/lib/plans";
-import { ProBadge } from "@/components/host/ProGate";
+import { ProBadge, ProLock } from "@/components/host/ProGate";
 import type { DriveConnectionStatusDto, HostEventDto, HostEventListItem } from "@/types/domain";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { ui } from "@/components/ui/styles";
@@ -159,7 +159,7 @@ export function EventsDashboard() {
           {events && events.length === 0 && (
             <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-10 text-center text-stone-600">
               <CalendarHeart className="mx-auto mb-3 h-8 w-8 text-stone-400" />
-              {t("Henüz bir etkinlik yok. Formdan ilk etkinliğinizi oluşturun.")}
+              {plan === "free" ? t("Henüz bir etkinlik yok. Etkinlik oluşturmak için Pro paket gerekir.") : t("Henüz bir etkinlik yok. Formdan ilk etkinliğinizi oluşturun.")}
             </div>
           )}
           <ul className="space-y-3">
@@ -192,6 +192,14 @@ export function EventsDashboard() {
         </section>
 
         <aside>
+          {plan === "free" ? (
+            <div className="space-y-3 rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+              <h2 className={`flex items-center gap-2 ${ui.sectionTitle}`}>
+                <Plus className="h-4 w-4" /> {t("Yeni etkinlik")}
+              </h2>
+              <ProLock text={t("Yeni etkinlik oluşturmak için Pro paket gerekir. Mevcut etkinliklerinizi ve ortak yöneticisi olduğunuz etkinlikleri kullanmaya devam edebilirsiniz.")} />
+            </div>
+          ) : (
           <form onSubmit={create} className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
             <h2 className={`mb-1 flex items-center gap-2 ${ui.sectionTitle}`}>
               <Plus className="h-4 w-4" /> {t("Yeni etkinlik")}
@@ -334,6 +342,7 @@ export function EventsDashboard() {
               </button>
             </div>
           </form>
+          )}
         </aside>
       </main>
     </div>

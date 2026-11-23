@@ -9,8 +9,13 @@
 export const PLANS = ["free", "pro"] as const;
 export type Plan = (typeof PLANS)[number];
 
-/** Features that need the Pro package. Everything else is free. */
-export const PRO_FEATURES = ["brandKit", "photobook", "customFrame"] as const;
+/**
+ * What needs the Pro package: creating events and changing an event's
+ * settings (incl. brand kit, share frame and co-hosts). Everything else —
+ * moderation, gallery, QR cards, seating, highlights, photobook, report,
+ * deleting an event — works on every package.
+ */
+export const PRO_FEATURES = ["createEvent", "editSettings"] as const;
 export type ProFeature = (typeof PRO_FEATURES)[number];
 
 const FEATURES: Record<Plan, ReadonlySet<ProFeature>> = {

@@ -128,9 +128,9 @@ export interface PublicEventDto {
   modules: EventModules;
   /** The event owner's package (co-hosts act under it). */
   plan: Plan;
-  /** Brand kit (Pro); null when not set or on the free package. */
+  /** Brand kit; null when not set. */
   brand: BrandDto | null;
-  /** Frame for share/download copies (Pro options already applied). */
+  /** Frame for share/download copies. */
   shareFrame: ShareFrameDto;
 }
 
@@ -143,7 +143,7 @@ export interface HostEventDto extends PublicEventDto {
   driveAccount: "app" | "host";
   /** Whether hosts see who hearted each item. */
   heartsNamed: boolean;
-  /** Saved frame settings, before Pro options are applied (for the editor). */
+  /** Saved frame settings (for the editor). */
   shareFrameSettings: ShareFrameSettings;
   createdAt: string;
   updatedAt: string;

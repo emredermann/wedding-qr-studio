@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { brandForPlan, brandingMetaFrom, brandingSchema, decodeDataUrl, readBranding, readShareFrame, shareFrameForPlan } from "../src/lib/branding.ts";
+import { brandFor, brandingMetaFrom, brandingSchema, decodeDataUrl, readBranding, readShareFrame } from "../src/lib/branding.ts";
 import { buildLeaderboard } from "../src/lib/leaderboard.ts";
 import { hasFeature, planFromMetadata } from "../src/lib/plans.ts";
 import { buildReport, type ReportMediaRow } from "../src/lib/report.ts";
@@ -19,8 +19,8 @@ describe("packages", () => {
     assert.equal(planFromMetadata({ plan: "enterprise" }, now), "free");
   });
 
-  it("gate only the Pro features", () => {
-    for (const feature of ["brandKit", "photobook", "customFrame"] as const) {
+  it("gate only creating events and changing settings", () => {
+    for (const feature of ["createEvent", "editSettings"] as const) {
       assert.equal(hasFeature("free", feature), false);
       assert.equal(hasFeature("pro", feature), true);
     }
@@ -34,10 +34,9 @@ describe("share frames", () => {
     assert.equal(frame.guestShare, false);
   });
 
-  it("add the Mira mark and drop Pro options on the free package", () => {
+  it("keep the saved caption and logo (same on every package, no watermark)", () => {
     const settings = { style: "band" as const, text: "Bizim gece", guestShare: true, showLogo: true };
-    assert.deepEqual(shareFrameForPlan(settings, "free"), { style: "band", text: null, guestShare: true, showLogo: false, watermark: true });
-    assert.deepEqual(shareFrameForPlan(settings, "pro"), { ...settings, watermark: false });
+    assert.deepEqual(readShareFrame(settings), settings);
   });
 
   it("is a settings column", () => {
@@ -49,12 +48,12 @@ describe("share frames", () => {
 describe("brand kit", () => {
   const input = brandingSchema.parse({ logo: PNG, sponsors: [{ id: "abcd1234", name: "Acme", logo: PNG }], sponsorsLabel: "", showOnLiveWall: true });
 
-  it("stores only metadata on the event and hides it on the free package", () => {
+  it("stores only metadata on the event", () => {
     const meta = brandingMetaFrom(input, 3);
     assert.deepEqual(readBranding(meta), meta);
     assert.equal(JSON.stringify(meta).includes("base64"), false);
-    assert.equal(brandForPlan("demo", meta, "free"), null);
-    const brand = brandForPlan("demo", meta, "pro");
+    assert.equal(brandFor("demo", null), null);
+    const brand = brandFor("demo", meta);
     assert.equal(brand?.logoUrl, "/api/events/demo/brand?a=logo&v=3");
     assert.equal(brand?.sponsors[0].logoUrl, "/api/events/demo/brand?a=abcd1234&v=3");
   });

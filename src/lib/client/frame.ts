@@ -2,7 +2,6 @@
 
 import type { ShareFrameDto } from "@/lib/branding";
 import { saveBlob } from "@/lib/client/download";
-import { BRAND } from "@/lib/brand";
 
 /**
  * Canvas helpers for everything Mira draws from guest photos in the browser:
@@ -66,27 +65,6 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, font: (size: numbe
   return size;
 }
 
-/** Small "Mira ile" mark (free package). `dark` = drawn on a dark area. */
-export function drawWatermark(ctx: CanvasRenderingContext2D, right: number, bottom: number, unit: number, dark: boolean) {
-  const text = `${BRAND.name}`;
-  ctx.save();
-  ctx.font = `500 ${Math.round(unit * 1.25)}px ${SERIF}`;
-  const tw = ctx.measureText(text).width;
-  const padX = unit * 0.9;
-  const h = unit * 2.2;
-  const w = tw + padX * 2;
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle = dark ? "rgba(255,255,255,0.16)" : "rgba(28,27,24,0.08)";
-  ctx.beginPath();
-  ctx.roundRect(right - w, bottom - h, w, h, h / 2);
-  ctx.fill();
-  ctx.fillStyle = dark ? "#ffffff" : "#1c1b18";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, right - w / 2, bottom - h / 2 + unit * 0.05);
-  ctx.restore();
-}
-
 export interface FrameContent {
   /** Caption when the host set none: "<event name> · <date>". */
   title: string;
@@ -132,9 +110,6 @@ export function drawFramedPhoto(photo: HTMLImageElement | HTMLCanvasElement, fra
       ctx.textAlign = "left";
       fitText(ctx, caption, (s) => `600 ${s}px ${SANS}`, Math.round(unit * 3.2), pw - textLeft - unit * 18);
       ctx.fillText(caption, textLeft, ph - unit * 5);
-      if (frame.watermark) drawWatermark(ctx, pw - unit * 3, ph - unit * 3, unit, true);
-    } else if (frame.watermark) {
-      drawWatermark(ctx, pw - unit * 3, ph - unit * 3, unit, true);
     }
     return canvas;
   }
@@ -163,7 +138,6 @@ export function drawFramedPhoto(photo: HTMLImageElement | HTMLCanvasElement, fra
   const weight = frame.style === "polaroid" ? "400" : "500";
   fitText(ctx, caption, (s) => `${weight} ${s}px ${family}`, Math.round(frame.style === "polaroid" ? unit * 4.2 : unit * 3), cw - border * 2 - (logo ? cw * 0.5 : unit * 20));
   ctx.fillText(caption, cw / 2, centerY);
-  if (frame.watermark) drawWatermark(ctx, cw - border, stripTop + strip - border * 0.6, unit, false);
   return canvas;
 }
 

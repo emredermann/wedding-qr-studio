@@ -7,7 +7,7 @@ import { ui } from "@/components/ui/styles";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { saveBlob } from "@/lib/client/download";
-import { drawImageInRect, drawWatermark, loadOptionalImage, loadPhoto } from "@/lib/client/frame";
+import { drawImageInRect, loadOptionalImage, loadPhoto } from "@/lib/client/frame";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT } from "@/lib/client/pdf";
 import { formatBytes } from "@/lib/media-config";
 import type { ReportDto } from "@/lib/report";
@@ -170,7 +170,6 @@ export function ReportPanel({ event }: { event: HostEventDto }) {
       ctx.fillStyle = "#a19c92";
       ctx.font = "400 15px system-ui, sans-serif";
       ctx.fillText(new Date(report.generatedAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }), m, h - 50);
-      if (event.shareFrame.watermark) drawWatermark(ctx, w - m, h - 34, 14, false);
 
       const pt = PAGE_SIZES_PT.A4;
       saveBlob(buildPdf([{ jpeg: await canvasToJpegBytes(canvas, 0.92), pixelWidth: w, pixelHeight: h, pageWidthPt: pt.width, pageHeightPt: pt.height }]), `katilim-raporu-${event.slug}.pdf`);
