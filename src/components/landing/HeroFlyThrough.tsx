@@ -85,11 +85,12 @@ export function HeroFlyThrough({ children }: { children: ReactNode }) {
       {/* The sticky stage is its own stacking context, so it needs its own background
           for the overlay's mix-blend-difference to have something to blend with. */}
       <div className="sticky top-0 h-dvh overflow-hidden bg-stone-50">
-        <div aria-hidden className="absolute inset-0 flex items-center justify-center">
+        {/* Sized by width and height and lifted a little, so the copy along the bottom never touches it. */}
+        <div aria-hidden className="absolute inset-0 flex items-center justify-center pb-[14dvh]">
           <span
             ref={wordRef}
             className="font-brand leading-none text-stone-900 select-none"
-            style={{ fontSize: "clamp(8rem, 36vw, 46rem)" }}
+            style={{ fontSize: "clamp(6rem, min(36vw, 52dvh), 46rem)" }}
           >
             M<span ref={iRef}>i</span>ra
           </span>

@@ -1027,4 +1027,5 @@ export const EN = {
   "Türünü seçin; tema, görevler ve etkinlik akışı hazır gelsin. QR kartlarınızı birkaç dakikada tasarlayıp yazdırın.": "Pick the type and the theme, challenges and schedule come ready. Design and print your QR cards in minutes.",
   "İsteğe bağlı": "Optional",
   "“Ekiple bir grup fotoğrafı” gibi küçük görevler; tamamladıkça liderlik tablosunda yükselir.": "Small challenges like “A group photo with your team”; every one completed moves them up the leaderboard.",
+  "İlk dans": "First dance",
 } as const;
