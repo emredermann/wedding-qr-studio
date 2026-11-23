@@ -39,6 +39,16 @@ export async function hasSeatingPlans(): Promise<boolean> {
   return seatingPlans.value;
 }
 
+let eventPresets: { value: boolean; at: number } | null = null;
+
+/** `events.event_type`, `theme_id`, `modules` (0007 migration). */
+export async function hasEventPresetColumns(): Promise<boolean> {
+  if (eventPresets && (eventPresets.value || Date.now() - eventPresets.at < RECHECK_MS)) return eventPresets.value;
+  const { error } = await getAdminDb().from("events").select("event_type, theme_id, modules").limit(0);
+  eventPresets = { value: !error, at: Date.now() };
+  return eventPresets.value;
+}
+
 /** MEDIA_COLUMNS plus `table_no` when the 0004 migration has been run. */
 export async function mediaColumns(): Promise<typeof MEDIA_COLUMNS> {
   // Typed as the base list so the Supabase row types stay the same; `table_no`

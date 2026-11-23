@@ -4,8 +4,10 @@ import { Expand, Heart, Shrink } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
+import { PresetIcon } from "@/components/event/PresetIcon";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
+import { themeDataAttrs, themeFor } from "@/lib/event-presets";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto, RecentHeartsDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
@@ -259,7 +261,7 @@ export function LiveWall({ slug }: { slug: string }) {
   const isNew = current ? slides.freshIds.includes(current.id) : false;
 
   return (
-    <main className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
+    <main {...(event ? themeDataAttrs(themeFor(event.themeId)) : {})} className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
       {previous && previous.id !== current?.id && previous.kind === "photo" && (
         <img
           key={`prev-${previous.id}`}
@@ -303,7 +305,7 @@ export function LiveWall({ slug }: { slug: string }) {
 
       {!current && event && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
-          <Heart className="h-12 w-12 fill-current" style={{ color: accent }} />
+          <PresetIcon eventType={event.eventType} className={`h-12 w-12 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} style={{ color: accent }} />
           <h1 className="font-serif text-5xl">{event.coupleNames || event.title}</h1>
           <p className="text-xl text-white/70">{t("QR kodu okutun, ilk fotoğrafı siz paylaşın!")}</p>
         </div>

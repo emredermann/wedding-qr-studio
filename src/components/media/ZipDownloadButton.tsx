@@ -61,7 +61,7 @@ export function ZipDownloadButton({
   if (busy) {
     const pct = progress && progress.totalBytes > 0 ? Math.round((progress.doneBytes / progress.totalBytes) * 100) : 0;
     return (
-      <div className={`flex min-w-56 items-center gap-3 rounded-full border border-stone-300 bg-white px-4 py-2 text-xs text-stone-700 ${className}`}>
+      <div className={`flex min-w-56 items-center gap-3 rounded-full border border-stone-300 bg-surface px-4 py-2 text-xs text-stone-700 ${className}`}>
         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
@@ -85,7 +85,7 @@ export function ZipDownloadButton({
     <button
       type="button"
       onClick={start}
-      className={`inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 shadow-sm transition hover:bg-stone-50 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-stone-300 bg-surface px-4 py-2 text-sm font-medium text-stone-800 shadow-sm transition hover:bg-stone-50 ${className}`}
     >
       <Archive className="h-4 w-4" />
       {label ?? t("Tümünü indir (ZIP)")}

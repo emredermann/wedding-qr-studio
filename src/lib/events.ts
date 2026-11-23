@@ -2,6 +2,7 @@ import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
 import { readChallenges, readSchedule, withKnownCategories } from "@/lib/event-extras";
+import { normaliseEventType, normaliseThemeId, readModules } from "@/lib/event-presets";
 import { getAdminDb } from "@/lib/supabase/server";
 import type {
   EventRow,
@@ -18,7 +19,8 @@ export const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])$/;
 export const MEDIA_COLUMNS =
   "id, event_id, drive_file_id, kind, mime_type, size_bytes, original_name, guest_name, guest_session_id, note, category, challenge_id, heart_count, is_guestbook, status, width, height, face_count, published_at, created_at";
 
-export function toPublicEventDto(event: EventRow): PublicEventDto {
+/** Host view: every saved schedule item and challenge, even while its module is switched off. */
+function toEventDto(event: EventRow): PublicEventDto {
   return {
     slug: event.slug,
     title: event.title,
@@ -35,12 +37,25 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
     schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
     challenges: readChallenges(event.challenges),
     tableNumbers: event.table_numbers === true,
+    eventType: normaliseEventType(event.event_type),
+    themeId: normaliseThemeId(event.theme_id),
+    modules: readModules(event.modules),
+  };
+}
+
+/** Guest view: a module the host switched off arrives empty, so no guest screen shows it. */
+export function toPublicEventDto(event: EventRow): PublicEventDto {
+  const dto = toEventDto(event);
+  return {
+    ...dto,
+    schedule: dto.modules.schedule ? dto.schedule : [],
+    challenges: dto.modules.challenges ? dto.challenges : [],
   };
 }
 
 export function toHostEventDto(event: EventRow, role: HostEventDto["role"] = "owner"): HostEventDto {
   return {
-    ...toPublicEventDto(event),
+    ...toEventDto(event),
     id: event.id,
     role,
     driveFolderUrl: driveFolderUrl(event.drive_folder_id),

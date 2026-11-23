@@ -272,7 +272,7 @@ export function GuestListView({ plan, store, eventId, eventName, notify }: { pla
             onChange={(e) => setPasteText(e.target.value)}
             rows={10}
             className={`${ui.input} mt-3 font-mono`}
-            placeholder={"Ayşe Yılmaz, Gelin tarafı\nMehmet Demir, Damat tarafı, Vejetaryen"}
+            placeholder={t("Ayşe Yılmaz, Aile\nMehmet Demir, İş arkadaşları, Vejetaryen")}
           />
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" className={btn} onClick={() => setPasteOpen(false)}>

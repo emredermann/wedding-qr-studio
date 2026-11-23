@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { CoHostsCard } from "@/components/host/CoHostsCard";
+import { EventTypePicker, ThemeSwatches } from "@/components/host/EventPresetPickers";
 import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
+import { presetFor, themeFor, type EventModules, type EventType, type ThemeId } from "@/lib/event-presets";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { HostEventDto } from "@/types/domain";
@@ -42,6 +44,15 @@ export function SettingsTab({
   const [challenges, setChallenges] = useState(event.challenges);
   const [heartsNamed, setHeartsNamed] = useState(event.heartsNamed);
   const [tableNumbers, setTableNumbers] = useState(event.tableNumbers);
+  const [eventType, setEventType] = useState<EventType | null>(event.eventType);
+  const [themeId, setThemeId] = useState<ThemeId>(themeFor(event.themeId).id);
+  const [modules, setModules] = useState<EventModules>(event.modules);
+  const preset = presetFor(eventType);
+  const pickTheme = (id: ThemeId) => {
+    setThemeId(id);
+    // The theme's accent is a starting point; the colour picker can still fine-tune it.
+    setForm((f) => ({ ...f, themeColor: themeFor(id).accent }));
+  };
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -56,6 +67,9 @@ export function SettingsTab({
       const challengesChanged = JSON.stringify(challenges) !== JSON.stringify(event.challenges);
       const heartsNamedChanged = heartsNamed !== event.heartsNamed;
       const tableNumbersChanged = tableNumbers !== event.tableNumbers;
+      const eventTypeChanged = eventType !== null && eventType !== event.eventType;
+      const themeChanged = themeId !== themeFor(event.themeId).id || (event.themeId === null && eventTypeChanged);
+      const modulesChanged = JSON.stringify(modules) !== JSON.stringify(event.modules);
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
         method: "PATCH",
         json: {
@@ -64,15 +78,24 @@ export function SettingsTab({
           ...(challengesChanged ? { challenges } : {}),
           ...(heartsNamedChanged ? { heartsNamed } : {}),
           ...(tableNumbersChanged ? { tableNumbers } : {}),
+          ...(eventTypeChanged ? { eventType } : {}),
+          ...(themeChanged ? { themeId } : {}),
+          ...(modulesChanged ? { modules } : {}),
         },
       });
+      const presetSkipped =
+        (eventTypeChanged && res.event.eventType !== eventType) || (themeChanged && res.event.themeId !== themeId) || (modulesChanged && JSON.stringify(res.event.modules) !== JSON.stringify(modules));
       setSchedule(res.event.schedule);
       setChallenges(res.event.challenges);
       setHeartsNamed(res.event.heartsNamed);
       setTableNumbers(res.event.tableNumbers);
+      setEventType(res.event.eventType);
+      setThemeId(themeFor(res.event.themeId).id);
+      setModules(res.event.modules);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage(t("Ayarlar kaydedildi."), "success");
+      if (presetSkipped) onMessage(t("Etkinlik türü, tema ve modül ayarları için veritabanı güncellemesi (0007) henüz çalıştırılmamış; diğer ayarlar kaydedildi."), "info");
     } catch (error) {
       onMessage(errorMessage(error), "error");
     } finally {
@@ -118,7 +141,7 @@ export function SettingsTab({
           <input required minLength={2} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={field} />
         </label>
         <label className="block">
-          <span className={ui.label}>{t("Başlıkta görünecek isim")}</span>
+          <span className={ui.label}>{t(eventType === "wedding" ? preset.nameLabel : "Başlıkta görünecek isim")}</span>
           <input maxLength={120} value={form.coupleNames} onChange={(e) => setForm({ ...form, coupleNames: e.target.value })} className={field} />
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -167,18 +190,50 @@ export function SettingsTab({
           </div>
         </div>
         <div>
-          <span className={ui.label}>{t("Program akışı (isteğe bağlı)")}</span>
-          <p className={`mb-2 ${ui.hint}`}>{t("Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.")}</p>
-          <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} />
+          <ToggleRow
+            checked={modules.schedule}
+            onChange={(on) => setModules({ ...modules, schedule: on })}
+            label={t(preset.scheduleLabel)}
+            hint={t("Misafir sayfasında görünür; etkinlik günü şu anki ve sıradaki madde vurgulanır.")}
+          />
+          {modules.schedule ? (
+            <div className="pt-1">
+              <ScheduleEditor value={schedule} onChange={setSchedule} categories={form.categories} example={preset.scheduleExample} />
+            </div>
+          ) : (
+            schedule.length > 0 && <p className={`px-2 ${ui.hint}`}>{t("Kapalı: {n} madde saklanıyor, misafirler görmüyor.", { n: schedule.length })}</p>
+          )}
         </div>
         <div>
-          <span className={ui.label}>{t("Fotoğraf görevleri (isteğe bağlı)")}</span>
-          <p className={`mb-2 ${ui.hint}`}>{t("Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.")}</p>
-          <ChallengesEditor value={challenges} onChange={setChallenges} />
+          <ToggleRow
+            checked={modules.challenges}
+            onChange={(on) => setModules({ ...modules, challenges: on })}
+            label={t("Görevler")}
+            hint={t("Bir görevi kaldırırsanız ona katılan fotoğraflar silinmez, yalnızca görev etiketi görünmez olur.")}
+          />
+          {modules.challenges ? (
+            <div className="pt-1">
+              <ChallengesEditor value={challenges} onChange={setChallenges} ideas={preset.challengeIdeas} />
+            </div>
+          ) : (
+            challenges.length > 0 && <p className={`px-2 ${ui.hint}`}>{t("Kapalı: {n} görev saklanıyor, misafirler görmüyor.", { n: challenges.length })}</p>
+          )}
         </div>
       </section>
 
       <section className="space-y-4">
+        <div className={`space-y-4 ${ui.card}`}>
+          <div>
+            <h3 className={`mb-1 ${ui.sectionTitle}`}>{t("Etkinlik türü & tema")}</h3>
+            <p className={`mb-3 ${ui.hint}`}>{t("Tür; misafir sayfasındaki sıralamayı, metinleri ve QR kart önerilerini belirler. Mevcut içerik değişmez.")}</p>
+            <EventTypePicker value={eventType} onChange={setEventType} />
+          </div>
+          <div>
+            <p className={`mb-2 ${ui.label}`}>{t("Misafir sayfası teması")}</p>
+            <ThemeSwatches value={themeId} onChange={pickTheme} />
+            <p className={`mt-2 ${ui.hint}`}>{t("Tema rengini soldaki “Tema rengi” ile ince ayarlayabilirsiniz.")}</p>
+          </div>
+        </div>
         <div className={`space-y-1 ${ui.card}`}>
           <h3 className={`mb-2 ${ui.sectionTitle}`}>{t("Özellikler & moderasyon")}</h3>
           {toggles.map(([key, label, hint]) => (

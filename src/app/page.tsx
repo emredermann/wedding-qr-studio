@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Minus, Plus, ScanLine, Smartphone, Timer } from "lucide-react";
+import { ArrowRight, Briefcase, Check, GraduationCap, Heart, Minus, PartyPopper, Plus, ScanLine, Smartphone, Timer } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -6,6 +6,7 @@ import { BrandLogo, BrandMark } from "@/components/brand/BrandMark";
 import { HeroFlyThrough } from "@/components/landing/HeroFlyThrough";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
+import { THEMES, type ThemeId } from "@/lib/event-presets";
 import { getServerT } from "@/lib/i18n/server";
 import type { MsgKey, Vars } from "@/lib/i18n/translate";
 
@@ -15,6 +16,7 @@ type T = (key: MsgKey, vars?: Vars) => string;
 
 const NAV: Array<{ href: string; label: MsgKey }> = [
   { href: "#nasil-calisir", label: "Nasıl çalışır" },
+  { href: "#etkinlikler", label: "Etkinlikler" },
   { href: "#ozellikler", label: "Özellikler" },
   { href: "#karsilastirma", label: "Karşılaştırma" },
   { href: "#sss", label: "Sorular" },
@@ -30,6 +32,41 @@ const CALLOUTS: Array<{ icon: typeof Smartphone; title: MsgKey; text: MsgKey }> 
   { icon: Smartphone, title: "Uygulama yok", text: "İndirme, üyelik, şifre… Hiçbiri gerekmez." },
   { icon: ScanLine, title: "Her telefonda", text: "iPhone ya da Android; telefonun kendi kamerası yeterli." },
   { icon: Timer, title: "Birkaç saniye", text: "Okut, seç, gönder. Bu kadar." },
+];
+
+const OCCASIONS: Array<{ icon: typeof Heart; theme: ThemeId; title: MsgKey; text: MsgKey; chips: MsgKey[]; sample: string }> = [
+  {
+    icon: Heart,
+    theme: "elegant",
+    title: "Düğün & Nişan",
+    text: "Gecenin akışı, sesli anı defteri ve zarif masa kartları. Her misafirin karesi tek bir albümde buluşur.",
+    chips: ["Gecenin Akışı", "Anı Defteri", "Zarif kartlar"],
+    sample: "Elif & Can",
+  },
+  {
+    icon: Briefcase,
+    theme: "corporate",
+    title: "Kurumsal & Konferans",
+    text: "Katılımcılar oturumlardan kareler paylaşır; görevler etkileşimi artırır, canlı ekran salonu bir araya getirir.",
+    chips: ["Görevler", "Etkinlik Akışı", "Canlı ekran"],
+    sample: "Atlas Summit ’26",
+  },
+  {
+    icon: PartyPopper,
+    theme: "night",
+    title: "Doğum günü & Özel davet",
+    text: "Gece teması, eğlenceli fotoğraf görevleri ve kalplerle öne çıkan en sevilen kareler.",
+    chips: ["Görevler", "Gece teması", "En sevilenler"],
+    sample: "Deniz 30",
+  },
+  {
+    icon: GraduationCap,
+    theme: "minimal",
+    title: "Festival & Mezuniyet",
+    text: "Yüzlerce misafir, tek QR. “Beni bul” ile herkes yer aldığı kareleri saniyeler içinde bulur.",
+    chips: ["Beni Bul", "Sınırsız misafir", "Orijinal kalite"],
+    sample: "Mezuniyet 2026",
+  },
 ];
 
 const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
@@ -52,7 +89,10 @@ const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Beni bul", text: "Bir selfie yeterli; misafir yalnızca yer aldığı kareleri görür. Eşleştirme telefonda yapılır." },
   { title: "Canlı ekran", text: "Yeni kareler ve mesajlar, salondaki ekranda usulca belirir." },
   { title: "Anı defteri", text: "Yazılı, sesli ya da görüntülü mesajlar; doğrudan tarayıcıdan." },
-  { title: "Kategoriler", text: "Hazırlık, tören, parti… Misafir yüklerken seçer, albüm kendiliğinden düzenlenir." },
+  { title: "Kategoriler", text: "Karşılama, sahne, parti… Misafir yüklerken seçer, albüm kendiliğinden düzenlenir." },
+  { title: "Görevler", text: "Misafirlere küçük fotoğraf görevleri verin; katılım artar, albüm çeşitlenir." },
+  { title: "Etkinlik akışı", text: "Saatli program; o an hangi bölüm yaşanıyorsa misafir sayfasında öne çıkar." },
+  { title: "Her etkinliğe bir tema", text: "Zarif, minimal, gece ya da kurumsal; misafir sayfası ve QR kartlar etkinliğinize uyum sağlar." },
   { title: "Onay modu", text: "Dilerseniz hiçbir kare, siz onaylamadan albümde görünmez." },
   { title: "Tek dokunuşla kaldırın", text: "İstemediğiniz bir kareyi gizleyin ya da silin; albümden hemen kalkar." },
   { title: "Sizin Drive’ınız", text: "Tüm dosyalar kendi Google hesabınızda, kendi klasörünüzde durur." },
@@ -86,6 +126,7 @@ const INCLUDED: MsgKey[] = [
   "Orijinal kalitede fotoğraf ve video",
   "Selfie ile kendini bulma",
   "Canlı ekran ve anı defteri",
+  "Görevler, etkinlik akışı ve temalar",
   "QR kart atölyesi (PNG · PDF)",
   "Oturma planı ve davetli listesi (Excel · PDF)",
   "Onay modu ve kategoriler",
@@ -97,6 +138,10 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
   {
     q: "Nasıl çalışıyor?",
     a: "Etkinliğinizi oluşturup Google Drive’ınızı bağlarsınız; size özel bir QR kod ve bağlantı hazırlanır. Misafirleriniz kodu okutup paylaştıkça her kare Drive’ınızdaki etkinlik klasörüne düşer ve albümde belirir.",
+  },
+  {
+    q: "Sadece düğünler için mi?",
+    a: "Hayır. Düğün, nişan, kurumsal etkinlik, konferans, doğum günü, mezuniyet ya da festival… Etkinlik türünü seçtiğinizde tema, görevler ve misafir sayfası ona göre hazırlanır; hepsini dilediğiniz gibi değiştirebilirsiniz.",
   },
   { q: "Misafirlerin uygulama indirmesi gerekiyor mu?", a: "Hayır. Her şey telefonun tarayıcısında çalışır; hesap ya da şifre de yok. Yalnızca adlarını yazmaları istenir." },
   { q: "Kurulum ne kadar sürer?", a: "Birkaç dakika. Giriş yapın, etkinliğinizi oluşturun, Drive’ınızı bağlayın ve kartınızı indirin." },
@@ -192,6 +237,27 @@ function SeatingIllustration({ t }: { t: T }) {
   );
 }
 
+/** Miniature guest page in an event theme (decorative). */
+function ThemePreview({ theme, name, t }: { theme: ThemeId; name: string; t: T }) {
+  const th = THEMES[theme];
+  return (
+    <div className="flex w-full flex-col items-center gap-2 rounded-2xl px-4 py-5" style={{ backgroundColor: th.scale["50"], color: th.scale["900"] }} aria-hidden>
+      <p className="text-[8px] tracking-[0.3em] uppercase" style={{ color: th.scale["500"] }}>
+        {t("Hoş geldiniz")}
+      </p>
+      <p className={`text-lg leading-none ${th.heading === "display" ? "font-brand" : "font-medium tracking-tight"}`}>{name}</p>
+      <div className="mt-1 w-full rounded-full py-1.5 text-center text-[9px] font-semibold text-white" style={{ backgroundColor: th.accent }}>
+        {t("Fotoğraf yükle")}
+      </div>
+      <div className="grid w-full grid-cols-4 gap-0.5">
+        {(["300", "200", "400", "200"] as const).map((step, i) => (
+          <div key={i} className="aspect-square rounded-[3px]" style={{ backgroundColor: th.scale[step] }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PrimaryCta({ children }: { children: ReactNode }) {
   return (
     <Link
@@ -258,7 +324,7 @@ function PhoneMock({ t }: { t: T }) {
   );
 }
 
-function TableCard({ variant, t }: { variant: "classic" | "monogram" | "ink"; t: T }) {
+function TableCard({ variant, name, monogram, t }: { variant: "classic" | "monogram" | "ink"; name: string; monogram?: string; t: T }) {
   const ink = variant === "ink";
   return (
     <div
@@ -267,7 +333,7 @@ function TableCard({ variant, t }: { variant: "classic" | "monogram" | "ink"; t:
       }`}
     >
       {variant === "monogram" ? (
-        <p className="font-brand text-3xl italic">E · C</p>
+        <p className="font-brand text-3xl italic">{monogram}</p>
       ) : (
         <p className={`text-[9px] tracking-[0.3em] uppercase ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Anılarınızı paylaşın")}</p>
       )}
@@ -275,7 +341,7 @@ function TableCard({ variant, t }: { variant: "classic" | "monogram" | "ink"; t:
         <QrGlyph className="h-20 w-20" />
       </div>
       <div>
-        <p className="font-brand text-lg">Elif &amp; Can</p>
+        <p className="font-brand text-lg">{name}</p>
         <p className={`mt-1 text-[10px] ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Kodu okutun, karelerinizi bırakın")}</p>
       </div>
     </div>
@@ -320,6 +386,12 @@ export default async function HomePage() {
       <HeroFlyThrough>
         <div className="mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pt-24 pb-12">
           <h1 className="sr-only">{BRAND.name}</h1>
+          <p className="mb-8 max-w-xl font-brand text-3xl leading-[1.1] sm:text-4xl">
+            {t("Her etkinliğin fotoğrafları ve videoları, tek bir QR kodla.")}
+            <span className="mt-3 block font-sans text-sm leading-relaxed font-light opacity-70">
+              {t("Düğünden konferansa, doğum gününden festivale; misafirleriniz uygulama indirmeden paylaşır.")}
+            </span>
+          </p>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             {/* The meaning of the name: one quiet, hairline-weight line. */}
             <p className="text-[12.5px] leading-relaxed font-light tracking-[0.02em] opacity-70 sm:whitespace-nowrap">
@@ -370,6 +442,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Built for every event */}
+      <section id="etkinlikler" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24 sm:py-32">
+        <SectionHead
+          title={t("Her etkinlik için.")}
+          text={t("Etkinlik türünü seçin; tema, görevler ve misafir sayfası ona göre hazırlansın. Gerisini dilediğiniz gibi değiştirin.")}
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {OCCASIONS.map(({ icon: Icon, theme, title, text, chips, sample }) => (
+            <article key={title} className="flex flex-col gap-5 rounded-3xl border border-stone-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_-32px_rgba(28,27,24,0.45)]">
+              <ThemePreview theme={theme} name={sample} t={t} />
+              <div className="flex-1">
+                <Icon className="h-5 w-5 text-stone-400" strokeWidth={1.4} />
+                <h3 className="mt-3 font-brand text-2xl leading-tight">{t(title)}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">{t(text)}</p>
+              </div>
+              <ul className="flex flex-wrap gap-1.5">
+                {chips.map((chip) => (
+                  <li key={chip} className="rounded-full border border-stone-200 px-2.5 py-1 text-[11px] text-stone-600">
+                    {t(chip)}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
       {/* Guest experience */}
       <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
         <SectionHead title={t("Misafiriniz için otuz saniye.")}
@@ -401,14 +500,14 @@ export default async function HomePage() {
       <section className="border-t border-stone-200 bg-stone-100/60">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
           <SectionHead title={t("Masada sessiz bir davet.")}
-            text={t("Kartınızı paneldeki atölyede tasarlayın: etkinliğinizin havasına uyan, sade ve baskıya hazır bir QR kart.")}
+            text={t("Kartınızı paneldeki atölyede tasarlayın: düğün masasından konferans salonuna, etkinliğinizin havasına uyan, baskıya hazır bir QR kart.")}
           />
           <div className="mx-auto grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
-            <TableCard variant="classic" t={t} />
+            <TableCard variant="classic" name="Elif & Can" t={t} />
             <div className="translate-y-6">
-              <TableCard variant="monogram" t={t} />
+              <TableCard variant="monogram" name="Deniz 30" monogram="D · 30" t={t} />
             </div>
-            <TableCard variant="ink" t={t} />
+            <TableCard variant="ink" name="Atlas Summit ’26" t={t} />
           </div>
           <div className="mt-20 grid gap-px overflow-hidden border border-stone-200 bg-stone-200 md:grid-cols-3">
             {CARD_OPTIONS.map((o) => (

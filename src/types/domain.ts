@@ -1,4 +1,5 @@
 import type { Challenge, ScheduleItem } from "@/lib/event-extras";
+import type { EventModules, EventType, ThemeId } from "@/lib/event-presets";
 
 /**
  * Domain types shared by API routes (server) and pages (client).
@@ -45,6 +46,12 @@ export interface EventRow {
   hearts_named?: boolean;
   /** One QR per table (0004 migration); absent on old schemas = single QR. */
   table_numbers?: boolean;
+  /** Event type preset (0007 migration); absent or null = legacy event. */
+  event_type?: string | null;
+  /** Guest theme (0007 migration); absent or null = Mira minimal. */
+  theme_id?: string | null;
+  /** Module switches jsonb (0007 migration); read through `readModules`. */
+  modules?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +114,12 @@ export interface PublicEventDto {
   challenges: Challenge[];
   /** Table cards carry their own QR (?table=N) and uploads are tagged with the table. */
   tableNumbers: boolean;
+  /** Preset that drives defaults and module order; null = event created before presets. */
+  eventType: EventType | null;
+  /** Guest theme; null = legacy look (Mira minimal). */
+  themeId: ThemeId | null;
+  /** Host module switches. On the public DTO a switched-off module also arrives empty. */
+  modules: EventModules;
 }
 
 /** Host-facing event info (includes Drive links and stats). */
@@ -184,6 +197,7 @@ export interface HostEventListItem {
   coupleNames: string | null;
   eventDate: string | null;
   themeColor: string;
+  eventType: EventType | null;
   mediaCount: number;
   role: "owner" | "cohost";
   createdAt: string;

@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/media/MediaThumb";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
+import { presetFor } from "@/lib/event-presets";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
@@ -111,7 +112,7 @@ export function GuestbookPanel({
   };
 
   if (!event.guestbookEnabled) {
-    return <p className="rounded-3xl bg-white/80 p-8 text-center text-stone-600">{t("Anı defteri bu etkinlikte kapalı.")}</p>;
+    return <p className="rounded-3xl bg-surface/80 p-8 text-center text-stone-600">{t("Anı defteri bu etkinlikte kapalı.")}</p>;
   }
 
   const entries: Entry[] = [
@@ -121,7 +122,7 @@ export function GuestbookPanel({
 
   return (
     <div className="space-y-5">
-      <form onSubmit={submitText} className="rounded-3xl border border-stone-200 bg-white p-4">
+      <form onSubmit={submitText} className="rounded-3xl border border-stone-200 bg-surface p-4">
         <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-stone-800">
           <Feather className="h-4 w-4" /> {t("Etkinlik sahibine bir not bırakın")}
         </p>
@@ -129,7 +130,7 @@ export function GuestbookPanel({
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 1000))}
           rows={3}
-          placeholder={t("Harika bir gündü, her şey için teşekkürler…")}
+          placeholder={t(presetFor(event.eventType).guestbookPrompt)}
           className="w-full rounded-2xl border border-stone-300 px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
         />
         <div className="mt-2 flex items-center justify-between">
@@ -148,7 +149,7 @@ export function GuestbookPanel({
       {recorderMode ? (
         <Recorder mode={recorderMode} onDone={uploadRecording} onCancel={closeRecorder} onError={recorderError} />
       ) : uploadProgress !== null ? (
-        <div className="rounded-3xl border border-stone-200 bg-white p-4 text-sm text-stone-700">
+        <div className="rounded-3xl border border-stone-200 bg-surface p-4 text-sm text-stone-700">
           <p className="mb-2 flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> {t("Mesajınız yükleniyor…")}{" "}
             {new Intl.NumberFormat(locale, { style: "percent" }).format(Math.round(uploadProgress * 100) / 100)}
@@ -159,10 +160,10 @@ export function GuestbookPanel({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => setRecorderMode("audio")} className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white py-4 text-sm font-semibold text-stone-800">
+          <button type="button" onClick={() => setRecorderMode("audio")} className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-surface py-4 text-sm font-semibold text-stone-800">
             <Mic className="h-5 w-5" style={{ color: "var(--accent)" }} /> {t("Sesli mesaj")}
           </button>
-          <button type="button" onClick={() => setRecorderMode("video")} className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white py-4 text-sm font-semibold text-stone-800">
+          <button type="button" onClick={() => setRecorderMode("video")} className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-surface py-4 text-sm font-semibold text-stone-800">
             <Video className="h-5 w-5" style={{ color: "var(--accent)" }} /> {t("Video mesaj")}
           </button>
         </div>
@@ -180,14 +181,14 @@ export function GuestbookPanel({
           <ul className="space-y-3">
             {entries.map((entry) =>
               entry.type === "text" ? (
-                <li key={`t-${entry.message.id}`} className="rounded-2xl bg-white p-4 shadow-sm">
+                <li key={`t-${entry.message.id}`} className="rounded-2xl bg-surface p-4 shadow-sm">
                   <p className="font-serif text-[15px] leading-relaxed whitespace-pre-line text-stone-800">“{entry.message.message}”</p>
                   <p className="mt-2 flex items-center gap-2 text-xs text-stone-500">
                     — {entry.message.guestName} <StatusBadge status={entry.message.status} />
                   </p>
                 </li>
               ) : (
-                <li key={`m-${entry.media.id}`} className="rounded-2xl bg-white p-3 shadow-sm">
+                <li key={`m-${entry.media.id}`} className="rounded-2xl bg-surface p-3 shadow-sm">
                   {entry.media.kind === "audio" ? (
                     <AudioPlayer src={streamUrl(entry.media.fileId)} className="w-full" />
                   ) : (

@@ -9,13 +9,14 @@ import { createRoot } from "react-dom/client";
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
 import { loadScriptFonts, SCRIPT_FAMILY, SCRIPT_WEIGHT, type ScriptFont } from "@/lib/card-fonts";
+import { EVENT_PRESETS, orderedQrTemplates, presetFor, type EventType, type QrTemplateId } from "@/lib/event-presets";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
 import { QrOnlyExport } from "@/components/host/QrOnlyExport";
 import { ui } from "@/components/ui/styles";
 
-type TemplateId = "ornek" | "cizim" | "cicek" | "kalpler" | "klasik" | "modern" | "botanik" | "gece";
+type TemplateId = QrTemplateId;
 type CardArt = "hand" | "camera" | "flowers" | "hearts";
 /** Where the handwritten heading curves: centred over the QR, or sweeping down the right side. */
 type HeadingArc = "top" | "right";
@@ -92,8 +93,8 @@ interface TemplateDef {
     minimal?: boolean;
     /** Signature date as 29.08.2026. */
     numericDate?: boolean;
-    /** Heading suggested when this template is picked (if the host has not typed their own). */
-    defaultHeading?: MsgKey;
+    /** Suggest the event preset's heading when this template is picked (if the host has not typed their own). */
+    presetHeading?: boolean;
   };
   /** Swatch glyph in the template picker. */
   glyph?: string;
@@ -106,7 +107,7 @@ const TEMPLATES: Record<TemplateId, TemplateDef> = {
     frame: "ince",
     serifNames: false,
     leaves: false,
-    script: { art: "hand", font: "caveat", heading: "right", minimal: true, numericDate: true, defaultHeading: "Düğün Anılarınız Burada" },
+    script: { art: "hand", font: "caveat", heading: "right", minimal: true, numericDate: true, presetHeading: true },
     glyph: "✍️",
   },
   cizim: {
@@ -140,6 +141,8 @@ const TEMPLATES: Record<TemplateId, TemplateDef> = {
   modern: { name: "Modern", palette: { background: "#FFFFFF", text: "#111827", accent: "#111827", qr: "#111827" }, frame: "ince", serifNames: false, leaves: false },
   botanik: { name: "Botanik", palette: { background: "#F7F5EE", text: "#1F2A1F", accent: "#4D6B48", qr: "#1F2A1F" }, frame: "kose", serifNames: true, leaves: true },
   gece: { name: "Gece & Altın", palette: { background: "#14120F", text: "#F5EBDD", accent: "#D4A84B", qr: "#14120F" }, frame: "cift", serifNames: true, leaves: false },
+  kurumsal: { name: "Kurumsal", palette: { background: "#F5F7FA", text: "#0F1B2D", accent: "#2F54D1", qr: "#0F1B2D" }, frame: "ince", serifNames: false, leaves: false, glyph: "▦" },
+  parti: { name: "Parti", palette: { background: "#16121F", text: "#F4F1FA", accent: "#B794F6", qr: "#16121F" }, frame: "kose", serifNames: false, leaves: false, glyph: "✦" },
 };
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -794,6 +797,7 @@ export function QrCardDesigner({
   slug,
   tableNumbers,
   eventDate = null,
+  eventType = null,
 }: {
   url: string;
   coupleNames: string;
@@ -804,11 +808,19 @@ export function QrCardDesigner({
   tableNumbers: boolean;
   /** ISO date (YYYY-MM-DD), for templates that sign with a numeric date. */
   eventDate?: string | null;
+  /** Event preset: decides which templates come first and which is preselected. */
+  eventType?: EventType | null;
 }) {
   const t = useT();
-  const [template, setTemplate] = useState<TemplateId>("ornek");
-  const [palette, setPalette] = useState<Palette>({ ...TEMPLATES.ornek.palette });
-  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES.ornek.frame);
+  const preset = presetFor(eventType);
+  const templateOrder = orderedQrTemplates(eventType);
+  // Legacy events (no preset) keep the template they always opened with.
+  const initialTemplate: TemplateId = eventType ? templateOrder[0] : "ornek";
+  const presetHeading = t(eventType ? preset.qrHeading : "Düğün Anılarınız Burada");
+  const headingFor = (id: TemplateId, fallback: MsgKey) => (TEMPLATES[id].script?.presetHeading ? presetHeading : t(fallback));
+  const [template, setTemplate] = useState<TemplateId>(initialTemplate);
+  const [palette, setPalette] = useState<Palette>(() => ({ ...TEMPLATES[initialTemplate].palette, accent: initialTemplate === "klasik" ? themeColor : TEMPLATES[initialTemplate].palette.accent }));
+  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES[initialTemplate].frame);
   // Handwritten faces must be loaded before the canvas can use them.
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => {
@@ -822,11 +834,11 @@ export function QrCardDesigner({
   }, []);
   // Plain QR by default; a heart or photo in the middle is optional.
   const [center, setCenter] = useState<CenterMode>("yok");
-  const [topText, setTopText] = useState(() => t("Düğün Anılarınız Burada"));
+  const [topText, setTopText] = useState(() => headingFor(initialTemplate, "Anılarımızı paylaşın"));
   const [names, setNames] = useState(coupleNames);
   // "29.08.2026" for templates that sign with a numeric date.
   const numericDate = eventDate && /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate.split("-").reverse().join(".") : dateText;
-  const [date, setDate] = useState(numericDate);
+  const [date, setDate] = useState(TEMPLATES[initialTemplate].script?.numericDate ? numericDate : dateText);
   const [description, setDescription] = useState(() => t("Telefon kameranızla okutun; fotoğraf, video ve dileklerinizi uygulama indirmeden yükleyin."));
   const [tableLabel, setTableLabel] = useState(() => t("Masa"));
   const [tableFrom, setTableFrom] = useState("");
@@ -835,7 +847,7 @@ export function QrCardDesigner({
   const [paper, setPaper] = useState<PaperSize>("A6");
   const [kind, setKind] = useState<DesignKind>("tables");
   const [boardPaper, setBoardPaper] = useState<BoardPaper>("A3");
-  const [boardTop, setBoardTop] = useState(() => t("Düğün Anılarınız Burada"));
+  const [boardTop, setBoardTop] = useState(() => headingFor(initialTemplate, "Hoş geldiniz"));
   const [boardDescription, setBoardDescription] = useState(() =>
     t("Bu günün fotoğraflarını, videolarını ve dileklerinizi QR kodu okutarak bizimle paylaşın."),
   );
@@ -896,12 +908,12 @@ export function QrCardDesigner({
   }, [options, photo, tables, paper, isBoard, boardPaper, fontsReady]);
 
   // Texts the host has not edited follow the template's suggestions.
-  const defaultHeadings = [t("Anılarımızı paylaşın"), t("Hoş geldiniz"), t("Düğün Anılarınız Burada")];
+  const defaultHeadings = [t("Anılarımızı paylaşın"), t("Hoş geldiniz"), t("Düğün Anılarınız Burada"), ...Object.values(EVENT_PRESETS).map((p) => t(p.qrHeading))];
   const applyTemplate = (id: TemplateId) => {
     setTemplate(id);
     const next = TEMPLATES[id].script;
-    if (defaultHeadings.includes(topText)) setTopText(next?.defaultHeading ? t(next.defaultHeading) : t("Anılarımızı paylaşın"));
-    if (defaultHeadings.includes(boardTop)) setBoardTop(next?.defaultHeading ? t(next.defaultHeading) : t("Hoş geldiniz"));
+    if (defaultHeadings.includes(topText)) setTopText(headingFor(id, "Anılarımızı paylaşın"));
+    if (defaultHeadings.includes(boardTop)) setBoardTop(headingFor(id, "Hoş geldiniz"));
     if (date === dateText || date === numericDate) setDate(next?.numericDate ? numericDate : dateText);
     setPalette({ ...TEMPLATES[id].palette, accent: id === "klasik" ? themeColor : TEMPLATES[id].palette.accent });
     setFrame(TEMPLATES[id].frame);
@@ -1092,13 +1104,16 @@ export function QrCardDesigner({
         <section>
           <p className={label}>{t("Şablon")}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {(Object.keys(TEMPLATES) as TemplateId[]).map((id) => (
+            {templateOrder.map((id, index) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => applyTemplate(id)}
-                className={`rounded-xl border p-2 text-left text-xs font-medium ${template === id ? "border-stone-900 ring-2 ring-stone-900" : "border-stone-300"}`}
+                className={`relative rounded-xl border p-2 text-left text-xs font-medium ${template === id ? "border-stone-900 ring-2 ring-stone-900" : "border-stone-300"}`}
               >
+                {eventType && index < preset.qrRecommended && (
+                  <span className="absolute -top-2 right-2 rounded-full bg-stone-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-white uppercase">{t("Önerilen")}</span>
+                )}
                 <span className="mb-1.5 flex h-8 items-center justify-center rounded-lg" style={{ backgroundColor: TEMPLATES[id].palette.background, color: TEMPLATES[id].palette.accent, border: `1px solid ${TEMPLATES[id].palette.accent}` }}>
                   {TEMPLATES[id].glyph ?? "♥"}
                 </span>

@@ -1,8 +1,10 @@
 "use client";
 
 import { BookHeart, Camera, Heart, Images, Loader2, Pencil, ScanFace } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PresetIcon } from "@/components/event/PresetIcon";
+import { ChallengesCard } from "@/components/guest/ChallengesCard";
 import { FaceSearchPanel } from "@/components/guest/FaceSearchPanel";
 import { GalleryPanel } from "@/components/guest/GalleryPanel";
 import { GuestbookPanel } from "@/components/guest/GuestbookPanel";
@@ -14,6 +16,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/client/analytics";
 import { resolveGuestTable } from "@/lib/client/table";
+import { presetFor, themeCssVars, themeDataAttrs, themeFor } from "@/lib/event-presets";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, PublicEventDto } from "@/types/domain";
@@ -50,12 +53,27 @@ export function GuestApp({ slug }: { slug: string }) {
   // Table number from the QR card (?table=N), remembered for this event.
   const [scannedTable] = useState(() => resolveGuestTable(slug));
   const [recentUploads, setRecentUploads] = useState<MediaDto[]>([]);
+  const [pickedChallenge, setPickedChallenge] = useState<{ id: string; nonce: number } | null>(null);
+  // Challenges this guest has shot during this visit (ticked off on the Tasks card).
+  const doneChallenges = useMemo(() => new Set(recentUploads.map((m) => m.challengeId).filter((id): id is string => Boolean(id))), [recentUploads]);
   const { toasts, pushToast, dismissToast } = useToastQueue();
 
   const onMessage = useCallback(
     (text: string, variant: "success" | "error" | "info" = "info") => pushToast(text, variant),
     [pushToast],
   );
+
+  // Dark themes: match the area behind the page (iOS overscroll, safe areas).
+  const themeId = event?.themeId ?? null;
+  useEffect(() => {
+    if (!event) return;
+    const root = document.documentElement;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = themeFor(themeId).scale["50"];
+    return () => {
+      root.style.backgroundColor = previous;
+    };
+  }, [event, themeId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +122,12 @@ export function GuestApp({ slug }: { slug: string }) {
     );
   }
 
-  const accentStyle = { "--accent": event.themeColor } as React.CSSProperties;
+  // Theme (palette + heading face) and accent come from the event; legacy
+  // events resolve to the original Mira look.
+  const preset = presetFor(event.eventType);
+  const theme = themeFor(event.themeId);
+  const accentStyle = { ...themeCssVars(theme, event.themeColor), color: "var(--color-stone-900)" } as React.CSSProperties;
+  const themeAttrs = themeDataAttrs(theme);
   // Only events that use per-table QR codes care about the table number.
   const tableNo = event.tableNumbers ? scannedTable : null;
   const displayName = event.coupleNames || event.title;
@@ -112,17 +135,17 @@ export function GuestApp({ slug }: { slug: string }) {
 
   if (!guestName || editingName) {
     return (
-      <main style={accentStyle} className="eqr-safe-top relative flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
+      <main style={accentStyle} {...themeAttrs} className="eqr-safe-top relative flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
         <LanguageSwitcher className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4" />
         <div className="w-full max-w-sm text-center">
           <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: "var(--accent)" }}>
-            <Heart className="h-7 w-7 fill-current" />
+            <PresetIcon eventType={event.eventType} className={`h-7 w-7 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} />
           </span>
           <p className="text-xs font-semibold tracking-[0.3em] text-stone-500 uppercase">{t("Hoş geldiniz")}</p>
           <h1 className="mt-2 font-serif text-4xl leading-tight text-stone-900">{displayName}</h1>
           {dateText && <p className="mt-2 text-sm text-stone-600">{dateText}</p>}
           <p className="mt-5 text-sm leading-relaxed text-stone-700">
-            {event.welcomeMessage || t("Bu özel günde çektiğiniz fotoğrafları, videoları ve dileklerinizi bizimle paylaşın.")}
+            {event.welcomeMessage || t(preset.welcome)}
           </p>
 
           <form onSubmit={saveName} className="mt-8 space-y-3 text-left">
@@ -134,7 +157,7 @@ export function GuestApp({ slug }: { slug: string }) {
                 onChange={(e) => setNameDraft(e.target.value)}
                 maxLength={80}
                 placeholder={t("Örn. Ayşe Teyze")}
-                className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3.5 text-base outline-none focus:border-stone-500"
+                className="w-full rounded-2xl border border-stone-300 bg-surface px-4 py-3.5 text-base outline-none focus:border-stone-500"
               />
             </label>
             <button
@@ -163,11 +186,15 @@ export function GuestApp({ slug }: { slug: string }) {
     { id: "guestbook", label: t("Anı Defteri"), icon: BookHeart, show: event.guestbookEnabled },
   ];
   const visibleTabs = tabs.filter((t) => t.show);
+  const openUpload = () => {
+    setTab("upload");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const activeTab: Tab = tab && visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0].id;
 
   return (
-    <main style={accentStyle} className="min-h-dvh bg-stone-50 pb-28">
-      <header className="eqr-safe-top border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
+    <main style={accentStyle} {...themeAttrs} className="min-h-dvh bg-stone-50 pb-28">
+      <header className="eqr-safe-top border-b border-stone-200/70 bg-surface/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <h1 className="truncate font-serif text-2xl leading-tight text-stone-900">{displayName}</h1>
@@ -182,7 +209,7 @@ export function GuestApp({ slug }: { slug: string }) {
               setNameDraft(guestName);
               setEditingName(true);
             }}
-            className="inline-flex max-w-[9rem] min-w-0 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-700"
+            className="inline-flex max-w-[9rem] min-w-0 items-center gap-1.5 rounded-full border border-stone-200 bg-surface px-3 py-1.5 text-xs text-stone-700"
           >
             <span className="truncate">{guestName}</span>
             <Pencil className="h-3 w-3 shrink-0" />
@@ -192,18 +219,29 @@ export function GuestApp({ slug }: { slug: string }) {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pt-5">
-        <ScheduleCard
-          schedule={event.schedule}
-          eventDate={event.eventDate}
-          onShareMoment={
-            event.uploadsEnabled
-              ? () => {
-                  setTab("upload");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }
-              : undefined
-          }
-        />
+        {/* Guest modules in the order the event's preset puts first. */}
+        {preset.guestOrder.map((module) =>
+          module === "schedule" ? (
+            <ScheduleCard
+              key="schedule"
+              schedule={event.schedule}
+              eventDate={event.eventDate}
+              label={t(preset.scheduleLabel)}
+              onShareMoment={event.uploadsEnabled ? openUpload : undefined}
+            />
+          ) : event.uploadsEnabled ? (
+            <ChallengesCard
+              key="challenges"
+              challenges={event.challenges}
+              doneIds={doneChallenges}
+              prominent={preset.guestOrder[0] === "challenges"}
+              onPick={(id) => {
+                setPickedChallenge({ id, nonce: Date.now() });
+                openUpload();
+              }}
+            />
+          ) : null,
+        )}
         {/* Kept mounted while other tabs are open so in-flight uploads, the queue
             and progress bars survive a tab switch (no orphaned XHRs). */}
         {event.uploadsEnabled && (
@@ -216,6 +254,7 @@ export function GuestApp({ slug }: { slug: string }) {
               onUploaded={(media) => setRecentUploads((prev) => [media, ...prev])}
               onDeleted={(mediaId) => setRecentUploads((prev) => prev.filter((m) => m.id !== mediaId))}
               onMessage={onMessage}
+              pickedChallenge={pickedChallenge}
             />
           </div>
         )}
@@ -224,7 +263,7 @@ export function GuestApp({ slug }: { slug: string }) {
         {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} tableNo={tableNo} onMessage={onMessage} />}
       </div>
 
-      <nav className="eqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 backdrop-blur-md">
+      <nav className="eqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-surface/95 backdrop-blur-md">
         <ul className="mx-auto flex max-w-3xl">
           {visibleTabs.map(({ id, label, icon: Icon }) => {
             const active = id === activeTab;

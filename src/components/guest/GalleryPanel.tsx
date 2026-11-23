@@ -115,7 +115,7 @@ function GalleryFeed({
   return (
     <div className="space-y-4">
       {visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-stone-300 bg-white/60 px-6 py-14 text-center text-stone-500">
+        <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-stone-300 bg-surface/60 px-6 py-14 text-center text-stone-500">
           <Images className="h-8 w-8" />
           <p className="text-sm">{mineOnly ? t("Henüz bir şey yüklemediniz.") : t("İlk anıyı siz paylaşın!")}</p>
         </div>
@@ -133,7 +133,7 @@ function GalleryFeed({
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-2 text-sm font-medium text-stone-700"
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-surface px-5 py-2 text-sm font-medium text-stone-700"
           >
             {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("Daha fazla göster")}
@@ -190,7 +190,7 @@ export function GalleryPanel({
           {t("Bu galeri gizli: yalnızca kendi yüklediklerinizi görebilirsiniz.")}
         </p>
       )}
-      <div className="flex rounded-full border border-stone-200 bg-white p-1 text-xs font-medium" role="group" aria-label={t("Sıralama")}>
+      <div className="flex rounded-full border border-stone-200 bg-surface p-1 text-xs font-medium" role="group" aria-label={t("Sıralama")}>
         {([
           [false, t("En yeniler")],
           [true, t("En sevilenler")],
@@ -201,7 +201,7 @@ export function GalleryPanel({
             aria-pressed={popular === value}
             onClick={() => setPopular(value)}
             className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition ${
-              popular === value ? "bg-stone-900 text-white" : "text-stone-600"
+              popular === value ? "bg-stone-900 text-stone-50" : "text-stone-600"
             }`}
           >
             {value && <Heart className="h-3.5 w-3.5" />}
@@ -215,7 +215,7 @@ export function GalleryPanel({
             type="button"
             onClick={() => setMineOnly((v) => !v)}
             className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
-              mineOnly ? "border-transparent bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"
+              mineOnly ? "border-transparent bg-stone-900 text-stone-50" : "border-stone-300 bg-surface text-stone-700"
             }`}
           >
             {t("Yüklediklerim")}
@@ -227,7 +227,7 @@ export function GalleryPanel({
             aria-pressed={tableOnly}
             onClick={() => setTableOnly((v) => !v)}
             className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
-              tableOnly ? "border-transparent bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"
+              tableOnly ? "border-transparent bg-stone-900 text-stone-50" : "border-stone-300 bg-surface text-stone-700"
             }`}
           >
             🪑 {t("Masa {n}", { n: guestTable })}
@@ -239,7 +239,7 @@ export function GalleryPanel({
             type="button"
             onClick={() => setCategory(cat)}
             className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
-              category === cat ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+              category === cat ? "border-transparent text-white" : "border-stone-300 bg-surface text-stone-700"
             }`}
             style={category === cat ? { backgroundColor: "var(--accent)" } : undefined}
           >
@@ -257,7 +257,7 @@ export function GalleryPanel({
                 type="button"
                 onClick={() => setChallenge(c?.id ?? null)}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                  active ? "border-stone-900 bg-stone-900 text-white" : "border-dashed border-stone-300 bg-white text-stone-700"
+                  active ? "border-stone-900 bg-stone-900 text-stone-50" : "border-dashed border-stone-300 bg-surface text-stone-700"
                 }`}
               >
                 {c ? c.title : t("Tüm görevler")}
