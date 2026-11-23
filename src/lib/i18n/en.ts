@@ -770,4 +770,18 @@ export const EN = {
   "Dosya okunamadı. Geçerli bir Excel (.xlsx) dosyası seçin.": "Couldn't read the file. Choose a valid Excel (.xlsx) file.",
   "Excel dosyasında okunabilir bir sayfa bulunamadı.": "No readable sheet found in the Excel file.",
   "PDF okunamadı. Dosya şifreli ya da bozuk olabilir.": "Couldn't read the PDF. It may be encrypted or damaged.",
+  // ── landing: seating planner
+  "Yeni · Oturma planı": "New · Seating plan",
+  "Herkes doğru masada.": "Everyone at the right table.",
+  "Davetli listenizden salon planına, tek bir yerde. Masaları yerleştirin, misafirleri sürükleyin; plan siz çalıştıkça kaydedilir.": "From guest list to floor plan, in one place. Place the tables, drag your guests; the plan saves as you work.",
+  "Listenizi içe aktarın": "Import your list",
+  "Excel, CSV ya da PDF davetli listenizi yükleyin; isimler, gruplar ve menü tercihleri kendiliğinden okunur.": "Upload your guest list as Excel, CSV or PDF; names, groups and meal preferences are read automatically.",
+  "Salonu çizin": "Lay out the venue",
+  "Yuvarlak, dikdörtgen ve baş masalar; dans pisti, sahne, bar. Sürükleyin, döndürün, boyutlandırın.": "Round, rectangular and head tables; dance floor, stage, bar. Drag, rotate, resize.",
+  "Sürükle, yerleştir": "Drag and seat",
+  "Misafirleri sandalyelere sürükleyin ya da telefonda dokunarak yerleştirin. Kim nerede, bir bakışta görün.": "Drag guests onto seats, or tap to place them on your phone. See who sits where at a glance.",
+  "Yazdırın, paylaşın": "Print and share",
+  "Planı PNG ya da PDF olarak alın; her masanın misafir listesi de hazır.": "Get the plan as PNG or PDF, with a guest list for every table.",
+  "Oturma planı": "Seating plan",
+  "Oturma planı ve davetli listesi (Excel · PDF)": "Seating plan and guest list (Excel · PDF)",
 } as const;
