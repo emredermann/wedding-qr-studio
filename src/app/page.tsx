@@ -61,6 +61,13 @@ const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Kurulum yok", text: "Her şey tarayıcıda; misafirlerinizden hiçbir şey indirmeleri istenmez." },
 ];
 
+const SEATING_POINTS: Array<{ title: MsgKey; text: MsgKey }> = [
+  { title: "Listenizi içe aktarın", text: "Excel, CSV ya da PDF davetli listenizi yükleyin; isimler, gruplar ve menü tercihleri kendiliğinden okunur." },
+  { title: "Salonu çizin", text: "Yuvarlak, dikdörtgen ve baş masalar; dans pisti, sahne, bar. Sürükleyin, döndürün, boyutlandırın." },
+  { title: "Sürükle, yerleştir", text: "Misafirleri sandalyelere sürükleyin ya da telefonda dokunarak yerleştirin. Kim nerede, bir bakışta görün." },
+  { title: "Yazdırın, paylaşın", text: "Planı PNG ya da PDF olarak alın; her masanın misafir listesi de hazır." },
+];
+
 type Cell = boolean | MsgKey;
 const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
   { label: "Misafirin uygulama indirmesi", mira: "Gerekmez", apps: "Gerekir", shared: "Çoğu zaman gerekir" },
@@ -69,6 +76,7 @@ const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
   { label: "Orijinal çözünürlük", mira: true, apps: "Değişken", shared: "Çoğu zaman sıkıştırılır" },
   { label: "Video", mira: true, apps: true, shared: "Sınırlı" },
   { label: "QR masa kartı", mira: true, apps: false, shared: false },
+  { label: "Oturma planı", mira: true, apps: false, shared: false },
   { label: "Dosyalar kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
   { label: "Ücret", mira: "Ücretsiz", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
 ];
@@ -79,6 +87,7 @@ const INCLUDED: MsgKey[] = [
   "Selfie ile kendini bulma",
   "Canlı ekran ve anı defteri",
   "QR kart atölyesi (PNG · PDF)",
+  "Oturma planı ve davetli listesi (Excel · PDF)",
   "Onay modu ve kategoriler",
   "Tüm albümü tek seferde indirme",
   "Depolama kendi Google Drive’ınızda",
@@ -112,6 +121,73 @@ function SectionHead({ title, text, dark = false }: { title: ReactNode; text?: s
     <div className="mb-14 max-w-2xl">
       <h2 className="font-brand text-5xl leading-[1.04] sm:text-6xl">{title}</h2>
       {text && <p className={`mt-5 max-w-xl leading-relaxed ${dark ? "text-stone-400" : "text-stone-600"}`}>{text}</p>}
+    </div>
+  );
+}
+
+/** A static miniature of the seating planner (decorative). */
+function SeatingIllustration({ t }: { t: T }) {
+  const round = (cx: number, cy: number, label: string, filled: number) => (
+    <g key={label} transform={`translate(${cx} ${cy})`}>
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        const on = i < filled;
+        return (
+          <circle
+            key={i}
+            cx={Math.cos(a) * 52}
+            cy={Math.sin(a) * 52}
+            r={11}
+            fill={on ? "#2c2a26" : "#fff"}
+            stroke={on ? "#2c2a26" : "#a19c92"}
+            strokeWidth={1.5}
+            strokeDasharray={on ? undefined : "3 3"}
+          />
+        );
+      })}
+      <circle r={36} fill="#fff" stroke="#a19c92" strokeWidth={2} />
+      <text textAnchor="middle" y={4} fontSize={12} fontWeight={600} fill="#2c2a26">
+        {label}
+      </text>
+    </g>
+  );
+  const masa = t("Masa");
+  return (
+    <div className="rounded-3xl border border-stone-200 bg-white p-4 shadow-sm" aria-hidden>
+      <svg viewBox="0 0 520 400" className="h-auto w-full">
+        <defs>
+          <pattern id="landing-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#efeae0" strokeWidth={1} />
+          </pattern>
+          <pattern id="landing-dance" width="24" height="24" patternUnits="userSpaceOnUse">
+            <rect width="24" height="24" fill="#f8f6f1" />
+            <rect width="12" height="12" fill="#efeae0" />
+            <rect x="12" y="12" width="12" height="12" fill="#efeae0" />
+          </pattern>
+        </defs>
+        <rect width="520" height="400" rx="16" fill="#fbfaf7" />
+        <rect width="520" height="400" rx="16" fill="url(#landing-grid)" />
+        {/* head table */}
+        <g transform="translate(260 52)">
+          {[-75, -25, 25, 75].map((x) => (
+            <circle key={x} cx={x} cy={-24} r={11} fill="#2c2a26" />
+          ))}
+          <rect x={-110} y={-12} width={220} height={34} rx={8} fill="#fff" stroke="#a19c92" strokeWidth={2} />
+          <text textAnchor="middle" y={9} fontSize={12} fontWeight={600} fill="#2c2a26">
+            {t("Baş masa")}
+          </text>
+        </g>
+        {/* dance floor */}
+        <rect x={190} y={150} width={140} height={110} rx={4} fill="url(#landing-dance)" stroke="#b09d7d" strokeWidth={2} />
+        <text x={260} y={210} textAnchor="middle" fontSize={12} fontWeight={600} letterSpacing="0.08em" fill="#5a564f">
+          {t("Dans pisti").toLocaleUpperCase("tr-TR")}
+        </text>
+        {round(95, 170, `${masa} 1`, 8)}
+        {round(95, 315, `${masa} 2`, 5)}
+        {round(425, 170, `${masa} 3`, 7)}
+        {round(425, 315, `${masa} 4`, 3)}
+        {round(260, 330, `${masa} 5`, 6)}
+      </svg>
     </div>
   );
 }
@@ -356,6 +432,28 @@ export default async function HomePage() {
               <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{t(f.text)}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Seating planner */}
+      <section id="oturma-plani" className="scroll-mt-20 border-t border-stone-200 bg-stone-100/60">
+        <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 sm:py-32 lg:grid-cols-2">
+          <div>
+            <p className="text-xs tracking-[0.25em] text-stone-500 uppercase">{t("Yeni · Oturma planı")}</p>
+            <h2 className="mt-4 font-brand text-5xl leading-[1.04] sm:text-6xl">{t("Herkes doğru masada.")}</h2>
+            <p className="mt-5 max-w-xl leading-relaxed text-stone-600">
+              {t("Davetli listenizden salon planına, tek bir yerde. Masaları yerleştirin, misafirleri sürükleyin; plan siz çalıştıkça kaydedilir.")}
+            </p>
+            <div className="mt-10 grid gap-x-10 sm:grid-cols-2">
+              {SEATING_POINTS.map((p) => (
+                <div key={p.title} className="border-t border-stone-200 py-5">
+                  <h3 className="font-brand text-2xl">{t(p.title)}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{t(p.text)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <SeatingIllustration t={t} />
         </div>
       </section>
 
