@@ -7,6 +7,7 @@ import {
   FileBarChart,
   Frame,
   GraduationCap,
+  HardDrive,
   Heart,
   Minus,
   PartyPopper,
@@ -41,15 +42,16 @@ const NAV: Array<{ href: string; label: MsgKey }> = [
 ];
 
 const STEPS: Array<{ title: MsgKey; text: MsgKey }> = [
-  { title: "Kartlar masada", text: "Kartınızı panelde birkaç dakikada tasarlayın, yazdırın ve masalara yerleştirin." },
-  { title: "Misafir okutur", text: "Telefonunun kamerasını karta tutar, adını yazar ve karelerini seçer." },
-  { title: "Albüm kendiliğinden dolar", text: "Her kare, çekildiği kalitede doğrudan sizin Google Drive’ınıza ulaşır." },
+  { title: "Etkinliğinizi kurun", text: "Türünü seçin; tema, görevler ve etkinlik akışı hazır gelsin. QR kartlarınızı birkaç dakikada tasarlayıp yazdırın." },
+  { title: "Misafirler okutur, paylaşır", text: "Kartı telefonun kamerasıyla okuturlar; görevlere katılır, fotoğraf, video ve mesajlarını bırakırlar." },
+  { title: "Anılar sizde kalır", text: "Her kare orijinal kalitede Google Drive’ınıza ulaşır. Ardından öne çıkanlar videosu, fotokitap ve katılım raporu hazır." },
 ];
 
 const CALLOUTS: Array<{ icon: typeof Smartphone; title: MsgKey; text: MsgKey }> = [
   { icon: Smartphone, title: "Uygulama yok", text: "İndirme, üyelik, şifre… Hiçbiri gerekmez." },
   { icon: ScanLine, title: "Her telefonda", text: "iPhone ya da Android; telefonun kendi kamerası yeterli." },
   { icon: Timer, title: "Birkaç saniye", text: "Okut, seç, gönder. Bu kadar." },
+  { icon: HardDrive, title: "Sizin Drive’ınız", text: "Dosyalar kendi Google hesabınızda; dilediğiniz an indirin." },
 ];
 
 const OCCASIONS: Array<{ icon: typeof Heart; theme: ThemeId; title: MsgKey; text: MsgKey; chips: MsgKey[]; sample: string }> = [
@@ -95,17 +97,19 @@ const AFTER_EVENT: Array<{ icon: typeof Heart; title: MsgKey; text: MsgKey }> = 
 ];
 
 const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
-  { title: "Kartı fark eder", text: "Masada zarif bir kart ve tek cümlelik bir davet: “Bu günün karelerini bizimle paylaşın.”" },
-  { title: "Kodu okutur", text: "Kamerayı karta tutması yeterli; etkinliğinizin sayfası tek dokunuşla açılır." },
+  { title: "Kartı fark eder", text: "Masada, girişte ya da sahnede; etkinliğinizin havasında bir kart ve tek cümlelik bir davet." },
+  { title: "Kodu okutur", text: "Kamerayı karta tutması yeterli; etkinliğinizin sayfası kendi teması ve logonuzla tek dokunuşla açılır." },
   { title: "Adını yazar", text: "Üyelik yok. Sadece hangi karenin kimden geldiğini bilesiniz diye bir isim." },
-  { title: "Paylaşır", text: "Galeriden seçer ya da o an çeker: fotoğraf, video, sesli bir not." },
-  { title: "Albümde kendini bulur", text: "Diğer misafirlerin karelerine göz atar, bir selfie ile yer aldığı fotoğrafları bulur." },
+  { title: "Bir göreve katılır", text: "“Ekiple bir grup fotoğrafı” gibi küçük görevler; tamamladıkça liderlik tablosunda yükselir." },
+  { title: "Paylaşır", text: "Galeriden seçer ya da o an çeker: fotoğraf, video, sesli ya da görüntülü bir mesaj." },
+  { title: "Albümde kendini bulur", text: "Selfie ile yer aldığı kareleri bulur, sevdiklerine kalp bırakır, çerçeveli bir kopyasını paylaşır." },
 ];
 
 const CARD_OPTIONS: Array<{ title: MsgKey; text: MsgKey; note: MsgKey }> = [
-  { title: "Kart atölyesi", text: "Rengi, çerçeveyi, monogramı ve yazıyı seçin; önizleme siz değiştirdikçe güncellenir.", note: "Panelde" },
-  { title: "Baskıya hazır", text: "A6, A5 ya da bir A4’e dört kart; 300 DPI PNG veya PDF. İster evde, ister matbaada basın.", note: "PNG · PDF" },
-  { title: "Kendi tasarımınız", text: "Yalnızca QR kodu indirin; davetiyenize ya da kendi kartınıza dilediğiniz gibi yerleştirin.", note: "Tamamen size ait" },
+  { title: "Kart atölyesi", text: "On şablon; etkinlik türünüze göre önerilenler önde. Rengi, çerçeveyi ve yazıyı seçin, önizleme anında güncellenir.", note: "Panelde" },
+  { title: "Masaya özel QR", text: "Her masanın kartı kendi QR’ını taşır; yüklemeler masa numarasıyla gelir, galeri masaya göre süzülür.", note: "İsteğe bağlı" },
+  { title: "Giriş panosu", text: "Kapıya ya da sahneye tek, büyük bir QR; misafirler daha içeri girmeden paylaşmaya başlar.", note: "A4 · A3 · 50×70" },
+  { title: "Baskıya hazır", text: "A6, A5 ya da bir A4’e dört kart; 300 DPI. İsterseniz yalnızca QR’ı indirip kendi davetiyenize yerleştirin.", note: "PNG · PDF" },
 ];
 
 const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
@@ -345,48 +349,102 @@ function QrGlyph({ className = "h-20 w-20" }: { className?: string }) {
   );
 }
 
-const TILE_TONES = ["bg-stone-300", "bg-stone-200", "bg-amber-200", "bg-stone-400", "bg-stone-200", "bg-amber-100", "bg-stone-300", "bg-stone-200", "bg-amber-300"];
+const TILE_TONES = ["bg-stone-300", "bg-amber-200", "bg-stone-400", "bg-stone-200", "bg-amber-100", "bg-stone-300"];
 
+/** Decorative guest page: tasks card with progress, upload button, gallery with hearts. */
 function PhoneMock({ t }: { t: T }) {
+  const tasks: Array<[MsgKey, boolean]> = [
+    ["Ekiple bir grup fotoğrafı", true],
+    ["Sahneden bir kare", false],
+    ["Günün en komik anı", false],
+  ];
   return (
-    <div className="relative mx-auto w-[248px] rounded-[2.4rem] border border-stone-300 bg-white p-2.5 shadow-[0_30px_60px_-30px_rgba(28,27,24,0.35)]">
+    <div className="relative mx-auto w-[260px] rounded-[2.4rem] border border-stone-300 bg-white p-2.5 shadow-[0_30px_60px_-30px_rgba(28,27,24,0.35)]" aria-hidden>
       <div className="overflow-hidden rounded-[1.9rem] bg-stone-50">
-        <div className="flex flex-col items-center px-5 pt-8 pb-5 text-center">
-          <BrandMark className="h-5 w-5 text-stone-400" />
-          <p className="mt-4 text-[9px] tracking-[0.3em] text-stone-500 uppercase">{t("12 Eylül")}</p>
-          <p className="mt-1 font-brand text-2xl">Elif &amp; Can</p>
-          <div className="mt-5 w-full rounded-full bg-stone-900 py-2.5 text-[11px] text-stone-50">{t("Fotoğraf yükle")}</div>
-          <div className="mt-2 w-full rounded-full border border-stone-300 py-2.5 text-[11px] text-stone-700">{t("Albüme bak")}</div>
+        <div className="flex items-center justify-between border-b border-stone-200 bg-white px-4 pt-6 pb-3">
+          <div>
+            <p className="font-brand text-lg leading-none">Elif &amp; Can</p>
+            <p className="mt-1 text-[8px] text-stone-500">{t("12 Eylül")}</p>
+          </div>
+          <span className="rounded-full border border-stone-200 px-2 py-0.5 text-[8px] text-stone-600">Ayşe ✎</span>
         </div>
-        <div className="grid grid-cols-3 gap-0.5 px-0.5 pb-0.5">
-          {TILE_TONES.map((tone, i) => (
-            <div key={i} className={`aspect-square ${tone}`} />
-          ))}
+        <div className="space-y-2.5 p-3">
+          <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-stone-900 text-[10px] text-white">◎</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[7px] font-semibold tracking-wider text-stone-500 uppercase">{t("Görevler")}</p>
+                <p className="truncate text-[9px] text-stone-800">{t("Bir görev seçin, anı yakalayın")}</p>
+              </div>
+              <span className="rounded-full bg-stone-100 px-1.5 text-[8px] text-stone-600">1/3</span>
+            </div>
+            <div className="h-0.5 bg-stone-100">
+              <div className="h-full w-1/3 bg-stone-900" />
+            </div>
+            {tasks.map(([task, done]) => (
+              <div key={task} className="flex items-center gap-2 border-t border-stone-100 px-3 py-1.5">
+                <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] ${done ? "bg-stone-900 text-white" : "border border-stone-300"}`}>{done ? "✓" : ""}</span>
+                <span className={`flex-1 truncate text-[8.5px] ${done ? "text-stone-400" : "text-stone-700"}`}>{t(task)}</span>
+                <span className="text-[7.5px] font-semibold text-stone-900">{done ? "" : t("Katıl")}</span>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-2xl bg-stone-900 py-3 text-center text-[10px] text-stone-50">{t("Fotoğraf yükle")}</div>
+          <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-xl">
+            {TILE_TONES.map((tone, i) => (
+              <div key={i} className={`relative aspect-square ${tone}`}>
+                {i < 3 && <span className="absolute right-0.5 bottom-0.5 rounded-full bg-black/45 px-1 text-[6.5px] text-white">♥ {[12, 8, 5][i]}</span>}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function TableCard({ variant, name, monogram, t }: { variant: "classic" | "monogram" | "ink"; name: string; monogram?: string; t: T }) {
-  const ink = variant === "ink";
+/** Decorative printed card, in the palettes of the real QR templates. */
+function TableCard({
+  bg,
+  fg,
+  muted,
+  eyebrow,
+  name,
+  monogram,
+  table,
+  serif = true,
+  t,
+}: {
+  bg: string;
+  fg: string;
+  muted: string;
+  eyebrow: MsgKey;
+  name: string;
+  monogram?: string;
+  table?: number;
+  serif?: boolean;
+  t: T;
+}) {
   return (
     <div
-      className={`flex aspect-[3/4] flex-col items-center justify-between rounded-sm p-6 text-center shadow-[0_20px_40px_-28px_rgba(28,27,24,0.45)] ${
-        ink ? "bg-stone-900 text-stone-50" : "border border-stone-200 bg-white text-stone-900"
-      }`}
+      className="relative flex aspect-[3/4] flex-col items-center justify-between rounded-sm p-6 text-center shadow-[0_20px_40px_-28px_rgba(28,27,24,0.45)]"
+      style={{ backgroundColor: bg, color: fg, border: `1px solid ${muted}33` }}
     >
-      {variant === "monogram" ? (
+      {monogram ? (
         <p className="font-brand text-3xl italic">{monogram}</p>
       ) : (
-        <p className={`text-[9px] tracking-[0.3em] uppercase ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Anılarınızı paylaşın")}</p>
+        <p className="text-[9px] tracking-[0.3em] uppercase" style={{ color: muted }}>
+          {t(eyebrow)}
+        </p>
       )}
-      <div className={`rounded-sm p-2 ${ink ? "bg-stone-50 text-stone-900" : ""}`}>
+      <div className="rounded-sm bg-white p-2 text-stone-900">
         <QrGlyph className="h-20 w-20" />
       </div>
       <div>
-        <p className="font-brand text-lg">{name}</p>
-        <p className={`mt-1 text-[10px] ${ink ? "text-stone-400" : "text-stone-500"}`}>{t("Kodu okutun, karelerinizi bırakın")}</p>
+        <p className={serif ? "font-brand text-lg" : "text-base font-semibold tracking-tight"}>{name}</p>
+        <p className="mt-1 text-[10px]" style={{ color: muted }}>
+          {table ? t("Masa {n}", { n: table }) : t("Kodu okutun, karelerinizi bırakın")}
+        </p>
       </div>
     </div>
   );
@@ -472,7 +530,7 @@ export default async function HomePage() {
               </li>
             ))}
           </ol>
-          <div className="mt-14 grid gap-10 sm:grid-cols-3">
+          <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {CALLOUTS.map(({ icon: Icon, title, text }) => (
               <div key={title} className="flex gap-4">
                 <Icon className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.4} />
@@ -544,16 +602,16 @@ export default async function HomePage() {
       <section className="border-t border-stone-200 bg-stone-100/60">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
           <SectionHead title={t("Masada sessiz bir davet.")}
-            text={t("Kartınızı paneldeki atölyede tasarlayın: düğün masasından konferans salonuna, etkinliğinizin havasına uyan, baskıya hazır bir QR kart.")}
+            text={t("Etkinlik türünüze göre önerilen şablonlarla başlayın: düğün masasından konferans salonuna, masa kartı, giriş panosu ya da sadece QR; hepsi baskıya hazır.")}
           />
           <div className="mx-auto grid max-w-3xl grid-cols-3 gap-4 sm:gap-8">
-            <TableCard variant="classic" name="Elif & Can" t={t} />
+            <TableCard bg="#FFFDF8" fg="#1C1917" muted="#8a6a3f" eyebrow="Anılarınızı paylaşın" name="Elif & Can" table={4} t={t} />
             <div className="translate-y-6">
-              <TableCard variant="monogram" name="Deniz 30" monogram="D · 30" t={t} />
+              <TableCard bg="#16121F" fg="#F4F1FA" muted="#B794F6" eyebrow="Parti Anılarınız Burada" name="Deniz 30" monogram="D · 30" t={t} />
             </div>
-            <TableCard variant="ink" name="Atlas Summit ’26" t={t} />
+            <TableCard bg="#F5F7FA" fg="#0F1B2D" muted="#2F54D1" eyebrow="Etkinlik Anılarınız Burada" name="Atlas Summit ’26" serif={false} t={t} />
           </div>
-          <div className="mt-20 grid gap-px overflow-hidden border border-stone-200 bg-stone-200 md:grid-cols-3">
+          <div className="mt-20 grid gap-px overflow-hidden border border-stone-200 bg-stone-200 md:grid-cols-2 lg:grid-cols-4">
             {CARD_OPTIONS.map((o) => (
               <div key={o.title} className="bg-stone-50 p-8">
                 <p className="text-xs text-stone-500">{t(o.note)}</p>
