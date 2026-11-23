@@ -1,6 +1,6 @@
 "use client";
 
-import { BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings, Users } from "lucide-react";
+import { Armchair, BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -154,6 +154,14 @@ export function HostEventApp({ eventId }: { eventId: string }) {
                 </button>
               </li>
             ))}
+            <li>
+              <Link
+                href={`/dashboard/${event.id}/seating`}
+                className="inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium whitespace-nowrap text-stone-500 hover:text-stone-800"
+              >
+                <Armchair className="h-4 w-4" /> {t("Oturma Planı")}
+              </Link>
+            </li>
           </ul>
         </nav>
 

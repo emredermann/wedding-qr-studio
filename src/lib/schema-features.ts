@@ -29,6 +29,16 @@ export async function hasGuestDeleteColumn(): Promise<boolean> {
   return guestDelete.value;
 }
 
+let seatingPlans: { value: boolean; at: number } | null = null;
+
+/** `seating_plans` table (0006 migration). */
+export async function hasSeatingPlans(): Promise<boolean> {
+  if (seatingPlans && (seatingPlans.value || Date.now() - seatingPlans.at < RECHECK_MS)) return seatingPlans.value;
+  const { error } = await getAdminDb().from("seating_plans").select("event_id").limit(0);
+  seatingPlans = { value: !error, at: Date.now() };
+  return seatingPlans.value;
+}
+
 /** MEDIA_COLUMNS plus `table_no` when the 0004 migration has been run. */
 export async function mediaColumns(): Promise<typeof MEDIA_COLUMNS> {
   // Typed as the base list so the Supabase row types stay the same; `table_no`
