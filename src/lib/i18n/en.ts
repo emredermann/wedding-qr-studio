@@ -883,4 +883,10 @@ export const EN = {
   "kurumsal etkinlik fotoğrafları": "corporate event photos",
   "doğum günü fotoğraf albümü": "birthday photo album",
   "misafir fotoğraf ve video toplama": "collect guest photos and videos",
+  "Kalpler ve en sevilenler": "Hearts & favourites",
+  "Misafirler beğendikleri karelere kalp bırakır; galeri en sevilenlere göre sıralanır, kalpler canlı ekranda uçuşur.": "Guests leave hearts on the shots they love; the gallery sorts by favourites and hearts float across the live screen.",
+  "Etkinliği birlikte yönetin: en fazla beş kişi moderasyon ve ayarlarda size yardım eder.": "Run the event together: up to five people can help with moderation and settings.",
+  "Masaya özel QR": "Per-table QR codes",
+  "Her masanın kartında kendi QR’ı; yüklemeler masa numarasıyla kaydedilir, galeride masaya göre süzülür.": "Each table card carries its own QR; uploads are tagged with the table number and the gallery can be filtered by table.",
+  "Kalpler, ortak yöneticiler ve masaya özel QR": "Hearts, co-hosts and per-table QR codes",
 } as const;
