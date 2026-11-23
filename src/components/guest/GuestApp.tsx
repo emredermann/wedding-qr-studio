@@ -9,6 +9,7 @@ import { FaceSearchPanel } from "@/components/guest/FaceSearchPanel";
 import { GalleryPanel } from "@/components/guest/GalleryPanel";
 import { GuestbookPanel } from "@/components/guest/GuestbookPanel";
 import { ScheduleCard } from "@/components/guest/ScheduleCard";
+import { SponsorStrip } from "@/components/guest/SponsorStrip";
 import { UploadPanel } from "@/components/guest/UploadPanel";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
 import { BrandMark } from "@/components/brand/BrandMark";
@@ -138,9 +139,13 @@ export function GuestApp({ slug }: { slug: string }) {
       <main style={accentStyle} {...themeAttrs} className="eqr-safe-top relative flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
         <LanguageSwitcher className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4" />
         <div className="w-full max-w-sm text-center">
-          <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: "var(--accent)" }}>
-            <PresetIcon eventType={event.eventType} className={`h-7 w-7 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} />
-          </span>
+          {event.brand?.logoUrl ? (
+            <img src={event.brand.logoUrl} alt="" className="mx-auto mb-5 h-16 max-w-[12rem] object-contain" />
+          ) : (
+            <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: "var(--accent)" }}>
+              <PresetIcon eventType={event.eventType} className={`h-7 w-7 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} />
+            </span>
+          )}
           <p className="text-xs font-semibold tracking-[0.3em] text-stone-500 uppercase">{t("Hoş geldiniz")}</p>
           <h1 className="mt-2 font-serif text-4xl leading-tight text-stone-900">{displayName}</h1>
           {dateText && <p className="mt-2 text-sm text-stone-600">{dateText}</p>}
@@ -173,6 +178,7 @@ export function GuestApp({ slug }: { slug: string }) {
               <BrandMark className="h-4 w-4" /> {t("{brand} ile", { brand: BRAND.name })}
             </p>
           </form>
+          <SponsorStrip brand={event.brand} className="mt-8" />
         </div>
       </main>
     );
@@ -196,9 +202,12 @@ export function GuestApp({ slug }: { slug: string }) {
     <main style={accentStyle} {...themeAttrs} className="min-h-dvh bg-stone-50 pb-28">
       <header className="eqr-safe-top border-b border-stone-200/70 bg-surface/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
+            {event.brand?.logoUrl && <img src={event.brand.logoUrl} alt="" className="h-8 w-auto max-w-[2.75rem] shrink-0 object-contain sm:h-9 sm:max-w-[4.5rem]" />}
+            <div className="min-w-0">
             <h1 className="truncate font-serif text-2xl leading-tight text-stone-900">{displayName}</h1>
             {dateText && <p className="text-xs text-stone-500">{dateText}</p>}
+            </div>
           </div>
           <div className="flex min-w-0 shrink-0 items-center gap-2">
           <LanguageSwitcher />
@@ -232,6 +241,7 @@ export function GuestApp({ slug }: { slug: string }) {
           ) : event.uploadsEnabled ? (
             <ChallengesCard
               key="challenges"
+              slug={event.slug}
               challenges={event.challenges}
               doneIds={doneChallenges}
               prominent={preset.guestOrder[0] === "challenges"}
@@ -261,6 +271,7 @@ export function GuestApp({ slug }: { slug: string }) {
         {activeTab === "gallery" && <GalleryPanel event={event} recentUploads={recentUploads} guestName={guestName} guestTable={tableNo} onMessage={onMessage} />}
         {activeTab === "find" && <FaceSearchPanel event={event} onMessage={onMessage} />}
         {activeTab === "guestbook" && <GuestbookPanel event={event} guestName={guestName} tableNo={tableNo} onMessage={onMessage} />}
+        <SponsorStrip brand={event.brand} className="mt-10 mb-2" />
       </div>
 
       <nav className="eqr-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-surface/95 backdrop-blur-md">

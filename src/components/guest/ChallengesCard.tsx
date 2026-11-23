@@ -1,8 +1,9 @@
 "use client";
 
-import { Camera, Check, ChevronDown, Target } from "lucide-react";
+import { Camera, Check, ChevronDown, Target, Trophy } from "lucide-react";
 import { useState } from "react";
 
+import { MEDALS, useLeaderboard } from "@/components/guest/useLeaderboard";
 import type { Challenge } from "@/lib/event-extras";
 import { useT } from "@/lib/i18n/provider";
 
@@ -15,11 +16,13 @@ import { useT } from "@/lib/i18n/provider";
  * pitch; otherwise it starts collapsed under the schedule.
  */
 export function ChallengesCard({
+  slug,
   challenges,
   doneIds,
   prominent,
   onPick,
 }: {
+  slug: string;
   challenges: Challenge[];
   doneIds: ReadonlySet<string>;
   prominent: boolean;
@@ -27,6 +30,8 @@ export function ChallengesCard({
 }) {
   const t = useT();
   const [open, setOpen] = useState(prominent);
+  // Reloaded when this guest completes another challenge.
+  const board = useLeaderboard(slug, open && challenges.length > 0, doneIds.size);
   if (challenges.length === 0) return null;
   const done = challenges.filter((c) => doneIds.has(c.id)).length;
   const allDone = done === challenges.length;
@@ -76,6 +81,32 @@ export function ChallengesCard({
             );
           })}
         </ul>
+      )}
+
+      {open && board && (board.top.length > 0 || board.me) && (
+        <div className="border-t border-stone-100 px-4 py-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
+            <Trophy className="h-3.5 w-3.5" /> {t("Liderlik tablosu")}
+          </p>
+          {board.top.length > 0 && (
+            <ol className="space-y-1">
+              {board.top.slice(0, 5).map((entry) => (
+                <li key={entry.rank} className="flex items-center gap-2 text-sm">
+                  <span className="w-6 text-center tabular-nums">{MEDALS[entry.rank - 1] ?? `${entry.rank}.`}</span>
+                  <span className="min-w-0 flex-1 truncate text-stone-800">{entry.name || t("Misafir")}</span>
+                  <span className="text-xs tabular-nums text-stone-500">
+                    {entry.completed}/{board.totalChallenges}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {board.me && (
+            <p className="mt-2 rounded-xl bg-stone-100 px-3 py-1.5 text-xs text-stone-700">
+              {t("Siz: {rank}. sıra · {n}/{total} görev", { rank: board.me.rank, n: board.me.completed, total: board.totalChallenges })}
+            </p>
+          )}
+        </div>
       )}
     </section>
   );

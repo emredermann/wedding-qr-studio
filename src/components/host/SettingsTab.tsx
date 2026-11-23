@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { CoHostsCard } from "@/components/host/CoHostsCard";
+import { BrandKitCard } from "@/components/host/BrandKitCard";
 import { EventTypePicker, ThemeSwatches } from "@/components/host/EventPresetPickers";
+import { ShareFrameEditor } from "@/components/host/ShareFrameEditor";
 import { ChallengesEditor, ScheduleEditor } from "@/components/host/EventExtrasEditors";
 import { presetFor, themeFor, type EventModules, type EventType, type ThemeId } from "@/lib/event-presets";
 import { trackEvent } from "@/lib/client/analytics";
@@ -47,6 +49,7 @@ export function SettingsTab({
   const [eventType, setEventType] = useState<EventType | null>(event.eventType);
   const [themeId, setThemeId] = useState<ThemeId>(themeFor(event.themeId).id);
   const [modules, setModules] = useState<EventModules>(event.modules);
+  const [shareFrame, setShareFrame] = useState(event.shareFrameSettings);
   const preset = presetFor(eventType);
   const pickTheme = (id: ThemeId) => {
     setThemeId(id);
@@ -70,6 +73,7 @@ export function SettingsTab({
       const eventTypeChanged = eventType !== null && eventType !== event.eventType;
       const themeChanged = themeId !== themeFor(event.themeId).id || (event.themeId === null && eventTypeChanged);
       const modulesChanged = JSON.stringify(modules) !== JSON.stringify(event.modules);
+      const shareFrameChanged = JSON.stringify(shareFrame) !== JSON.stringify(event.shareFrameSettings);
       const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}`, {
         method: "PATCH",
         json: {
@@ -81,8 +85,10 @@ export function SettingsTab({
           ...(eventTypeChanged ? { eventType } : {}),
           ...(themeChanged ? { themeId } : {}),
           ...(modulesChanged ? { modules } : {}),
+          ...(shareFrameChanged ? { shareFrame } : {}),
         },
       });
+      const frameSkipped = shareFrameChanged && JSON.stringify(res.event.shareFrameSettings) !== JSON.stringify(shareFrame);
       const presetSkipped =
         (eventTypeChanged && res.event.eventType !== eventType) || (themeChanged && res.event.themeId !== themeId) || (modulesChanged && JSON.stringify(res.event.modules) !== JSON.stringify(modules));
       setSchedule(res.event.schedule);
@@ -92,9 +98,11 @@ export function SettingsTab({
       setEventType(res.event.eventType);
       setThemeId(themeFor(res.event.themeId).id);
       setModules(res.event.modules);
+      setShareFrame(res.event.shareFrameSettings);
       trackEvent("settings_saved");
       onSaved(res.event);
       onMessage(t("Ayarlar kaydedildi."), "success");
+      if (frameSkipped) onMessage(t("Paylaşım çerçevesi için veritabanı güncellemesi (0008) henüz çalıştırılmamış."), "info");
       if (presetSkipped) onMessage(t("Etkinlik türü, tema ve modül ayarları için veritabanı güncellemesi (0007) henüz çalıştırılmamış; diğer ayarlar kaydedildi."), "info");
     } catch (error) {
       onMessage(errorMessage(error), "error");
@@ -252,9 +260,15 @@ export function SettingsTab({
             hint={t("Açıksa her masanın kartına o masanın numarasını taşıyan ayrı bir QR basılır; yüklemeler masa numarasıyla kaydedilir ve galeride masaya göre filtrelenebilir. Kapalıysa tüm kartlarda aynı QR kullanılır.")}
           />
         </div>
+        <div className={`space-y-2 ${ui.card}`}>
+          <h3 className={ui.sectionTitle}>{t("Paylaşım çerçevesi")}</h3>
+          <ShareFrameEditor event={event} value={shareFrame} onChange={setShareFrame} />
+        </div>
         <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-sm font-semibold text-white disabled:opacity-60">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} {t("Kaydet")}
         </button>
+        {/* Only the brand changes here, so unsaved edits in the form above are kept. */}
+        <BrandKitCard event={event} onSaved={(saved) => onSaved({ ...event, brand: saved.brand })} onMessage={onMessage} />
         {event.role === "owner" && <CoHostsCard eventId={event.id} onMessage={onMessage} />}
         {event.role === "owner" && (
           <div className="rounded-3xl border border-rose-200 bg-rose-50/60 p-5">

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { HeartButton } from "@/components/media/HeartButton";
 import { Lightbox } from "@/components/media/Lightbox";
+import { useFramedShare } from "@/components/media/useFramedShare";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import type { MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
@@ -41,6 +42,7 @@ function GalleryFeed({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
+  const shareFramed = useFramedShare(event);
   const [items, setItems] = useState<MediaDto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,6 +145,7 @@ function GalleryFeed({
 
       {openIndex !== null && (
         <Lightbox
+          onShare={event.shareFrame.guestShare ? shareFramed : undefined}
           items={visible}
           index={openIndex}
           onIndexChange={setOpenIndex}

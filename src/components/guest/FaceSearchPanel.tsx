@@ -4,6 +4,7 @@ import { Camera, ImageUp, Loader2, ScanFace, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Lightbox } from "@/components/media/Lightbox";
+import { useFramedShare } from "@/components/media/useFramedShare";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
@@ -21,6 +22,7 @@ export function FaceSearchPanel({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
+  const shareFramed = useFramedShare(event);
   const [phase, setPhase] = useState<Phase>("idle");
   const [results, setResults] = useState<MediaDto[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -169,7 +171,8 @@ export function FaceSearchPanel({
       )}
 
       {openIndex !== null && (
-        <Lightbox items={results} index={openIndex} onIndexChange={setOpenIndex} onClose={() => setOpenIndex(null)} />
+        <Lightbox
+          onShare={event.shareFrame.guestShare ? shareFramed : undefined} items={results} index={openIndex} onIndexChange={setOpenIndex} onClose={() => setOpenIndex(null)} />
       )}
     </div>
   );

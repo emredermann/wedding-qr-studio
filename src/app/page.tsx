@@ -1,4 +1,21 @@
-import { ArrowRight, Briefcase, Check, GraduationCap, Heart, Minus, PartyPopper, Plus, ScanLine, Smartphone, Timer } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Briefcase,
+  Check,
+  Clapperboard,
+  FileBarChart,
+  Frame,
+  GraduationCap,
+  Heart,
+  Minus,
+  PartyPopper,
+  Plus,
+  ScanLine,
+  Smartphone,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -19,6 +36,7 @@ const NAV: Array<{ href: string; label: MsgKey }> = [
   { href: "#etkinlikler", label: "Etkinlikler" },
   { href: "#ozellikler", label: "Özellikler" },
   { href: "#karsilastirma", label: "Karşılaştırma" },
+  { href: "#paketler", label: "Paketler" },
   { href: "#sss", label: "Sorular" },
 ];
 
@@ -69,6 +87,13 @@ const OCCASIONS: Array<{ icon: typeof Heart; theme: ThemeId; title: MsgKey; text
   },
 ];
 
+const AFTER_EVENT: Array<{ icon: typeof Heart; title: MsgKey; text: MsgKey; pro: boolean }> = [
+  { icon: Clapperboard, title: "Öne çıkanlar videosu", text: "En çok kalp alan karelerden müziksiz, dikey ya da yatay kısa bir video; tek dokunuşla.", pro: false },
+  { icon: FileBarChart, title: "Katılım raporu", text: "Kaç misafir, kaç kare, en yoğun saatler, görevler ve en sevilenler; tek sayfalık PDF.", pro: false },
+  { icon: Frame, title: "Paylaşım çerçeveleri", text: "Kareler etkinlik adınızla çerçevelenerek paylaşılır; orijinaller Drive’da olduğu gibi kalır.", pro: false },
+  { icon: BookOpen, title: "Fotokitap", text: "Seçtiğiniz karelerden kapaklı, baskıya hazır bir PDF albüm; dilediğiniz matbaada bastırın.", pro: true },
+];
+
 const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Kartı fark eder", text: "Masada zarif bir kart ve tek cümlelik bir davet: “Bu günün karelerini bizimle paylaşın.”" },
   { title: "Kodu okutur", text: "Kamerayı karta tutması yeterli; etkinliğinizin sayfası tek dokunuşla açılır." },
@@ -93,6 +118,7 @@ const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Görevler", text: "Misafirlere küçük fotoğraf görevleri verin; katılım artar, albüm çeşitlenir." },
   { title: "Etkinlik akışı", text: "Saatli program; o an hangi bölüm yaşanıyorsa misafir sayfasında öne çıkar." },
   { title: "Her etkinliğe bir tema", text: "Zarif, minimal, gece ya da kurumsal; misafir sayfası ve QR kartlar etkinliğinize uyum sağlar." },
+  { title: "Görev liderlik tablosu", text: "En çok görevi tamamlayan misafirler misafir sayfasında ve canlı ekranda yarışır." },
   { title: "Kalpler ve en sevilenler", text: "Misafirler beğendikleri karelere kalp bırakır; galeri en sevilenlere göre sıralanır, kalpler canlı ekranda uçuşur." },
   { title: "Ortak yöneticiler", text: "Etkinliği birlikte yönetin: en fazla beş kişi moderasyon ve ayarlarda size yardım eder." },
   { title: "Masaya özel QR", text: "Her masanın kartında kendi QR’ı; yüklemeler masa numarasıyla kaydedilir, galeride masaya göre süzülür." },
@@ -121,7 +147,7 @@ const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
   { label: "QR masa kartı", mira: true, apps: false, shared: false },
   { label: "Oturma planı", mira: true, apps: false, shared: false },
   { label: "Dosyalar kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
-  { label: "Ücret", mira: "Ücretsiz", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
+  { label: "Ücret", mira: "Ücretsiz başlangıç", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
 ];
 
 const INCLUDED: MsgKey[] = [
@@ -136,6 +162,17 @@ const INCLUDED: MsgKey[] = [
   "Onay modu ve kategoriler",
   "Tüm albümü tek seferde indirme",
   "Depolama kendi Google Drive’ınızda",
+  "Görev liderlik tablosu",
+  "Öne çıkanlar videosu ve katılım raporu",
+  "Paylaşım çerçeveleri (küçük Mira işaretiyle)",
+];
+
+const PRO_INCLUDED: MsgKey[] = [
+  "Ücretsiz paketteki her şey",
+  "Marka kiti: etkinlik logosu ve sponsor logoları",
+  "Logonuz misafir sayfasında, canlı ekranda ve videoda",
+  "İşaretsiz, kendi yazınız ve logonuzla paylaşım çerçeveleri",
+  "Baskıya hazır fotokitap (PDF)",
 ];
 
 const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
@@ -160,7 +197,10 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
     a: "Misafir bir selfie çeker; eşleştirme tamamen kendi telefonunda yapılır. Selfie hiçbir yere gönderilmez, saklanmaz.",
   },
   { q: "İstemediğim bir fotoğraf yüklenirse?", a: "Panelden tek dokunuşla gizleyebilir ya da silebilirsiniz. Onay modunu açarsanız, siz onaylamadıkça hiçbir kare görünmez." },
-  { q: "Ücreti ne kadar?", a: "Ücretsiz. Dosyalar kendi Google Drive’ınızda durduğu için ek bir maliyet de yok; alanınız Drive kotanız kadardır." },
+  {
+    q: "Ücreti ne kadar?",
+    a: "Temel özelliklerin tamamı ücretsiz; misafir ya da kare sınırı yok. Pro paket marka kiti, fotokitap ve işaretsiz çerçeveler ekler. Dosyalar kendi Google Drive’ınızda durduğu için depolama da size ek maliyet çıkarmaz.",
+  },
 ];
 
 /* --------------------------------------------------------------- primitives */
@@ -560,6 +600,28 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* After the event */}
+      <section className="border-t border-stone-200 bg-stone-100/60">
+        <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+          <SectionHead
+            title={t("Etkinlik bitince de bitmez.")}
+            text={t("Kareler toplandıktan sonra onları paylaşmanın, saklamanın ve ölçmenin en kolay yolu.")}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {AFTER_EVENT.map(({ icon: Icon, title, text, pro }) => (
+              <article key={title} className="flex flex-col gap-4 rounded-3xl border border-stone-200 bg-white p-6">
+                <div className="flex items-center justify-between">
+                  <Icon className="h-5 w-5 text-stone-400" strokeWidth={1.4} />
+                  {pro && <span className="rounded-full bg-stone-900 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-stone-50 uppercase">Pro</span>}
+                </div>
+                <h3 className="font-brand text-2xl leading-tight">{t(title)}</h3>
+                <p className="text-sm leading-relaxed text-stone-600">{t(text)}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Comparison */}
       <section id="karsilastirma" className="scroll-mt-20 border-t border-stone-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
@@ -599,28 +661,57 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <SectionHead title={t("Tek paket. Ücretsiz.")} />
-        <div className="grid overflow-hidden border border-stone-200 bg-white md:grid-cols-[1fr_1.4fr]">
-          <div className="flex flex-col justify-between gap-10 border-b border-stone-200 p-10 md:border-r md:border-b-0">
+      {/* Pricing: Free and Pro */}
+      <section id="paketler" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-24 sm:py-32">
+        <SectionHead
+          title={t("Ücretsiz başlayın. Pro ile markalayın.")}
+          text={t("Misafir sayısı, kare sayısı ya da süre sınırı yok; dosyalarınız her pakette kendi Google Drive’ınızda.")}
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-8 rounded-3xl border border-stone-200 bg-white p-8 sm:p-10">
             <div>
-              <p className="text-sm text-stone-500">{t("Her şey dahil")}</p>
-              <p className="mt-6 font-brand text-7xl">{t("0 ₺")}</p>
-              <p className="mt-3 text-sm text-stone-600">{t("Abonelik yok, gizli ücret yok, kilitli özellik yok. Dosyalarınız kendi Google Drive’ınızda.")}</p>
+              <p className="text-sm text-stone-500">{t("Ücretsiz")}</p>
+              <p className="mt-4 font-brand text-7xl">{t("0 ₺")}</p>
+              <p className="mt-3 text-sm text-stone-600">{t("Kredi kartı yok, deneme süresi yok. Etkinliğinizi hemen kurun.")}</p>
             </div>
+            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-700">
+              {INCLUDED.map((i) => (
+                <li key={i} className="flex gap-3">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
+                  {t(i)}
+                </li>
+              ))}
+            </ul>
             <div>
               <PrimaryCta>{t("Hemen başlayın")}</PrimaryCta>
             </div>
           </div>
-          <ul className="grid content-center gap-x-8 gap-y-4 p-10 sm:grid-cols-2">
-            {INCLUDED.map((i) => (
-              <li key={i} className="flex gap-3 text-sm text-stone-700">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
-                {t(i)}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-8 rounded-3xl bg-stone-900 p-8 text-stone-50 sm:p-10">
+            <div>
+              <p className="inline-flex items-center gap-1.5 text-sm text-stone-400">
+                <Sparkles className="h-4 w-4" strokeWidth={1.5} /> Pro
+              </p>
+              <p className="mt-4 font-brand text-5xl leading-tight sm:text-6xl">{t("Markanızla")}</p>
+              <p className="mt-3 text-sm text-stone-400">{t("Kurumsal etkinlikler, organizatörler ve markasını öne çıkarmak isteyenler için.")}</p>
+            </div>
+            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-200">
+              {PRO_INCLUDED.map((i) => (
+                <li key={i} className="flex gap-3">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" strokeWidth={1.75} />
+                  {t(i)}
+                </li>
+              ))}
+            </ul>
+            <div>
+              <a
+                href={BRAND.salesContact || "/login"}
+                className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
+              >
+                {t("Pro için iletişime geçin")}
+                <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 

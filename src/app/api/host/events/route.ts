@@ -8,6 +8,7 @@ import { normaliseEventType, presetFor, themeFor } from "@/lib/event-presets";
 import { hasEventPresetColumns } from "@/lib/schema-features";
 import { randomSlugSuffix } from "@/lib/slug";
 import { getHostUser } from "@/lib/host-auth";
+import { planForUser } from "@/lib/host-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { createEventSchema } from "@/lib/validation";
@@ -54,7 +55,7 @@ export async function GET() {
       role: row.owner_id === host.id ? "owner" : "cohost",
       createdAt: row.created_at,
     }));
-    return jsonOk({ items });
+    return jsonOk({ items, plan: await planForUser(host.id) });
   } catch (error) {
     return handleRouteError("host:events:list", error);
   }
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
       });
       if (!added.ok) coHostsNotAdded.push(username);
     }
-    return jsonOk<{ event: HostEventDto; coHostsNotAdded: string[] }>({ event: toHostEventDto(event), coHostsNotAdded }, 201);
+    return jsonOk<{ event: HostEventDto; coHostsNotAdded: string[] }>({ event: toHostEventDto(event, "owner", await planForUser(host.id)), coHostsNotAdded }, 201);
   } catch (error) {
     return handleRouteError("host:events:create", error);
   }

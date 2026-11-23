@@ -1,5 +1,7 @@
 import type { Challenge, ScheduleItem } from "@/lib/event-extras";
+import type { BrandDto, ShareFrameDto, ShareFrameSettings } from "@/lib/branding";
 import type { EventModules, EventType, ThemeId } from "@/lib/event-presets";
+import type { Plan } from "@/lib/plans";
 
 /**
  * Domain types shared by API routes (server) and pages (client).
@@ -52,6 +54,10 @@ export interface EventRow {
   theme_id?: string | null;
   /** Module switches jsonb (0007 migration); read through `readModules`. */
   modules?: unknown;
+  /** Brand kit jsonb (0008 migration); read through `readBranding`. */
+  branding?: unknown;
+  /** Share frame jsonb (0008 migration); read through `readShareFrame`. */
+  share_frame?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +126,12 @@ export interface PublicEventDto {
   themeId: ThemeId | null;
   /** Host module switches. On the public DTO a switched-off module also arrives empty. */
   modules: EventModules;
+  /** The event owner's package (co-hosts act under it). */
+  plan: Plan;
+  /** Brand kit (Pro); null when not set or on the free package. */
+  brand: BrandDto | null;
+  /** Frame for share/download copies (Pro options already applied). */
+  shareFrame: ShareFrameDto;
 }
 
 /** Host-facing event info (includes Drive links and stats). */
@@ -131,6 +143,8 @@ export interface HostEventDto extends PublicEventDto {
   driveAccount: "app" | "host";
   /** Whether hosts see who hearted each item. */
   heartsNamed: boolean;
+  /** Saved frame settings, before Pro options are applied (for the editor). */
+  shareFrameSettings: ShareFrameSettings;
   createdAt: string;
   updatedAt: string;
 }

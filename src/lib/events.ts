@@ -2,7 +2,9 @@ import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
 import { readChallenges, readSchedule, withKnownCategories } from "@/lib/event-extras";
+import { brandForPlan, readBranding, readShareFrame, shareFrameForPlan } from "@/lib/branding";
 import { normaliseEventType, normaliseThemeId, readModules } from "@/lib/event-presets";
+import type { Plan } from "@/lib/plans";
 import { getAdminDb } from "@/lib/supabase/server";
 import type {
   EventRow,
@@ -20,7 +22,7 @@ export const MEDIA_COLUMNS =
   "id, event_id, drive_file_id, kind, mime_type, size_bytes, original_name, guest_name, guest_session_id, note, category, challenge_id, heart_count, is_guestbook, status, width, height, face_count, published_at, created_at";
 
 /** Host view: every saved schedule item and challenge, even while its module is switched off. */
-function toEventDto(event: EventRow): PublicEventDto {
+function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
   return {
     slug: event.slug,
     title: event.title,
@@ -40,12 +42,15 @@ function toEventDto(event: EventRow): PublicEventDto {
     eventType: normaliseEventType(event.event_type),
     themeId: normaliseThemeId(event.theme_id),
     modules: readModules(event.modules),
+    plan,
+    brand: brandForPlan(event.slug, readBranding(event.branding), plan),
+    shareFrame: shareFrameForPlan(readShareFrame(event.share_frame), plan),
   };
 }
 
 /** Guest view: a module the host switched off arrives empty, so no guest screen shows it. */
-export function toPublicEventDto(event: EventRow): PublicEventDto {
-  const dto = toEventDto(event);
+export function toPublicEventDto(event: EventRow, plan: Plan): PublicEventDto {
+  const dto = toEventDto(event, plan);
   return {
     ...dto,
     schedule: dto.modules.schedule ? dto.schedule : [],
@@ -53,9 +58,10 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
   };
 }
 
-export function toHostEventDto(event: EventRow, role: HostEventDto["role"] = "owner"): HostEventDto {
+export function toHostEventDto(event: EventRow, role: HostEventDto["role"], plan: Plan): HostEventDto {
   return {
-    ...toEventDto(event),
+    ...toEventDto(event, plan),
+    shareFrameSettings: readShareFrame(event.share_frame),
     id: event.id,
     role,
     driveFolderUrl: driveFolderUrl(event.drive_folder_id),

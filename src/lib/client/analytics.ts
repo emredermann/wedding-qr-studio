@@ -23,6 +23,10 @@ export interface AnalyticsEvents {
   guestbook_recording_sent: { kind: "audio" | "video" };
   original_downloaded: { kind: MediaKind };
   zip_downloaded: { scope: "host"; files: number };
+  framed_copy_shared: { result: "shared" | "downloaded" };
+  highlights_exported: { slides: number };
+  photobook_exported: { pages: number };
+  report_exported: Record<string, never>;
   // Host
   host_signed_in: Record<string, never>;
   drive_connect_started: Record<string, never>;

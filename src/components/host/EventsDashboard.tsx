@@ -15,6 +15,8 @@ import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { newExtraId, type Challenge, type ScheduleItem } from "@/lib/event-extras";
 import { EVENT_PRESETS, presetFor, type EventType, type ThemeId } from "@/lib/event-presets";
+import type { Plan } from "@/lib/plans";
+import { ProBadge } from "@/components/host/ProGate";
 import type { DriveConnectionStatusDto, HostEventDto, HostEventListItem } from "@/types/domain";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { ui } from "@/components/ui/styles";
@@ -24,6 +26,7 @@ export function EventsDashboard() {
   const t = useT();
   const { lang, locale } = useLang();
   const [events, setEvents] = useState<HostEventListItem[] | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: "", coupleNames: "", eventDate: "", slug: "" });
@@ -81,8 +84,11 @@ export function EventsDashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch<{ items: HostEventListItem[] }>("/api/host/events");
-        if (!cancelled) setEvents(res.items);
+        const res = await apiFetch<{ items: HostEventListItem[]; plan: Plan }>("/api/host/events");
+        if (!cancelled) {
+          setEvents(res.items);
+          setPlan(res.plan);
+        }
       } catch (err) {
         if (!cancelled) setError(errorMessage(err));
       }
@@ -136,7 +142,14 @@ export function EventsDashboard() {
       <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1fr_22rem]">
         <section>
           <DriveConnectionCard status={drive} onChanged={() => setDriveReload((n) => n + 1)} />
-          <h1 className="mb-4 font-serif text-3xl text-stone-900">{t("Etkinliklerim")}</h1>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h1 className="font-serif text-3xl text-stone-900">{t("Etkinliklerim")}</h1>
+            {plan && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600">
+                {t("Paketiniz:")} {plan === "pro" ? <ProBadge /> : <strong className="font-semibold text-stone-800">{t("Ücretsiz")}</strong>}
+              </span>
+            )}
+          </div>
           {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
           {!events && !error && (
             <div className="flex justify-center py-16 text-stone-400">

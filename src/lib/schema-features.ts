@@ -49,6 +49,20 @@ export async function hasEventPresetColumns(): Promise<boolean> {
   return eventPresets.value;
 }
 
+let brandingColumns: { value: boolean; at: number } | null = null;
+
+/** `events.branding`, `share_frame` and the `event_brand_assets` table (0008 migration). */
+export async function hasBrandingColumns(): Promise<boolean> {
+  if (brandingColumns && (brandingColumns.value || Date.now() - brandingColumns.at < RECHECK_MS)) return brandingColumns.value;
+  const db = getAdminDb();
+  const [columns, assets] = await Promise.all([
+    db.from("events").select("branding, share_frame").limit(0),
+    db.from("event_brand_assets").select("event_id").limit(0),
+  ]);
+  brandingColumns = { value: !columns.error && !assets.error, at: Date.now() };
+  return brandingColumns.value;
+}
+
 /** MEDIA_COLUMNS plus `table_no` when the 0004 migration has been run. */
 export async function mediaColumns(): Promise<typeof MEDIA_COLUMNS> {
   // Typed as the base list so the Supabase row types stay the same; `table_no`
