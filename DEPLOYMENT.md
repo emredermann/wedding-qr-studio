@@ -33,7 +33,7 @@ npm run user -- plan <kullanici-adi> free             # Ücretsiz pakete al
 npm run user -- list                                  # paketleri de gösterir
 ```
 
-Pro'da: marka kiti, fotokitap PDF'i, işaretsiz ve özel yazılı paylaşım çerçeveleri. Değişiklik en geç 1 dakikada yansır. "Pro'ya geçin" düğmelerinin nereye gideceğini `NEXT_PUBLIC_SALES_CONTACT` (`mailto:…` ya da `https://…`) belirler; boşsa düğmeler giriş sayfasına gider ve panelde "bizimle iletişime geçin" yazar.
+**Pro gerektirenler:** yeni etkinlik oluşturmak ve mevcut etkinliklerin ayarlarını değiştirmek (Ayarlar sekmesi, marka kiti, paylaşım çerçevesi, ortak yöneticiler, "yüklemeleri aç/kapat"). Ücretsiz hesap moderasyon, galeri, indirme, QR kartları, oturma planı, canlı ekran, öne çıkanlar, fotokitap ve raporu kullanmaya devam eder; etkinliğini silebilir. Ortak yöneticiler etkinlik sahibinin paketine tabidir. **Yayına almadan önce kendi hesabınıza Pro atayın**, yoksa siz de yeni etkinlik oluşturamazsınız. Değişiklik en geç 1 dakikada yansır. "Pro'ya geçin" düğmelerinin nereye gideceğini `NEXT_PUBLIC_SALES_CONTACT` (`mailto:…` ya da `https://…`) belirler; boşsa düğmeler giriş sayfasına gider ve panelde "bizimle iletişime geçin" yazar.
 3. **Project Settings → API** sayfasındaki değerleri `.env.local` dosyasına kopyalayın:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` / *publishable* key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
