@@ -193,6 +193,8 @@ export interface GuestInput {
   dietary?: string | null;
   rsvp?: Rsvp;
   note?: string | null;
+  /** Party size from an imported list (used by invitations, ignored by seating). */
+  party?: number;
 }
 
 const clean = (v: string | null | undefined, max: number) => {
@@ -303,4 +305,82 @@ export function newNames(plan: SeatingPlan, names: string[]): string[] {
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------- invitation replies
+
+export interface RsvpSeatPerson {
+  link: string;
+  inviteeId: string;
+  name: string;
+  group: string | null;
+  dietary: string | null;
+}
+
+/** Stable guest id for an RSVP seat: "r" + 20 hex of the invitee uuid + index. */
+export function rsvpGuestId(inviteeId: string, index: number): string {
+  return `r${inviteeId.replace(/-/g, "").slice(0, 20).toLowerCase()}${index.toString(36)}`;
+}
+
+export interface RsvpSyncResult {
+  plan: SeatingPlan;
+  added: number;
+  updated: number;
+  removed: number;
+  /** Names of removed guests who had a seat (their reply changed). */
+  unseated: string[];
+}
+
+/**
+ * Makes the plan's RSVP guests match the replies: adds new people, updates
+ * names / groups / dietary notes, and removes people no longer coming (a
+ * declined or smaller reply). Guests added by hand are never touched.
+ * Deterministic (ids derive from the invitee), so it can run in a reducer;
+ * returns the same plan object when nothing changes.
+ */
+export function syncRsvpGuests(plan: SeatingPlan, people: RsvpSeatPerson[]): RsvpSyncResult {
+  const wanted = new Map(people.map((p) => [p.link, p]));
+  let added = 0;
+  let updated = 0;
+  const unseated: string[] = [];
+  const seen = new Set<string>();
+  const guests: SeatingGuest[] = [];
+  for (const g of plan.guests) {
+    if (!g.link) {
+      guests.push(g);
+      continue;
+    }
+    const person = wanted.get(g.link);
+    if (!person || seen.has(g.link)) {
+      if (g.seat) unseated.push(g.name);
+      continue;
+    }
+    seen.add(g.link);
+    const name = person.name.slice(0, 80);
+    const group = person.group?.slice(0, 40) || null;
+    const dietary = person.dietary?.slice(0, 80) || null;
+    if (g.name !== name || g.group !== group || g.dietary !== dietary || g.rsvp !== "yes") {
+      updated += 1;
+      guests.push({ ...g, name, group, dietary, rsvp: "yes" });
+    } else guests.push(g);
+  }
+  const removed = plan.guests.length - guests.length;
+  for (const p of people) {
+    if (seen.has(p.link) || guests.length >= SEATING_LIMITS.guests) continue;
+    seen.add(p.link);
+    const index = Number(p.link.split(":")[2]);
+    guests.push({
+      id: rsvpGuestId(p.inviteeId, index),
+      name: p.name.slice(0, 80),
+      group: p.group?.slice(0, 40) || null,
+      dietary: p.dietary?.slice(0, 80) || null,
+      rsvp: "yes",
+      note: null,
+      seat: null,
+      link: p.link,
+    });
+    added += 1;
+  }
+  if (!added && !updated && !removed) return { plan, added, updated, removed, unseated };
+  return { plan: { ...plan, guests }, added, updated, removed, unseated };
 }

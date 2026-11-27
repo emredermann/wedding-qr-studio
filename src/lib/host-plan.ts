@@ -31,6 +31,7 @@ export async function planForUser(userId: string): Promise<Plan> {
 const PRO_REQUIRED: Record<ProFeature, string> = {
   createEvent: "Yeni etkinlik oluşturmak için Pro paket gerekir.",
   editSettings: "Etkinlik ayarlarını değiştirmek için Pro paket gerekir.",
+  invitations: "Davetiye modülü Pro pakete dahildir.",
 };
 
 /**

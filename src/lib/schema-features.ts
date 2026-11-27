@@ -69,3 +69,17 @@ export async function mediaColumns(): Promise<typeof MEDIA_COLUMNS> {
   // is an optional field of MediaItemRow.
   return ((await hasTableNoColumn()) ? `${MEDIA_COLUMNS}, table_no` : MEDIA_COLUMNS) as typeof MEDIA_COLUMNS;
 }
+
+let invitations: { value: boolean; at: number } | null = null;
+
+/** `invitation_settings` and `invitees` tables (0009 migration). */
+export async function hasInvitations(): Promise<boolean> {
+  if (invitations && (invitations.value || Date.now() - invitations.at < RECHECK_MS)) return invitations.value;
+  const db = getAdminDb();
+  const [a, b] = await Promise.all([
+    db.from("invitation_settings").select("event_id").limit(0),
+    db.from("invitees").select("id").limit(0),
+  ]);
+  invitations = { value: !a.error && !b.error, at: Date.now() };
+  return invitations.value;
+}

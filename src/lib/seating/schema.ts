@@ -42,6 +42,8 @@ export interface SeatingGuest {
   rsvp: Rsvp;
   note: string | null;
   seat: SeatRef | null;
+  /** Set for guests that come from an invitation reply: "inv:<inviteeId>:<index>". */
+  link?: string | null;
 }
 
 export interface SeatingTable {
@@ -113,6 +115,12 @@ const guestSchema = z.object({
   seat: z
     .object({ tableId: id, seat: z.number().int().min(0).max(SEATING_LIMITS.maxSeats - 1) })
     .nullish()
+    .transform((v) => v ?? null),
+  link: z
+    .string()
+    .regex(/^inv:[0-9a-f-]{36}:\d{1,2}$/)
+    .nullish()
+    .catch(null)
     .transform((v) => v ?? null),
 });
 
