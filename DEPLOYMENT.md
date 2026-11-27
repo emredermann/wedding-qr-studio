@@ -153,6 +153,7 @@ Kodda hiçbir Client ID, Secret, Token veya Folder ID sabit olarak yazılı değ
 2. **Environment Variables** bölümüne `.env.local` içindeki **tüm** anahtarları ekleyin:
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, `APP_SECRET`
    (Kendi alan adınızı kullanacaksanız `NEXT_PUBLIC_APP_URL=https://alanadiniz.com` de ekleyin.)
+   (İsteğe bağlı, Google'da görünürlük için: Google Search Console'da sitenizi “URL öneki” ile ekleyip “HTML etiketi” doğrulamasını seçin; verilen etiketteki `content` değerini `GOOGLE_SITE_VERIFICATION` olarak ekleyin ve yeniden yayınlayın. Ardından Search Console'da `sitemap.xml` gönderin.)
    (İsteğe bağlı: davetiye ürünü için ayrı bir alan adı kullanacaksanız, ör. `davetiye.alanadiniz.com`, bu alan adını da Vercel projesine ekleyin ve `INVITE_HOST=davetiye.alanadiniz.com` tanımlayın. O alan adının ana sayfası davetiye tanıtım sayfasını gösterir; giriş ve panel ana alan adınızda açılır.)
 3. **Deploy**’a basın. Sonraki her `git push` otomatik olarak yeniden deploy edilir.
 4. Supabase → **Authentication → URL Configuration**:

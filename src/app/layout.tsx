@@ -6,6 +6,7 @@ import { Geist, Instrument_Serif } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import { getServerLang, getServerT } from "@/lib/i18n/server";
+import { siteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -24,9 +25,11 @@ const display = Instrument_Serif({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getServerT();
+  const { t, lang } = await getServerT();
   const description = t(BRAND.description);
   return {
+    // Absolute URLs for canonical links, the sitemap and social previews.
+    metadataBase: new URL(siteUrl()),
     title: {
       // Browser tab shows only the brand name; the tagline stays in social previews.
       default: BRAND.name,
@@ -42,8 +45,12 @@ export async function generateMetadata(): Promise<Metadata> {
       t("doğum günü fotoğraf albümü"),
       t("misafir fotoğraf ve video toplama"),
     ],
-    openGraph: { type: "website", siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description },
-    twitter: { card: "summary", title: BRAND.name, description },
+    openGraph: { type: "website", siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description, locale: lang === "en" ? "en_US" : "tr_TR" },
+    twitter: { card: "summary_large_image", title: BRAND.name, description },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
+    formatDetection: { telephone: false, email: false, address: false },
+    // Search Console ownership (optional): set GOOGLE_SITE_VERIFICATION to the token Google gives.
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
   };
 }
 

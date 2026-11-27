@@ -6,7 +6,7 @@ import { getServerT } from "@/lib/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerT();
-  return { title: t("Giriş") };
+  return { title: t("Giriş"), robots: { index: false, follow: true } };
 }
 
 export default function LoginPage() {
