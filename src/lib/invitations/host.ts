@@ -9,6 +9,7 @@ import { sheetUrl } from "@/lib/drive";
 import { designOf, invitationsUnavailable, listInvitees, loadSettings, viewEvent } from "@/lib/invitations/server";
 import { summarise, type InvitationSettingsRow, type InvitationsDto } from "@/lib/invitations/model";
 import { hasFeature } from "@/lib/plans";
+import { hasInviteSending } from "@/lib/schema-features";
 
 /** Host or co-host access + tables present (+ Pro for writes). Returns the event or a response. */
 export async function invitationAccess(eventId: string, opts: { write?: boolean } = {}) {
@@ -38,10 +39,11 @@ export function settingsDto(s: InvitationSettingsRow): InvitationsDto["settings"
     openToken: s.open_token,
     openMaxParty: s.open_max_party,
     sheet: { url: s.sheet_id ? sheetUrl(s.sheet_id) : null, syncedAt: s.sheet_synced_at, pending: dirty > synced, error: s.sheet_error, lang: s.sheet_lang },
+    messageTemplate: s.message_template ?? null,
   };
 }
 
 export async function invitationsDto(event: Parameters<typeof viewEvent>[0]): Promise<InvitationsDto> {
-  const [settings, invitees, plan] = await Promise.all([loadSettings(event.id), listInvitees(event.id), planForUser(event.owner_id)]);
-  return { settings: settingsDto(settings), invitees, summary: summarise(invitees), pro: hasFeature(plan, "invitations"), event: viewEvent(event) };
+  const [settings, invitees, plan, sendingReady] = await Promise.all([loadSettings(event.id), listInvitees(event.id), planForUser(event.owner_id), hasInviteSending()]);
+  return { settings: settingsDto(settings), invitees, summary: summarise(invitees), pro: hasFeature(plan, "invitations"), sendingReady, event: viewEvent(event) };
 }

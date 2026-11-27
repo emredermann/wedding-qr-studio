@@ -5,6 +5,7 @@ import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/ht
 import { invitationAccess, invitationsDto, requestOrigin } from "@/lib/invitations/host";
 import { INVITE_LIMITS, inviteeInputSchema, newToken, type InvitationsDto } from "@/lib/invitations/model";
 import { scheduleSheetSync } from "@/lib/invitations/server";
+import { hasInviteSending } from "@/lib/schema-features";
 import { getAdminDb } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest, context: Ctx) {
     if ((count ?? 0) + parsed.data.invitees.length > INVITE_LIMITS.invitees) {
       return jsonError(409, "INVITEE_LIMIT", `Bir etkinlikte en fazla ${INVITE_LIMITS.invitees} davetiye bağlantısı olabilir.`);
     }
+    const withPhone = await hasInviteSending();
     const base = Date.now();
     const rows = parsed.data.invitees.map((i, n) => ({
       event_id: access.event.id,
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest, context: Ctx) {
       group_name: i.group,
       max_party: i.maxParty,
       host_note: i.note,
+      ...(withPhone && i.phone ? { phone: i.phone } : {}),
       // Keep the pasted order (created_at is the list order).
       created_at: new Date(base + n).toISOString(),
     }));

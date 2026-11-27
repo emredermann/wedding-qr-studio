@@ -195,6 +195,8 @@ export interface GuestInput {
   note?: string | null;
   /** Party size from an imported list (used by invitations, ignored by seating). */
   party?: number;
+  /** Phone from an imported list (used by invitations, ignored by seating). */
+  phone?: string;
 }
 
 const clean = (v: string | null | undefined, max: number) => {
