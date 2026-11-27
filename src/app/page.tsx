@@ -487,13 +487,13 @@ function CompareCell({ value, strong = false, t }: { value: Cell; strong?: boole
 export async function generateMetadata(): Promise<Metadata> {
   const { t, lang } = await getServerT();
   const social = socialDefaults(lang);
-  const title = t("Mira | QR Kodla Düğün ve Etkinlik Fotoğraf Albümü, Dijital Davetiye");
+  // Search results, the browser tab and share cards all show just the brand name.
+  const title = BRAND.name;
   const description = t(
     "Misafirleriniz QR kodu okutur; düğün, nişan ve etkinlik fotoğraf ve videoları uygulama indirmeden, orijinal kalitede Google Drive’ınıza gelir. Dijital davetiye, LCV ve oturma planı da Mira’da.",
   );
   return {
-    // Search results and the browser tab show just the brand name.
-    title: { absolute: BRAND.name },
+    title: { absolute: title },
     description,
     alternates: { canonical: "/" },
     openGraph: { ...social.openGraph, url: "/", title, description },
