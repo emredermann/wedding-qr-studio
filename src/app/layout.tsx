@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
       t("doğum günü fotoğraf albümü"),
       t("misafir fotoğraf ve video toplama"),
     ],
-    openGraph: { type: "website", siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description, locale: lang === "en" ? "en_US" : "tr_TR" },
+    openGraph: { type: "website", siteName: BRAND.name, title: BRAND.name, description, locale: lang === "en" ? "en_US" : "tr_TR" },
     twitter: { card: "summary_large_image", title: BRAND.name, description },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
     formatDetection: { telephone: false, email: false, address: false },
