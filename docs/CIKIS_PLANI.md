@@ -94,7 +94,7 @@ BACKUP_PASSPHRASE='uzun-rastgele-bir-parola' \
 
 - `DATABASE_URL`: Supabase → Project Settings → Database → Connection string → **Session pooler** URI.
 - `pg_dump` sürümü sunucununkiyle aynı ya da daha yeni olmalı (Supabase'in yeni projeleri Postgres 17). Gerekirse `PG_DUMP=/usr/lib/postgresql/17/bin/pg_dump`.
-- Yedekte neler var: tüm uygulama tabloları (etkinlikler, medya kayıtları, anı defteri, kalpler, yüz vektörleri, ortak yöneticiler, kotalar, Drive bağlantıları) ve etkinlik sahibi hesapları (`auth.users`, `auth.identities`). Şema zaten `supabase/migrations/` içinde olduğu için yalnızca veri alınır.
+- Yedekte neler var: tüm uygulama tabloları (etkinlikler, medya kayıtları, anı defteri, kalpler, yüz vektörleri, ortak yöneticiler, kotalar, Drive bağlantıları, oturma planları, marka logoları ve çerçeveler) ve etkinlik sahibi hesapları (`auth.users`, `auth.identities`). Şema zaten `supabase/migrations/` içinde olduğu için yalnızca veri alınır.
 - **Yedek kişisel veri içerir** (isimler, notlar, yüz vektörleri). Her zaman `BACKUP_PASSPHRASE` ile şifrele ve parolayı ayrı bir yerde (parola yöneticisi) sakla; parola olmadan yedek açılamaz. `backups/` klasörü git'e girmez.
 
 ### Otomatik haftalık yedek (GitHub Actions)
