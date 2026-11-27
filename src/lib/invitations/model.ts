@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { csvCell } from "../csv.ts";
 import { normalisePhone } from "../phone.ts";
 
 /**
@@ -384,9 +385,8 @@ export function smsUrl(phone: string, text: string): string {
 
 /** Invitations as a CSV (Excel opens it: semicolons + BOM). */
 export function invitationsCsv(rows: Array<{ name: string; group: string; phone: string; maxParty: number; status: string; sent: string; link: string }>, header: string[]): string {
-  const cell = (v: string) => (/[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : /^[=+\-@]/.test(v) ? `'${v}` : v);
-  const lines = [header.map(cell).join(";")];
-  for (const r of rows) lines.push([r.name, r.group, r.phone, String(r.maxParty), r.status, r.sent, r.link].map(cell).join(";"));
+  const lines = [header.map(csvCell).join(";")];
+  for (const r of rows) lines.push([r.name, r.group, r.phone, String(r.maxParty), r.status, r.sent, r.link].map(csvCell).join(";"));
   return "\ufeff" + lines.join("\r\n");
 }
 
