@@ -13,7 +13,7 @@ import { OverviewTab } from "@/components/host/OverviewTab";
 import { QrCardDesigner } from "@/components/host/QrCardDesigner";
 import { SettingsTab } from "@/components/host/SettingsTab";
 import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
-import { apiFetch, errorMessage } from "@/lib/client/api";
+import { apiFetch, ApiError, errorMessage } from "@/lib/client/api";
 import type { EventStatsDto, HostEventDto } from "@/types/domain";
 import { useLang, useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
@@ -121,6 +121,8 @@ export function HostEventApp({ eventId }: { eventId: string }) {
   }
 
   const { event, stats } = data;
+  // Invitation-only event: only Settings applies until the album is opened.
+  const view: Tab = event.albumOpen ? tab : "settings";
   const guestUrl = `${origin}/e/${event.slug}`;
   const dateText = event.eventDate
     ? new Date(`${event.eventDate}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
@@ -153,15 +155,17 @@ export function HostEventApp({ eventId }: { eventId: string }) {
           <Armchair className="h-5 w-5 shrink-0 text-stone-400" />
         </Link>
 
+        {!event.albumOpen && <AlbumClosedCard event={event} onOpened={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
+
         <nav className="-mx-4 mt-5 mb-6 overflow-x-auto border-b border-stone-200 px-4">
           <ul className="flex gap-1">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {TABS.filter(({ id }) => event.albumOpen || id === "settings").map(({ id, label, icon: Icon }) => (
               <li key={id}>
                 <button
                   type="button"
                   onClick={() => setTab(id)}
                   className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap ${
-                    tab === id ? "border-stone-900 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-800"
+                    view === id ? "border-stone-900 text-stone-900" : "border-transparent text-stone-500 hover:text-stone-800"
                   }`}
                 >
                   <Icon className="h-4 w-4" /> {t(label)}
@@ -182,17 +186,65 @@ export function HostEventApp({ eventId }: { eventId: string }) {
           </ul>
         </nav>
 
-        {tab === "overview" && <OverviewTab event={event} stats={stats} guestUrl={guestUrl} onToggleUploads={toggleUploads} onMessage={onMessage} />}
-        {tab === "media" && <MediaModerationTab event={event} pendingCount={stats.pending} onMessage={onMessage} onChanged={refresh} />}
-        {tab === "guestbook" && <GuestbookModerationTab event={event} onMessage={onMessage} />}
-        {tab === "guests" && <GuestsTab event={event} onMessage={onMessage} />}
-        {tab === "highlights" && <AlbumToolsTab event={event} />}
-        {tab === "qr" && (
+        {view === "overview" && <OverviewTab event={event} stats={stats} guestUrl={guestUrl} onToggleUploads={toggleUploads} onMessage={onMessage} />}
+        {view === "media" && <MediaModerationTab event={event} pendingCount={stats.pending} onMessage={onMessage} onChanged={refresh} />}
+        {view === "guestbook" && <GuestbookModerationTab event={event} onMessage={onMessage} />}
+        {view === "guests" && <GuestsTab event={event} onMessage={onMessage} />}
+        {view === "highlights" && <AlbumToolsTab event={event} />}
+        {view === "qr" && (
           <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} eventDate={event.eventDate} eventType={event.eventType} />
         )}
-        {tab === "settings" && <SettingsTab key={event.updatedAt} event={event} onSaved={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
+        {view === "settings" && <SettingsTab key={event.updatedAt} event={event} onSaved={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
       </main>
       <ToastRegion toasts={toasts} onDismiss={dismissToast} />
     </div>
+  );
+}
+
+/**
+ * Invitation-only event: the photo album is not open yet. Opening it creates
+ * the Drive folders and turns uploads on (needs a connected Google Drive).
+ */
+function AlbumClosedCard({ event, onOpened, onMessage }: { event: HostEventDto; onOpened: (event: HostEventDto) => void; onMessage: (text: string, variant?: "success" | "error" | "info") => void }) {
+  const t = useT();
+  const [opening, setOpening] = useState(false);
+  const [needsDrive, setNeedsDrive] = useState(false);
+  const open = async () => {
+    setOpening(true);
+    try {
+      const res = await apiFetch<{ event: HostEventDto }>(`/api/host/events/${event.id}/album`, { method: "POST" });
+      onOpened(res.event);
+      onMessage(t("Fotoğraf albümü açıldı. QR kartlarınızı hazırlayabilirsiniz."), "success");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "DRIVE_NOT_CONNECTED") setNeedsDrive(true);
+      else onMessage(errorMessage(err), "error");
+    } finally {
+      setOpening(false);
+    }
+  };
+  return (
+    <section className="mt-3 flex flex-wrap items-center gap-4 rounded-3xl border border-dashed border-stone-300 bg-white p-4">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-stone-100 text-stone-600">
+        <Images className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1 basis-60">
+        <span className="block text-[11px] font-semibold tracking-wide text-stone-500 uppercase">{t("Düğün günü")}</span>
+        <span className="block text-sm font-semibold text-stone-900">{t("Fotoğraf albümü henüz açılmadı")}</span>
+        <span className="block text-xs leading-relaxed text-stone-500">
+          {needsDrive
+            ? t("Albümü açmak için önce Etkinliklerim sayfasındaki “Google Drive depolama” kartından Drive’ınızı bağlayın.")
+            : t("Bu etkinlik şimdilik davetiye ve oturma planı için. Albümü açtığınızda QR kartlar, misafir yüklemeleri ve canlı ekran kullanılabilir.")}
+        </span>
+      </span>
+      {needsDrive ? (
+        <Link href="/dashboard" className="rounded-2xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-800">
+          {t("Drive’ı bağla")}
+        </Link>
+      ) : (
+        <button type="button" onClick={() => void open()} disabled={opening || event.plan !== "pro"} className="inline-flex items-center gap-2 rounded-2xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+          {opening && <Loader2 className="h-4 w-4 animate-spin" />} {t("Albümü aç")}
+        </button>
+      )}
+    </section>
   );
 }

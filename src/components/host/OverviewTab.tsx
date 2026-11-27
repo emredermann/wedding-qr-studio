@@ -88,7 +88,7 @@ export function OverviewTab({
                 <span className="block text-xs text-white/70">{t("Projeksiyon / TV’de tam ekran açın")}</span>
               </span>
             </a>
-            <a href={event.driveFolderUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-stone-300 p-4 text-stone-900">
+            <a href={event.driveFolderUrl ?? undefined} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-stone-300 p-4 text-stone-900">
               <FolderOpen className="h-6 w-6 shrink-0 text-amber-600" />
               <span>
                 <span className="block text-sm font-semibold">{t("Google Drive klasörü")}</span>

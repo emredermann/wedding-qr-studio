@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarHeart, ChevronRight, Images, Loader2, Plus, X } from "lucide-react";
+import { CalendarHeart, ChevronRight, Images, Loader2, Mail, Plus, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DriveConnectionCard } from "@/components/host/DriveConnectionCard";
@@ -23,6 +23,9 @@ import { ui } from "@/components/ui/styles";
 
 export function EventsDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // "full" = photo album + invitations; "invite" = invitations & seating only (no Drive needed yet).
+  const [scope, setScope] = useState<"full" | "invite">(() => (searchParams.get("yeni") === "davetiye" ? "invite" : "full"));
   const t = useT();
   const { lang, locale } = useLang();
   const [events, setEvents] = useState<HostEventListItem[] | null>(null);
@@ -78,7 +81,7 @@ export function EventsDashboard() {
     };
   }, [driveReload]);
 
-  const needsDrive = drive !== null && !drive.connected && !drive.platformDriveAvailable;
+  const needsDrive = scope === "full" && drive !== null && !drive.connected && !drive.platformDriveAvailable;
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +113,7 @@ export function EventsDashboard() {
           coupleNames: form.coupleNames || undefined,
           eventDate: form.eventDate || undefined,
           slug: form.slug || undefined,
+          ...(scope === "invite" ? { albumEnabled: false } : {}),
           ...(eventType ? { eventType } : {}),
           themeId,
           modules: { schedule: modules.schedule, challenges: modules.challenges },
@@ -127,7 +131,7 @@ export function EventsDashboard() {
         setCreating(false);
         return;
       }
-      router.push(`/dashboard/${res.event.id}`);
+      router.push(scope === "invite" ? `/dashboard/${res.event.id}/davetiye` : `/dashboard/${res.event.id}`);
     } catch (err) {
       setFormError(errorMessage(err));
       setCreating(false);
@@ -204,7 +208,32 @@ export function EventsDashboard() {
             <h2 className={`mb-1 flex items-center gap-2 ${ui.sectionTitle}`}>
               <Plus className="h-4 w-4" /> {t("Yeni etkinlik")}
             </h2>
-            <p className={`mb-4 ${ui.hint}`}>{t("Google Drive’ınızda otomatik olarak Photos / Videos / VoiceNotes klasörleri açılır.")}</p>
+            <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("Neyle başlamak istersiniz?")}>
+              {(
+                [
+                  ["full", Images, t("Tam etkinlik"), t("Fotoğraf albümü, canlı ekran, davetiye ve oturma planı")],
+                  ["invite", Mail, t("Davetiye ve oturma"), t("Drive gerekmez; albümü sonra açarsınız")],
+                ] as const
+              ).map(([id, Icon, title, text]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={scope === id}
+                  onClick={() => setScope(id)}
+                  className={`rounded-2xl border p-3 text-left transition ${scope === id ? "border-stone-900 ring-1 ring-stone-900" : "border-stone-200 hover:border-stone-400"}`}
+                >
+                  <Icon className="h-4 w-4 text-stone-700" />
+                  <span className="mt-2 block text-sm font-semibold text-stone-900">{title}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-stone-500">{text}</span>
+                </button>
+              ))}
+            </div>
+            <p className={`mb-4 ${ui.hint}`}>
+              {scope === "full"
+                ? t("Google Drive’ınızda otomatik olarak Photos / Videos / VoiceNotes klasörleri açılır.")
+                : t("Davetiyeler ve oturma planıyla başlarsınız. Fotoğraf albümünü etkinlik sayfasından istediğiniz zaman açabilirsiniz.")}
+            </p>
             <div className="space-y-3">
               <div>
                 <p className={`mb-2 ${ui.label}`}>{t("1 · Etkinlik türü")}</p>

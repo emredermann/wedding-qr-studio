@@ -103,6 +103,8 @@ export interface GuestbookMessageRow {
 /** Public event info shown on the guest page and live wall. */
 export interface PublicEventDto {
   slug: string;
+  /** False for an invitation-only event whose photo album has not been opened yet (no Drive folders). */
+  albumOpen: boolean;
   title: string;
   coupleNames: string | null;
   eventDate: string | null;
@@ -139,7 +141,8 @@ export interface HostEventDto extends PublicEventDto {
   id: string;
   /** "owner" manages everything; "cohost" cannot delete the event or manage co-hosts. */
   role: "owner" | "cohost";
-  driveFolderUrl: string;
+  /** Null while the album is not open. */
+  driveFolderUrl: string | null;
   driveAccount: "app" | "host";
   /** Whether hosts see who hearted each item. */
   heartsNamed: boolean;

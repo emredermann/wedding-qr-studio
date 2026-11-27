@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { addCohost, cohostEventIds } from "@/lib/cohosts";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
-import { driveForNewEvent } from "@/lib/drive-accounts";
+import { driveForNewEvent, hostDriveAccount } from "@/lib/drive-accounts";
 import { slugify, toHostEventDto } from "@/lib/events";
 import { normaliseEventType, presetFor, themeFor } from "@/lib/event-presets";
 import { hasEventPresetColumns } from "@/lib/schema-features";
@@ -77,7 +77,7 @@ async function pickUniqueSlug(base: string, explicit: boolean): Promise<string |
 }
 
 /**
- * POST /api/host/events — creates an event and its Drive folder hierarchy:
+ * POST /api/host/events — creates an event and (unless `albumEnabled: false`) its Drive folder hierarchy:
  *   <ROOT>/<Event_Title>_<slug>/{Photos,Videos,VoiceNotes}
  * in the host's own connected Drive, or the platform Drive when the host has
  * not connected one.
@@ -104,8 +104,11 @@ export async function POST(request: NextRequest) {
     const slug = await pickUniqueSlug(base, Boolean(body.data.slug));
     if (!slug) return jsonError(409, "SLUG_TAKEN", "Bu bağlantı adresi kullanımda. Başka bir tane deneyin.");
 
-    const { drive, account } = await driveForNewEvent(host.id);
-    const folders = await drive.createEventFolders(title, slug);
+    // Invitation-only events need no Drive yet: folders are created when the album is opened.
+    const withAlbum = body.data.albumEnabled !== false;
+    const target = withAlbum ? await driveForNewEvent(host.id) : null;
+    const folders = target ? await target.drive.createEventFolders(title, slug) : { rootId: "", photosId: "", videosId: "", voiceId: "" };
+    const account = target?.account ?? (await hostDriveAccount(host.id));
 
     const { data, error } = await getAdminDb()
       .from("events")
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      await drive.trash(folders.rootId).catch(() => undefined);
+      if (target) await target.drive.trash(folders.rootId).catch(() => undefined);
       if (error.code === "23505") return jsonError(409, "SLUG_TAKEN", "Bu bağlantı adresi kullanımda.");
       throw new Error(error.message);
     }

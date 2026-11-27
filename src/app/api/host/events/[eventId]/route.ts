@@ -154,7 +154,7 @@ export async function DELETE(_request: NextRequest, context: Ctx) {
     if (error) throw new Error(error.message);
     // The event is gone either way; if its Drive is no longer reachable the folder simply stays.
     const drive = await driveForEvent(owned.event).catch(() => null);
-    if (drive) await trashBestEffort(drive, owned.event.drive_folder_id, "host:event:delete");
+    if (drive && owned.event.drive_folder_id) await trashBestEffort(drive, owned.event.drive_folder_id, "host:event:delete");
     return jsonOk({ deleted: true });
   } catch (error) {
     return handleRouteError("host:event:delete", error);

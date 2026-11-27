@@ -171,7 +171,7 @@ export async function syncSheet(event: EventRow, origin: string): Promise<SheetS
       if (sheetId && !(await drive.fileUsable(sheetId))) sheetId = null;
       if (!sheetId) {
         const title = settings.sheet_lang === "en" ? "Invitation replies" : "Davetiye Yanıtları";
-        sheetId = await drive.createSpreadsheet(`${title} – ${event.couple_names || event.title}`, event.drive_folder_id);
+        sheetId = await drive.createSpreadsheet(`${title} – ${event.couple_names || event.title}`, event.drive_folder_id || drive.rootFolderId);
       }
       const [invitees, tables] = await Promise.all([listInvitees(event.id), tablesByInvitee(event.id)]);
       await drive.writeSheet(sheetId, sheetRows(invitees, { lang: settings.sheet_lang, origin, tables }));
