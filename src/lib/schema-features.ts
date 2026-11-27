@@ -83,3 +83,17 @@ export async function hasInvitations(): Promise<boolean> {
   invitations = { value: !a.error && !b.error, at: Date.now() };
   return invitations.value;
 }
+
+let inviteSending: { value: boolean; at: number } | null = null;
+
+/** `invitees.phone`, `sent_at` and `invitation_settings.message_template` (0010 migration). */
+export async function hasInviteSending(): Promise<boolean> {
+  if (inviteSending && (inviteSending.value || Date.now() - inviteSending.at < RECHECK_MS)) return inviteSending.value;
+  const db = getAdminDb();
+  const [a, b] = await Promise.all([
+    db.from("invitees").select("phone, sent_at").limit(0),
+    db.from("invitation_settings").select("message_template").limit(0),
+  ]);
+  inviteSending = { value: !a.error && !b.error, at: Date.now() };
+  return inviteSending.value;
+}

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { normalisePhone } from "../phone.ts";
+
 /**
  * Invitations & RSVP: the pure part (no server or browser APIs), shared by the
  * API routes, the host module, the guest page and `node --test`.
@@ -233,6 +235,9 @@ export interface InviteeRow {
   dietary: string | null;
   message: string | null;
   reply_count: number;
+  /** 0010 migration; absent before it. */
+  phone?: string | null;
+  sent_at?: string | null;
 }
 
 export interface InvitationSettingsRow {
@@ -249,6 +254,8 @@ export interface InvitationSettingsRow {
   sheet_lock_until: string | null;
   sheet_error: string | null;
   sheet_lang: SheetLang;
+  /** 0010 migration; absent before it. */
+  message_template?: string | null;
   updated_at: string;
 }
 
@@ -269,6 +276,10 @@ export interface InviteeDto {
   dietary: string | null;
   message: string | null;
   replyCount: number;
+  /** Digits with country code (905321234567), or null. */
+  phone: string | null;
+  /** When the host last marked it as sent. */
+  sentAt: string | null;
 }
 
 export function readParty(raw: unknown): string[] {
@@ -297,6 +308,8 @@ export function toInviteeDto(row: InviteeRow): InviteeDto {
     dietary: row.dietary,
     message: row.message,
     replyCount: row.reply_count,
+    phone: row.phone ?? null,
+    sentAt: row.sent_at ?? null,
   };
 }
 
@@ -323,6 +336,60 @@ export function summarise(invitees: InviteeDto[]): InviteSummary {
   return s;
 }
 
+// ---------------------------------------------------------------- sending
+
+// Phone numbers: shared with the contact form (src/lib/phone.ts).
+export { formatPhone, normalisePhone } from "../phone.ts";
+
+/**
+ * For spreadsheets: no leading "+" (Excel would read it as a formula).
+ * Turkish numbers in national form (0532 123 45 67), others as 00<digits>.
+ */
+export function sheetPhone(digits: string): string {
+  const tr = /^90(\d{3})(\d{3})(\d{2})(\d{2})$/.exec(digits);
+  return tr ? `0${tr[1]} ${tr[2]} ${tr[3]} ${tr[4]}` : `00${digits}`;
+}
+
+export const DEFAULT_MESSAGE: Record<SheetLang, string> = {
+  tr: "Merhaba {isim}, {cift} olarak sizi aramızda görmek istiyoruz. Davetiyeniz ve katılım formu: {link}",
+  en: "Hello {isim}, {cift} would love to see you there. Your invitation and RSVP form: {link}",
+};
+
+export const MESSAGE_PLACEHOLDERS = ["{isim}", "{cift}", "{tarih}", "{link}"] as const;
+
+/**
+ * Fills the message template. Without a name, "{isim}" disappears together
+ * with the comma after it ("Merhaba {isim}, …" → "Merhaba, …"). The link is
+ * appended when the template forgot it.
+ */
+export function renderMessage(template: string, vars: { name: string | null; couple: string; link: string; date: string }): string {
+  let text = template.trim() || DEFAULT_MESSAGE.tr;
+  if (!text.includes("{link}")) text = `${text}\n{link}`;
+  text = vars.name ? text.replace(/\{isim\}/g, vars.name) : text.replace(/ ?\{isim\}/g, "");
+  return text
+    .replace(/\{cift\}/g, vars.couple)
+    .replace(/\{tarih\}/g, vars.date)
+    .replace(/\{link\}/g, vars.link)
+    .replace(/[ \t]+,/g, ",")
+    .replace(/[ \t]{2,}/g, " ");
+}
+
+/**
+ * sms: link that opens the phone's own messages app with the text filled in
+ * (no service, no cost to us; iOS and Android both accept ?&body=).
+ */
+export function smsUrl(phone: string, text: string): string {
+  return `sms:+${phone}?&body=${encodeURIComponent(text)}`;
+}
+
+/** Invitations as a CSV (Excel opens it: semicolons + BOM). */
+export function invitationsCsv(rows: Array<{ name: string; group: string; phone: string; maxParty: number; status: string; sent: string; link: string }>, header: string[]): string {
+  const cell = (v: string) => (/[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : /^[=+\-@]/.test(v) ? `'${v}` : v);
+  const lines = [header.map(cell).join(";")];
+  for (const r of rows) lines.push([r.name, r.group, r.phone, String(r.maxParty), r.status, r.sent, r.link].map(cell).join(";"));
+  return "\ufeff" + lines.join("\r\n");
+}
+
 // ---------------------------------------------------------------- host input
 
 export const inviteeInputSchema = z.object({
@@ -330,6 +397,12 @@ export const inviteeInputSchema = z.object({
   group: optionalText(INVITE_LIMITS.group),
   maxParty: z.number().int().min(1).max(INVITE_LIMITS.maxParty).default(1),
   note: optionalText(INVITE_LIMITS.note),
+  /** Any common format; stored normalised (invalid numbers are dropped). */
+  phone: z
+    .string()
+    .max(40)
+    .nullish()
+    .transform((v) => normalisePhone(v)),
 });
 export type InviteeInput = z.infer<typeof inviteeInputSchema>;
 
@@ -339,15 +412,17 @@ export function parseInviteeLines(text: string, defaultMax = 1): InviteeInput[] 
     .split(/\r?\n/)
     .map((line) => line.split(/\t|;|,/).map((p) => p.trim()))
     .filter((parts) => parts[0])
-    .map(([name, second, third]) => {
-      // The party size may sit in the 2nd or 3rd column.
-      const num = [second, third].map((v) => (v && /^\d{1,2}$/.test(v) ? Number(v) : null)).find((v) => v !== null) ?? null;
-      const group = [second, third].find((v) => v && !/^\d{1,2}$/.test(v)) ?? null;
+    .map(([name, ...rest]) => {
+      // After the name, in any order: a party size (1–2 digits), a phone number, a group.
+      const num = rest.map((v) => (v && /^\d{1,2}$/.test(v) ? Number(v) : null)).find((v) => v !== null) ?? null;
+      const phone = rest.map((v) => (v && !/^\d{1,2}$/.test(v) ? normalisePhone(v) : null)).find((v) => v !== null) ?? null;
+      const group = rest.find((v) => v && !/^\d{1,2}$/.test(v) && !normalisePhone(v)) ?? null;
       return {
         name: name.slice(0, INVITE_LIMITS.name),
         group: group ? group.slice(0, INVITE_LIMITS.group) : null,
         maxParty: Math.min(INVITE_LIMITS.maxParty, Math.max(1, num ?? defaultMax)),
         note: null,
+        phone,
       };
     });
 }
@@ -357,8 +432,8 @@ export function parseInviteeLines(text: string, defaultMax = 1): InviteeInput[] 
 export type SheetLang = "tr" | "en";
 
 const SHEET_HEADER: Record<SheetLang, string[]> = {
-  tr: ["Davetli", "Grup", "Kişi sınırı", "Yanıt", "Gelecek kişi", "Gelecekler", "Menü / diyet", "Mesaj", "Yanıt tarihi", "Masa", "Davetiye bağlantısı"],
-  en: ["Invitee", "Group", "Party limit", "Reply", "Coming", "Names", "Dietary", "Message", "Replied at", "Table", "Invitation link"],
+  tr: ["Davetli", "Grup", "Kişi sınırı", "Yanıt", "Gelecek kişi", "Gelecekler", "Menü / diyet", "Mesaj", "Yanıt tarihi", "Masa", "Davetiye bağlantısı", "Telefon", "Gönderildi"],
+  en: ["Invitee", "Group", "Party limit", "Reply", "Coming", "Names", "Dietary", "Message", "Replied at", "Table", "Invitation link", "Phone", "Sent"],
 };
 const SHEET_STATUS: Record<SheetLang, Record<InviteStatus, string>> = {
   tr: { pending: "Bekleniyor", yes: "Katılıyor", no: "Katılmıyor" },
@@ -393,6 +468,8 @@ export function sheetRows(
       i.respondedAt ? fmt.format(new Date(i.respondedAt)) : "",
       [...new Set(opts.tables?.get(i.id) ?? [])].join(", "),
       `${opts.origin}/d/${i.token}`,
+      i.phone ? sheetPhone(i.phone) : "",
+      i.sentAt ? fmt.format(new Date(i.sentAt)) : "",
     ]);
   }
   // A leading = + - @ would be read as a formula by Sheets: neutralise.
@@ -434,6 +511,8 @@ export interface InvitationSettingsDto {
   openToken: string | null;
   openMaxParty: number;
   sheet: { url: string | null; syncedAt: string | null; pending: boolean; error: string | null; lang: SheetLang };
+  /** Text sent with each link; null = the default. */
+  messageTemplate: string | null;
 }
 
 export interface InvitationEventDto {
@@ -450,6 +529,8 @@ export interface InvitationsDto {
   summary: InviteSummary;
   /** The owner's package includes invitations (writes need it). */
   pro: boolean;
+  /** Phones, "sent" tracking and the message template exist (0010 migration). */
+  sendingReady: boolean;
   event: InvitationEventDto;
 }
 
@@ -478,5 +559,12 @@ export const settingsInputSchema = z.object({
   openMaxParty: z.number().int().min(1).max(INVITE_LIMITS.maxParty).optional(),
   regenerateOpenToken: z.boolean().optional(),
   sheetLang: z.enum(["tr", "en"]).optional(),
+  messageTemplate: z
+    .string()
+    .trim()
+    .max(1000)
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v ? v : null)),
 });
 export type SettingsInput = z.infer<typeof settingsInputSchema>;

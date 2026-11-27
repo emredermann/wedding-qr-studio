@@ -155,7 +155,7 @@ export async function readXlsx(file: Uint8Array, inflateRaw: InflateRaw): Promis
 
 // ---------------------------------------------------------------- rows → guests
 
-type Field = "name" | "first" | "last" | "group" | "dietary" | "rsvp" | "note" | "party";
+type Field = "name" | "first" | "last" | "group" | "dietary" | "rsvp" | "note" | "party" | "phone";
 
 const norm = (s: string) =>
   s
@@ -174,6 +174,7 @@ const HEADERS: Record<Field, string[]> = {
   dietary: ["diyet", "menu", "yemek", "yemek tercihi", "beslenme", "alerji", "dietary", "diet", "meal", "allergy", "allergies"],
   rsvp: ["lcv", "katilim", "katilim durumu", "durum", "geliyor mu", "rsvp", "attending", "attendance", "status", "response"],
   note: ["not", "notlar", "aciklama", "note", "notes", "comment", "comments"],
+  phone: ["telefon", "tel", "telefon no", "telefon numarasi", "cep", "cep telefonu", "gsm", "phone", "mobile", "phone number", "cell"],
   party: ["kisi sayisi", "kisi", "davetli sayisi", "adet", "sayi", "party", "party size", "guests", "number of guests", "count", "pax"],
 };
 
@@ -236,6 +237,7 @@ export function rowsToGuests(rows: Rows): ImportResult {
       dietary: cell(row, "dietary") || null,
       rsvp: columns.rsvp === undefined ? "pending" : parseRsvp(cell(row, "rsvp")),
       note: cell(row, "note") || null,
+      ...(columns.phone !== undefined && cell(row, "phone") ? { phone: cell(row, "phone") } : {}),
       ...(columns.party !== undefined && /^\d{1,2}$/.test(cell(row, "party")) ? { party: Math.min(20, Math.max(1, Number(cell(row, "party")))) } : {}),
     });
     if (guests.length >= SEATING_LIMITS.guests) break;

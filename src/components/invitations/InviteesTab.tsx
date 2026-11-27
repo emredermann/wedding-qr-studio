@@ -1,17 +1,33 @@
 "use client";
 
-import { Check, ClipboardList, Copy, Link2, Loader2, MessageCircle, MoreHorizontal, RefreshCw, Search, Trash2, Undo2, Upload, UserPlus, X } from "lucide-react";
+import { Check, ClipboardList, Copy, Download, Link2, Loader2, MoreHorizontal, RefreshCw, Search, Send, Trash2, Undo2, Upload, UserPlus, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import type { Mutate, Notify } from "@/components/invitations/InvitationsApp";
 import { readGuestFile } from "@/components/seating/guestImport";
+import { SendQueue } from "@/components/invitations/SendQueue";
+import { downloadBlob } from "@/components/seating/exportPlan";
 import { useModalAccessibility } from "@/components/ui/Feedback";
 import { ToggleRow } from "@/components/ui/ToggleRow";
 import { ui } from "@/components/ui/styles";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { translateLoose } from "@/lib/i18n/translate";
 import type { MsgKey } from "@/lib/i18n/translate";
-import { INVITE_LIMITS, parseInviteeLines, type InvitationsDto, type InviteeDto, type InviteeInput, type InviteStatus } from "@/lib/invitations/model";
+import {
+  DEFAULT_MESSAGE,
+  formatPhone,
+  INVITE_LIMITS,
+  invitationsCsv,
+  MESSAGE_PLACEHOLDERS,
+  normalisePhone,
+  parseInviteeLines,
+  renderMessage,
+  sheetPhone,
+  type InvitationsDto,
+  type InviteeDto,
+  type InviteeInput,
+  type InviteStatus,
+} from "@/lib/invitations/model";
 
 export const STATUS_LABEL: Record<InviteStatus, MsgKey> = { pending: "Yanıt bekleniyor", yes: "Katılıyor", no: "Katılmıyor" };
 export const STATUS_CLASS: Record<InviteStatus, string> = {
@@ -24,18 +40,23 @@ const PARTY_OPTIONS = Array.from({ length: INVITE_LIMITS.maxParty }, (_, i) => i
 
 /**
  * Invitees and their personal links: add one, paste a list or import Excel /
- * CSV / PDF, set each link's party limit, copy or WhatsApp the link. Also the
- * optional open link for guests not on the list.
+ * CSV / PDF, set each link's party limit and phone. Send in bulk through the
+ * phone's own SMS app / share sheet / copy (no paid service), track who has
+ * been sent one, export the links. Also the optional open link.
  */
 export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: InvitationsDto; origin: string; readOnly: boolean; mutate: Mutate; notify: Notify }) {
   const t = useT();
-  const { lang } = useLang();
+  const { lang, locale } = useLang();
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [queue, setQueue] = useState<InviteeDto[] | null>(null);
+  const sending = data.sendingReady && !readOnly;
   const [group, setGroup] = useState("");
   const [maxParty, setMaxParty] = useState(2);
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<InviteStatus | "all">("all");
+  const [filter, setFilter] = useState<InviteStatus | "all" | "unsent">("all");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [preview, setPreview] = useState<{ title: string; list: InviteeInput[] } | null>(null);
   const [editing, setEditing] = useState<InviteeDto | null>(null);
@@ -49,10 +70,47 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
     const q = query.trim().toLocaleLowerCase("tr-TR");
     return data.invitees.filter(
       (i) =>
-        (filter === "all" || i.status === filter) &&
-        (!q || `${i.name ?? ""} ${i.group ?? ""} ${i.party.join(" ")}`.toLocaleLowerCase("tr-TR").includes(q)),
+        (filter === "all" || (filter === "unsent" ? !i.sentAt : i.status === filter)) &&
+        (!q || `${i.name ?? ""} ${i.group ?? ""} ${i.phone ?? ""} ${i.party.join(" ")}`.toLocaleLowerCase("tr-TR").includes(q)),
     );
   }, [data.invitees, query, filter]);
+  const liveSelected = useMemo(() => data.invitees.filter((i) => selected.has(i.id)), [data.invitees, selected]);
+  const unsent = useMemo(() => data.invitees.filter((i) => !i.sentAt), [data.invitees]);
+  const allVisibleSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
+
+  const dateText = data.event.eventDate
+    ? new Date(`${data.event.eventDate}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const template = data.settings.messageTemplate ?? DEFAULT_MESSAGE[lang];
+  const messageWith = (tpl: string, i: InviteeDto) => renderMessage(tpl, { name: i.name, couple, link: linkOf(i.token), date: dateText });
+  const messageFor = (i: InviteeDto) => messageWith(template, i);
+
+  const markSent = async (ids: string[], sent: boolean, quiet = false) =>
+    mutate("/sent", { method: "POST", json: { ids, sent } }, quiet ? undefined : sent ? t("{n} davetiye gönderildi olarak işaretlendi.", { n: ids.length }) : t("İşaret kaldırıldı."));
+
+  const exportCsv = (list: InviteeDto[]) => {
+    const header = [t("Ad Soyad"), t("Grup"), t("Telefon"), t("Kişi sınırı"), t("Yanıt"), t("Gönderildi"), t("Davetiye bağlantısı")];
+    const rows = list.map((i) => ({
+      name: i.name ?? "",
+      group: i.group ?? "",
+      phone: i.phone ? sheetPhone(i.phone) : "",
+      maxParty: i.maxParty,
+      status: t(STATUS_LABEL[i.status]),
+      sent: i.sentAt ? new Date(i.sentAt).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : "",
+      link: linkOf(i.token),
+    }));
+    downloadBlob(new Blob([invitationsCsv(rows, header)], { type: "text/csv;charset=utf-8" }), "davetiyeler.csv");
+  };
+
+  const copyLinks = async (list: InviteeDto[]) => {
+    const text = list.map((i) => `${i.name ?? t("İsimsiz davetiye")}: ${linkOf(i.token)}`).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      notify(t("{n} bağlantı kopyalandı.", { n: list.length }), "success");
+    } catch {
+      notify(t("Kopyalanamadı. Bağlantıyı elle seçip kopyalayın."), "error");
+    }
+  };
 
   const add = async (list: InviteeInput[], key: string) => {
     if (list.length === 0) return false;
@@ -72,13 +130,6 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
     }
   };
 
-  const whatsapp = (i: InviteeDto) => {
-    const text = i.name
-      ? t("Merhaba {name}, {couple} sizi davet ediyor. Davetiyeniz ve katılım formu: {link}", { name: i.name, couple, link: linkOf(i.token) })
-      : t("{couple} sizi davet ediyor. Davetiye ve katılım formu: {link}", { couple, link: linkOf(i.token) });
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  };
-
   const onFile = async (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = "";
     if (!file) return;
@@ -87,7 +138,7 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
       const res = await readGuestFile(file);
       setPreview({
         title: file.name,
-        list: res.guests.map((g) => ({ name: g.name, group: g.group ?? null, maxParty: g.party ?? maxParty, note: g.note ?? null })),
+        list: res.guests.map((g) => ({ name: g.name, group: g.group ?? null, maxParty: g.party ?? maxParty, note: g.note ?? null, phone: normalisePhone(g.phone) })),
       });
     } catch (e) {
       notify(translateLoose(e instanceof Error ? e.message : String(e), lang), "error");
@@ -108,16 +159,30 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
             <p className={ui.hint}>{t("Her davetliye özel bir bağlantı oluşur. Davetiye “Sevgili …” diye adıyla açılır; kişi sınırı kadar isim girebilir.")}</p>
           </div>
           <form
-            className="grid gap-3 sm:grid-cols-[1fr_12rem_8rem_auto]"
+            className={`grid gap-3 ${data.sendingReady ? "sm:grid-cols-[1fr_10rem_10rem_7rem_auto]" : "sm:grid-cols-[1fr_12rem_8rem_auto]"}`}
             onSubmit={async (e) => {
               e.preventDefault();
-              if (await add([{ name: name.trim() || null, group: group.trim() || null, maxParty, note: null }], "one")) {
+              if (await add([{ name: name.trim() || null, group: group.trim() || null, maxParty, note: null, phone: normalisePhone(phone) }], "one")) {
                 setName("");
+                setPhone("");
               }
             }}
           >
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={INVITE_LIMITS.name} placeholder={t("Ad Soyad (ör. Yılmaz ailesi)")} aria-label={t("Ad Soyad")} className={ui.input} />
             <input value={group} onChange={(e) => setGroup(e.target.value)} list="invite-groups" maxLength={INVITE_LIMITS.group} placeholder={t("Grup (isteğe bağlı)")} aria-label={t("Grup")} className={ui.input} />
+            {data.sendingReady && (
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                type="tel"
+                inputMode="tel"
+                maxLength={40}
+                placeholder={t("Telefon (isteğe bağlı)")}
+                aria-label={t("Telefon")}
+                aria-invalid={phone.trim() !== "" && !normalisePhone(phone)}
+                className={`${ui.input} ${phone.trim() !== "" && !normalisePhone(phone) ? "border-rose-400" : ""}`}
+              />
+            )}
             <label className="flex items-center gap-2">
               <span className="sr-only">{t("Kişi sınırı")}</span>
               <select value={maxParty} onChange={(e) => setMaxParty(Number(e.target.value))} className={ui.input} title={t("Kişi sınırı")}>
@@ -202,39 +267,117 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Davetli ara")} aria-label={t("Davetli ara")} className={`${ui.input} pl-9`} />
           </div>
-          <div className="flex gap-1 rounded-xl bg-stone-100 p-1">
-            {(["all", "pending", "yes", "no"] as const).map((f) => (
+          <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-stone-100 p-1">
+            {(["all", ...(data.sendingReady ? (["unsent"] as const) : []), "pending", "yes", "no"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${filter === f ? "bg-white text-stone-900 shadow-sm" : "text-stone-600"}`}
+                className={`rounded-lg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap ${filter === f ? "bg-white text-stone-900 shadow-sm" : "text-stone-600"}`}
               >
-                {f === "all" ? t("Tümü") : t(STATUS_LABEL[f])}
+                {f === "all" ? t("Tümü") : f === "unsent" ? t("Gönderilmedi") : t(STATUS_LABEL[f])}
               </button>
             ))}
           </div>
         </div>
 
+        {data.invitees.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {sending && (
+              <button type="button" disabled={unsent.length === 0} onClick={() => setQueue(unsent)} className="inline-flex items-center gap-1.5 rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+                <Send className="h-4 w-4" /> {t("Gönderilmeyenlere gönder ({n})", { n: unsent.length })}
+              </button>
+            )}
+            <button type="button" className={btn} onClick={() => void copyLinks(visible)}>
+              <Copy className="h-4 w-4" /> {t("Bağlantıları kopyala")}
+            </button>
+            <button type="button" className={btn} onClick={() => exportCsv(visible)}>
+              <Download className="h-4 w-4" /> {t("Excel/CSV indir")}
+            </button>
+          </div>
+        )}
+
+        {sending && <MessageTemplateCard template={data.settings.messageTemplate} lang={lang} render={messageWith} first={data.invitees[0] ?? null} mutate={mutate} />}
+
+        {sending && liveSelected.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-stone-900 px-4 py-2.5 text-sm text-white">
+            <span className="mr-1">{t("{n} davetiye seçili", { n: liveSelected.length })}</span>
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-stone-900" onClick={() => setQueue(liveSelected)}>
+              <Send className="h-3.5 w-3.5" /> {t("Gönder")}
+            </button>
+            <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs hover:bg-white/10" onClick={() => void markSent(liveSelected.map((i) => i.id), true).then((ok) => ok && setSelected(new Set()))}>
+              {t("Gönderildi işaretle")}
+            </button>
+            <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs hover:bg-white/10" onClick={() => void markSent(liveSelected.map((i) => i.id), false).then((ok) => ok && setSelected(new Set()))}>
+              {t("İşareti kaldır")}
+            </button>
+            <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs hover:bg-white/10" onClick={() => void copyLinks(liveSelected)}>
+              {t("Bağlantıları kopyala")}
+            </button>
+            <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs hover:bg-white/10" onClick={() => exportCsv(liveSelected)}>
+              {t("Excel/CSV indir")}
+            </button>
+            <button type="button" className="ml-auto rounded-lg p-1.5 hover:bg-white/10" onClick={() => setSelected(new Set())} aria-label={t("Seçimi temizle")}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {data.invitees.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-10 text-center">
             <Link2 className="mx-auto h-8 w-8 text-stone-400" />
             <p className="mt-3 text-sm font-semibold text-stone-900">{t("Henüz davetli yok")}</p>
-            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-stone-500">{t("Davetlileri ekleyin; her birine özel bağlantıyı WhatsApp'tan gönderin. Yanıtlar buraya ve Google Drive'daki tabloya otomatik düşer.")}</p>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-stone-500">{t("Davetlileri ekleyin ve her birine özel bağlantısını gönderin. Yanıtlar buraya ve Google Drive'daki tabloya otomatik düşer.")}</p>
           </div>
         ) : (
           <ul className="divide-y divide-stone-100 overflow-hidden rounded-3xl border border-stone-200 bg-white">
+            {sending && visible.length > 0 && (
+              <li className="flex items-center gap-3 bg-stone-50 px-4 py-2 text-xs text-stone-500">
+                <input
+                  type="checkbox"
+                  className={ui.checkbox}
+                  checked={allVisibleSelected}
+                  onChange={() => setSelected(allVisibleSelected ? new Set() : new Set(visible.map((i) => i.id)))}
+                  aria-label={t("Tümünü seç")}
+                />
+                {t("Tümünü seç")}
+              </li>
+            )}
             {visible.map((i) => (
-              <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <li key={i.id} className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 ${selected.has(i.id) ? "bg-amber-50/60" : ""}`}>
+                {sending && (
+                  <input
+                    type="checkbox"
+                    className={ui.checkbox}
+                    checked={selected.has(i.id)}
+                    aria-label={i.name ?? t("İsimsiz davetiye")}
+                    onChange={() =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(i.id)) next.delete(i.id);
+                        else next.add(i.id);
+                        return next;
+                      })
+                    }
+                  />
+                )}
                 <div className="min-w-0 flex-1 basis-56">
                   <p className="truncate text-sm font-medium text-stone-900">
                     {i.name ?? <span className="text-stone-400 italic">{t("İsimsiz davetiye")}</span>}
                     {i.viaOpenLink && <span className="ml-2 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">{t("Genel bağlantı")}</span>}
                   </p>
                   <p className="truncate text-xs text-stone-500">
-                    {[i.group, t("en fazla {n} kişi", { n: i.maxParty }), i.status === "yes" ? i.party.join(", ") : null].filter(Boolean).join(" · ")}
+                    {[i.group, i.phone ? formatPhone(i.phone) : null, t("en fazla {n} kişi", { n: i.maxParty }), i.status === "yes" ? i.party.join(", ") : null].filter(Boolean).join(" · ")}
                   </p>
                 </div>
+                {data.sendingReady && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-medium ${i.sentAt ? "bg-sky-50 text-sky-700" : "bg-stone-50 text-stone-400"}`}
+                    title={i.sentAt ? new Date(i.sentAt).toLocaleString(locale) : undefined}
+                  >
+                    {i.sentAt ? t("Gönderildi") : t("Gönderilmedi")}
+                  </span>
+                )}
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[i.status]}`}>
                   {i.status === "yes" ? t("{n} kişi katılıyor", { n: i.party.length }) : t(STATUS_LABEL[i.status])}
                 </span>
@@ -242,9 +385,11 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
                   <button type="button" onClick={() => void copy(linkOf(i.token), i.id)} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" title={t("Bağlantıyı kopyala")} aria-label={t("Bağlantıyı kopyala")}>
                     {copied === i.id ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </button>
-                  <button type="button" onClick={() => whatsapp(i)} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" title={t("WhatsApp ile gönder")} aria-label={t("WhatsApp ile gönder")}>
-                    <MessageCircle className="h-4 w-4" />
-                  </button>
+                  {sending && (
+                    <button type="button" onClick={() => setQueue([i])} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" title={t("Gönder")} aria-label={t("Gönder")}>
+                      <Send className="h-4 w-4" />
+                    </button>
+                  )}
                   {!readOnly && (
                     <button type="button" onClick={() => setEditing(i)} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" title={t("Düzenle")} aria-label={t("Düzenle")}>
                       <MoreHorizontal className="h-4 w-4" />
@@ -300,7 +445,18 @@ export function InviteesTab({ data, origin, readOnly, mutate, notify }: { data: 
           </div>
         </Dialog>
       )}
-      {editing && <EditDialog invitee={editing} groups={groups} mutate={mutate} onClose={() => setEditing(null)} />}
+      {editing && <EditDialog invitee={editing} groups={groups} withPhone={data.sendingReady} mutate={mutate} onClose={() => setEditing(null)} />}
+      {queue && (
+        <SendQueue
+          list={queue}
+          messageFor={messageFor}
+          onMark={(i) => markSent([i.id], true, true)}
+          onClose={() => {
+            setQueue(null);
+            setSelected(new Set());
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -331,8 +487,8 @@ function PasteDialog({ defaultMax, onClose, onSubmit }: { defaultMax: number; on
   const list = parseInviteeLines(text, defaultMax);
   return (
     <Dialog title={t("Liste yapıştır")} onClose={onClose}>
-      <p className={ui.hint}>{t("Her satıra bir davetli: “Ad Soyad; Grup; Kişi sayısı”. Excel'den üç sütunu kopyalayıp da yapıştırabilirsiniz.")}</p>
-      <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={10} className={`${ui.input} mt-3 font-mono`} placeholder={"Ayşe Yılmaz; Gelin tarafı; 2\nYılmaz ailesi; Damat tarafı; 4"} />
+      <p className={ui.hint}>{t("Her satıra bir davetli: “Ad Soyad; Grup; Kişi sayısı; Telefon”. Excel'den sütunları kopyalayıp da yapıştırabilirsiniz.")}</p>
+      <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={10} className={`${ui.input} mt-3 font-mono`} placeholder={"Ayşe Yılmaz; Gelin tarafı; 2; 0532 123 45 67\nYılmaz ailesi; Damat tarafı; 4"} />
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-medium" onClick={onClose}>
           {t("Vazgeç")}
@@ -354,8 +510,10 @@ function PasteDialog({ defaultMax, onClose, onSubmit }: { defaultMax: number; on
   );
 }
 
-function EditDialog({ invitee, groups, mutate, onClose }: { invitee: InviteeDto; groups: string[]; mutate: Mutate; onClose: () => void }) {
+function EditDialog({ invitee, groups, withPhone, mutate, onClose }: { invitee: InviteeDto; groups: string[]; withPhone: boolean; mutate: Mutate; onClose: () => void }) {
   const t = useT();
+  const [phone, setPhone] = useState(invitee.phone ? formatPhone(invitee.phone) : "");
+  const phoneBad = phone.trim() !== "" && !normalisePhone(phone);
   const [name, setName] = useState(invitee.name ?? "");
   const [group, setGroup] = useState(invitee.group ?? "");
   const [maxParty, setMaxParty] = useState(invitee.maxParty);
@@ -395,13 +553,27 @@ function EditDialog({ invitee, groups, mutate, onClose }: { invitee: InviteeDto;
         {invitee.status === "yes" && maxParty < invitee.party.length && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">{t("Bu davetli {n} kişiyle katılacağını bildirdi; mevcut yanıt değişmez.", { n: invitee.party.length })}</p>
         )}
+        {withPhone && (
+          <label className="block">
+            <span className={ui.label}>{t("Telefon")}</span>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" maxLength={40} placeholder="0532 123 45 67" aria-invalid={phoneBad} className={`${ui.input} ${phoneBad ? "border-rose-400" : ""}`} />
+            {phoneBad && <span className="mt-1 block text-xs text-rose-600">{t("Geçerli bir telefon numarası yazın.")}</span>}
+          </label>
+        )}
         <label className="block">
           <span className={ui.label}>{t("Not (yalnızca siz görürsünüz)")}</span>
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={INVITE_LIMITS.note} className={ui.input} />
         </label>
         <button
           type="button"
-          onClick={() => void action({ name: name.trim() || null, group: group.trim() || null, maxParty, note: note.trim() || null }, "PATCH", t("Kaydedildi"))}
+          disabled={phoneBad}
+          onClick={() =>
+            void action(
+              { name: name.trim() || null, group: group.trim() || null, maxParty, note: note.trim() || null, ...(withPhone ? { phone: phone.trim() || null } : {}) },
+              "PATCH",
+              t("Kaydedildi"),
+            )
+          }
           className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white"
         >
           {t("Kaydet")}
@@ -432,5 +604,77 @@ function EditDialog({ invitee, groups, mutate, onClose }: { invitee: InviteeDto;
         </div>
       </div>
     </Dialog>
+  );
+}
+
+/** The text sent with each link, with placeholders and a live sample. */
+function MessageTemplateCard({
+  template,
+  lang,
+  render,
+  first,
+  mutate,
+}: {
+  template: string | null;
+  lang: "tr" | "en";
+  render: (template: string, i: InviteeDto) => string;
+  first: InviteeDto | null;
+  mutate: Mutate;
+}) {
+  const t = useT();
+  const [draft, setDraft] = useState(template ?? DEFAULT_MESSAGE[lang]);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const saved = template ?? DEFAULT_MESSAGE[lang];
+  const insert = (token: string) => {
+    const el = ref.current;
+    const at = el ? el.selectionStart : draft.length;
+    setDraft((d) => d.slice(0, at) + token + d.slice(at));
+  };
+  const preview = first ? render(draft, first) : null;
+  return (
+    <details className={`${ui.card} group`}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+        <span>
+          <span className={`block ${ui.sectionTitle}`}>{t("Gönderim mesajı")}</span>
+          <span className={ui.hint}>{t("Her bağlantıyla birlikte gönderilen metin.")}</span>
+        </span>
+        <span className="text-stone-400 transition group-open:rotate-45">+</span>
+      </summary>
+      <div className="mt-4 space-y-3">
+        <textarea ref={ref} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={1000} rows={3} className={ui.input} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-stone-500">{t("Ekle:")}</span>
+          {MESSAGE_PLACEHOLDERS.map((p) => (
+            <button key={p} type="button" onClick={() => insert(p)} className="rounded-full border border-stone-300 px-2 py-0.5 font-mono text-[11px] text-stone-700 hover:bg-stone-50">
+              {p}
+            </button>
+          ))}
+        </div>
+        <p className={ui.hint}>{t("{isim}: davetlinin adı · {cift}: isimleriniz · {tarih}: etkinlik tarihi · {link}: kişiye özel bağlantı (yazmazsanız sona eklenir)")}</p>
+        {preview && (
+          <p className="rounded-2xl bg-stone-50 px-4 py-3 text-sm whitespace-pre-line text-stone-700 [overflow-wrap:anywhere]">
+            {preview}
+          </p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => setDraft(DEFAULT_MESSAGE[lang])} className="rounded-xl px-3 py-2 text-sm text-stone-600 hover:bg-stone-100">
+            {t("Varsayılana dön")}
+          </button>
+          <button
+            type="button"
+            disabled={saving || draft.trim() === saved.trim()}
+            onClick={async () => {
+              setSaving(true);
+              await mutate("", { method: "PUT", json: { messageTemplate: draft.trim() === DEFAULT_MESSAGE[lang] ? null : draft } }, t("Mesaj kaydedildi."));
+              setSaving(false);
+            }}
+            className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {t("Kaydet")}
+          </button>
+        </div>
+      </div>
+    </details>
   );
 }

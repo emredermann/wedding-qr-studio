@@ -4,6 +4,7 @@ import { handleRouteError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { invitationAccess, invitationsDto, requestOrigin } from "@/lib/invitations/host";
 import { newToken, settingsInputSchema, type InvitationsDto } from "@/lib/invitations/model";
 import { loadSettings, scheduleSheetSync } from "@/lib/invitations/server";
+import { hasInviteSending } from "@/lib/schema-features";
 import { getAdminDb } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -41,6 +42,7 @@ export async function PUT(request: NextRequest, context: Ctx) {
     if (input.openEnabled !== undefined) patch.open_enabled = input.openEnabled;
     if (input.openMaxParty !== undefined) patch.open_max_party = input.openMaxParty;
     if (input.sheetLang !== undefined) patch.sheet_lang = input.sheetLang;
+    if (input.messageTemplate !== undefined && (await hasInviteSending())) patch.message_template = input.messageTemplate;
     if (input.regenerateOpenToken || ((input.openEnabled ?? current.open_enabled) && !current.open_token)) patch.open_token = newToken();
 
     const { error } = await getAdminDb().from("invitation_settings").upsert(patch, { onConflict: "event_id" });

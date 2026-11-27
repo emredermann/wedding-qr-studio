@@ -15,7 +15,7 @@ import {
   type InviteeDto,
   type InviteeRow,
 } from "@/lib/invitations/model";
-import { hasInvitations } from "@/lib/schema-features";
+import { hasInvitations, hasInviteSending } from "@/lib/schema-features";
 import { readPlan } from "@/lib/seating/schema";
 import { getAdminDb } from "@/lib/supabase/server";
 import type { EventRow } from "@/types/domain";
@@ -59,10 +59,11 @@ export async function loadSettings(eventId: string): Promise<InvitationSettingsR
 }
 
 export async function listInvitees(eventId: string): Promise<InviteeDto[]> {
+  const columns = (await hasInviteSending()) ? `${INVITEE_COLUMNS}, phone, sent_at` : INVITEE_COLUMNS;
   const rows = await fetchAllRows<InviteeRow>((from, to) =>
     getAdminDb()
       .from("invitees")
-      .select(INVITEE_COLUMNS)
+      .select(columns)
       .eq("event_id", eventId)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })

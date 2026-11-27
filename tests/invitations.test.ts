@@ -4,6 +4,12 @@ import { describe, it } from "node:test";
 import {
   canReply,
   cleanReply,
+  formatPhone,
+  invitationsCsv,
+  normalisePhone,
+  renderMessage,
+  sheetPhone,
+  smsUrl,
   deadlinePassed,
   newToken,
   parseInviteeLines,
@@ -80,10 +86,10 @@ describe("invitation replies", () => {
   });
 
   it("reads invitee lines with an optional group and party size in any order", () => {
-    assert.deepEqual(parseInviteeLines("Ayşe Yılmaz; Gelin tarafı; 3\nCan Demir\t4\nDeniz, İş"), [
-      { name: "Ayşe Yılmaz", group: "Gelin tarafı", maxParty: 3, note: null },
-      { name: "Can Demir", group: null, maxParty: 4, note: null },
-      { name: "Deniz", group: "İş", maxParty: 1, note: null },
+    assert.deepEqual(parseInviteeLines("Ayşe Yılmaz; Gelin tarafı; 3\nCan Demir\t4\t0532 123 45 67\nDeniz, İş"), [
+      { name: "Ayşe Yılmaz", group: "Gelin tarafı", maxParty: 3, note: null, phone: null },
+      { name: "Can Demir", group: null, maxParty: 4, note: null, phone: "905321234567" },
+      { name: "Deniz", group: "İş", maxParty: 1, note: null, phone: null },
     ]);
   });
 
@@ -107,6 +113,34 @@ describe("invitation replies", () => {
     assert.equal(rows[1][3], "Katılıyor");
     assert.equal(rows[1][9], "Masa 1");
     assert.ok(rows[1][10].startsWith("https://mira.test/d/"));
+  });
+});
+
+describe("sending invitations", () => {
+  it("normalises phone numbers the way people write them", () => {
+    for (const raw of ["0532 123 45 67", "532-123-4567", "+90 (532) 123 45 67", "00905321234567", "905321234567"]) {
+      assert.equal(normalisePhone(raw), "905321234567", raw);
+    }
+    assert.equal(normalisePhone("+44 20 7123 4567"), "442071234567");
+    assert.equal(normalisePhone("Gelin tarafı"), null);
+    assert.equal(normalisePhone("12"), null);
+    assert.equal(formatPhone("905321234567"), "+90 532 123 45 67");
+  });
+
+  it("fills the message, drops a missing name cleanly and never loses the link", () => {
+    const vars = { name: "Ayşe", couple: "Elif & Kerem", link: "https://m.test/d/x", date: "12 Haziran" };
+    assert.equal(renderMessage("Merhaba {isim}, {cift} · {tarih}: {link}", vars), "Merhaba Ayşe, Elif & Kerem · 12 Haziran: https://m.test/d/x");
+    assert.equal(renderMessage("Merhaba {isim}, davetiyeniz: {link}", { ...vars, name: null }), "Merhaba, davetiyeniz: https://m.test/d/x");
+    assert.equal(renderMessage("Bekliyoruz!", vars), "Bekliyoruz!\nhttps://m.test/d/x");
+    assert.match(renderMessage("", vars), /^Merhaba Ayşe, Elif & Kerem/);
+    assert.equal(smsUrl("905321234567", "a b&c"), "sms:+905321234567?&body=a%20b%26c");
+  });
+
+  it("exports a CSV Excel opens, without formulas", () => {
+    assert.equal(sheetPhone("905321234567"), "0532 123 45 67");
+    const csv = invitationsCsv([{ name: "=cmd", group: "Aile; yakın", phone: sheetPhone("905321234567"), maxParty: 2, status: "Katılıyor", sent: "", link: "https://m.test/d/x" }], ["Ad", "Grup", "Tel", "Kişi", "Yanıt", "Gönderildi", "Link"]);
+    assert.ok(csv.startsWith("\ufeffAd;Grup"));
+    assert.ok(csv.includes("'=cmd;\"Aile; yakın\";0532 123 45 67;2"));
   });
 });
 
