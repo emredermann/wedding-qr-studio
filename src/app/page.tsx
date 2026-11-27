@@ -41,6 +41,7 @@ const NAV: Array<{ href: string; label: MsgKey }> = [
   { href: "#karsilastirma", label: "Karşılaştırma" },
   { href: "#paketler", label: "Paketler" },
   { href: "#sss", label: "Sorular" },
+  { href: "/iletisim?kaynak=menu", label: "İletişim" },
 ];
 
 const STEPS: Array<{ title: MsgKey; text: MsgKey }> = [
@@ -894,13 +895,18 @@ export default async function HomePage() {
             {t("Hiçbir an kaybolmasın.")}
           </h2>
           <p className="mt-6 max-w-md text-stone-400">{t("Albümünüzü dakikalar içinde kurun; gerisini misafirleriniz tamamlasın.")}</p>
-          <Link
-            href="/login"
-            className="mt-12 inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
-          >
-            {t("Albümünüzü oluşturun")}
-            <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
-          </Link>
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
+            >
+              {t("Albümünüzü oluşturun")}
+              <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+            <Link href="/iletisim?kaynak=ana-sayfa" className="inline-flex items-center gap-2 rounded-full border border-stone-600 px-7 py-3 text-sm text-stone-100 transition hover:border-stone-300">
+              {t("Detaylı bilgi için iletişime geçin")}
+            </Link>
+          </div>
         </div>
       </section>
 
