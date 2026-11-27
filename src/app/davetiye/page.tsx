@@ -199,17 +199,27 @@ export default async function InvitationsLandingPage() {
       <section className="bg-stone-900 text-stone-50">
         <div className="mx-auto max-w-6xl px-6 py-24 text-center">
           <h2 className="font-brand text-5xl sm:text-6xl">{t("İlk davetiyenizi bugün gönderin.")}</h2>
-          <Link href={START_HREF} className="mt-10 inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-white">
-            {t("Davetiyenizi oluşturun")} <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <Link href={START_HREF} className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-white">
+              {t("Davetiyenizi oluşturun")} <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href={`${APP_URL}/iletisim?kaynak=davetiye`} className="inline-flex items-center gap-2 rounded-full border border-stone-600 px-7 py-3 text-sm text-stone-100 transition hover:border-stone-300">
+              {t("Detaylı bilgi için iletişime geçin")}
+            </Link>
+          </div>
         </div>
       </section>
 
       <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-8 text-xs text-stone-500">
         <BrandLogo className="text-sm" markClassName="h-5 w-5" />
-        <Link href={`${APP_URL}/`} className="hover:text-stone-800">
-          {t("{brand} fotoğraf albümü", { brand: BRAND.name })}
-        </Link>
+        <span className="flex gap-5">
+          <Link href={`${APP_URL}/iletisim?kaynak=davetiye`} className="hover:text-stone-800">
+            {t("İletişim")}
+          </Link>
+          <Link href={`${APP_URL}/`} className="hover:text-stone-800">
+            {t("{brand} fotoğraf albümü", { brand: BRAND.name })}
+          </Link>
+        </span>
       </footer>
     </div>
   );

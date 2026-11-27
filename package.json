@@ -14,7 +14,8 @@
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "drive:token": "node scripts/generate-drive-token.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
-    "user": "node scripts/manage-users.mjs"
+    "user": "node scripts/manage-users.mjs",
+    "contacts": "node scripts/contacts.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
