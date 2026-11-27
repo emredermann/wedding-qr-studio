@@ -2,17 +2,36 @@
 
 import { Expand, Heart, Shrink } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
+import { PresetIcon } from "@/components/event/PresetIcon";
+import { MEDALS, useLeaderboard } from "@/components/guest/useLeaderboard";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
+import { themeDataAttrs, themeFor } from "@/lib/event-presets";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
-import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto } from "@/types/domain";
+import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto, RecentHeartsDto } from "@/types/domain";
+import { useT } from "@/lib/i18n/provider";
+import { tClient, translateLoose } from "@/lib/i18n/translate";
 
 const PHOTO_MS = 7000;
 const VIDEO_MAX_MS = 25000;
 const MESSAGE_MS = 9000;
 const POLL_MS = 6000;
+const HEART_POLL_MS = 4000;
+/** At most this many hearts float at once (a busy dance floor shouldn't flood the screen). */
+const MAX_FLOATING_HEARTS = 40;
+
+interface FloatingHeart {
+  id: number;
+  left: number;
+  size: number;
+  drift: number;
+  duration: number;
+  delay: number;
+}
+
+let floatingHeartId = 0;
 
 interface SlideState {
   pool: MediaDto[];
@@ -60,6 +79,7 @@ function maxIso(values: Array<string | null | undefined>): string {
 }
 
 export function LiveWall({ slug }: { slug: string }) {
+  const t = useT();
   const [event, setEvent] = useState<PublicEventDto | null>(null);
   const [guestUrl, setGuestUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +89,19 @@ export function LiveWall({ slug }: { slug: string }) {
   const [newestMedia, setNewestMedia] = useState<string | null>(null);
   const [newestMessage, setNewestMessage] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [floating, setFloating] = useState<FloatingHeart[]>([]);
+  // Challenge leaders (when the event has challenges) and the rotating sponsor (Pro brand kit).
+  const board = useLeaderboard(slug, Boolean(event && event.challenges.length > 0), null, 30_000);
+  const showBrand = Boolean(event?.brand?.showOnLiveWall);
+  const sponsors = showBrand ? (event?.brand?.sponsors ?? []) : [];
+  const [sponsorIndex, setSponsorIndex] = useState(0);
+  useEffect(() => {
+    if (sponsors.length < 2) return;
+    const timer = window.setInterval(() => setSponsorIndex((i) => i + 1), 6000);
+    return () => window.clearInterval(timer);
+  }, [sponsors.length]);
+  const sponsor = sponsors.length > 0 ? sponsors[sponsorIndex % sponsors.length] : null;
+  const currentIdRef = useRef<string | null>(null);
 
   const base = `/api/events/${encodeURIComponent(slug)}`;
 
@@ -93,7 +126,7 @@ export function LiveWall({ slug }: { slug: string }) {
         setMessages(approvedNotes.slice(0, 50));
         setNewestMessage(maxIso(notes.items.map((n) => n.publishedAt)));
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Yüklenemedi");
+        if (!cancelled) setError(err instanceof Error ? translateLoose(err.message) : tClient("Yüklenemedi"));
       }
     })();
     return () => {
@@ -132,7 +165,46 @@ export function LiveWall({ slug }: { slug: string }) {
     return () => window.clearInterval(timer);
   }, [base, newestMedia, newestMessage]);
 
+  // Floating hearts: ask for hearts given since the last poll and let them rise.
+  useEffect(() => {
+    let cursor: string | null = null;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await apiFetch<RecentHeartsDto>(`${base}/hearts${cursor ? `?since=${encodeURIComponent(cursor)}` : ""}`);
+        if (cancelled) return;
+        const isFirst = cursor === null;
+        cursor = res.cursor;
+        if (isFirst || res.hearts.length === 0) return;
+        const spawned = res.hearts.slice(-12).map((heart, i): FloatingHeart => {
+          // Hearts for the photo on screen right now are bigger.
+          const onScreen = heart.mediaId === currentIdRef.current;
+          return {
+            id: (floatingHeartId += 1),
+            left: 8 + Math.random() * 84,
+            size: (onScreen ? 56 : 34) + Math.random() * 18,
+            drift: (Math.random() - 0.5) * 160,
+            duration: 4200 + Math.random() * 1800,
+            delay: i * 280,
+          };
+        });
+        setFloating((prev) => [...prev, ...spawned].slice(-MAX_FLOATING_HEARTS));
+      } catch {
+        // transient network error: try again next tick
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, HEART_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [base]);
+
   const current = slides.pool.find((m) => m.id === slides.currentId) ?? null;
+  useEffect(() => {
+    currentIdRef.current = current?.id ?? null;
+  }, [current]);
   const previous = slides.pool.find((m) => m.id === slides.previousId) ?? null;
 
   const advance = useCallback(() => dispatch({ type: "advance" }), []);
@@ -201,7 +273,7 @@ export function LiveWall({ slug }: { slug: string }) {
   const isNew = current ? slides.freshIds.includes(current.id) : false;
 
   return (
-    <main className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
+    <main {...(event ? themeDataAttrs(themeFor(event.themeId)) : {})} className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
       {previous && previous.id !== current?.id && previous.kind === "photo" && (
         <img
           key={`prev-${previous.id}`}
@@ -245,21 +317,22 @@ export function LiveWall({ slug }: { slug: string }) {
 
       {!current && event && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
-          <Heart className="h-12 w-12 fill-current" style={{ color: accent }} />
+          <PresetIcon eventType={event.eventType} className={`h-12 w-12 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} style={{ color: accent }} />
           <h1 className="font-serif text-5xl">{event.coupleNames || event.title}</h1>
-          <p className="text-xl text-white/70">QR kodu okutun, ilk fotoğrafı siz paylaşın!</p>
+          <p className="text-xl text-white/70">{t("QR kodu okutun, ilk fotoğrafı siz paylaşın!")}</p>
         </div>
       )}
 
       {/* Caption */}
-      {current && (current.guestName || current.note) && (
+      {current && (current.guestName || current.note || current.tableNo !== null) && (
         <div className="absolute top-8 left-8 max-w-[45vw] rounded-2xl bg-black/45 px-5 py-3 backdrop-blur-md">
           {isNew && (
             <span className="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold tracking-wider uppercase" style={{ backgroundColor: accent }}>
-              Yeni
+              {t("Yeni")}
             </span>
           )}
           {current.guestName && <p className="text-lg font-semibold">{current.guestName}</p>}
+          {current.tableNo !== null && <p className="text-sm text-white/70">🪑 {t("Masa {n}", { n: current.tableNo })}</p>}
           {current.note && <p className="text-base text-white/85 italic">“{current.note}”</p>}
         </div>
       )}
@@ -278,15 +351,68 @@ export function LiveWall({ slug }: { slug: string }) {
       {guestUrl && (
         <div className="absolute right-8 bottom-8 flex flex-col items-center gap-2 rounded-3xl bg-white p-4 text-center text-stone-900 shadow-2xl">
           <QRCodeSVG value={guestUrl} size={150} level="M" fgColor="#111111" />
-          <p className="max-w-[160px] text-sm leading-tight font-semibold">Okut, fotoğrafını paylaş!</p>
+          <p className="max-w-[160px] text-sm leading-tight font-semibold">{t("Okut, fotoğrafını paylaş!")}</p>
+        </div>
+      )}
+
+      {/* Brand kit (Pro): event logo top centre, sponsors rotating at the bottom centre. */}
+      {showBrand && event?.brand?.logoUrl && (
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 rounded-2xl bg-white/90 px-5 py-3 shadow-2xl">
+          <img src={event.brand.logoUrl} alt="" className="h-12 max-w-[14rem] object-contain" />
+        </div>
+      )}
+      {sponsor && (
+        <div key={sponsor.id} className="eqr-step-enter absolute bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/90 px-5 py-3 text-stone-700 shadow-2xl">
+          <span className="text-[10px] font-semibold tracking-[0.2em] text-stone-400 uppercase">{event?.brand?.sponsorsLabel || t("Sponsorlar")}</span>
+          <img src={sponsor.logoUrl} alt={sponsor.name} className="h-10 max-w-[10rem] object-contain" />
+        </div>
+      )}
+
+      {/* Challenge leaders */}
+      {board && board.top.length > 0 && (
+        <div className="absolute top-24 right-8 w-64 rounded-3xl bg-black/50 px-5 py-4 backdrop-blur-md">
+          <p className="mb-2 text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">{t("Görev liderleri")}</p>
+          <ol className="space-y-1.5">
+            {board.top.slice(0, 3).map((entry) => (
+              <li key={entry.rank} className="flex items-center gap-2 text-base">
+                <span>{MEDALS[entry.rank - 1]}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{entry.name || t("Misafir")}</span>
+                <span className="text-sm tabular-nums text-white/70">
+                  {entry.completed}/{board.totalChallenges}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 
       <div className="absolute top-8 right-8 flex items-center gap-3">
-        <span className="rounded-full bg-black/45 px-4 py-2 text-sm backdrop-blur-md">{slides.pool.length} anı</span>
-        <button type="button" onClick={toggleFullscreen} className="cursor-pointer rounded-full bg-black/45 p-2.5 backdrop-blur-md hover:bg-black/60" aria-label="Tam ekran">
+        <span className="rounded-full bg-black/45 px-4 py-2 text-sm backdrop-blur-md">{t("{n} anı", { n: slides.pool.length })}</span>
+        <button type="button" onClick={toggleFullscreen} className="cursor-pointer rounded-full bg-black/45 p-2.5 backdrop-blur-md hover:bg-black/60" aria-label={t("Tam ekran")}>
           {fullscreen ? <Shrink className="h-5 w-5" /> : <Expand className="h-5 w-5" />}
         </button>
+      </div>
+      {/* Floating hearts (hidden for viewers who prefer reduced motion). */}
+      <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden motion-reduce:hidden" aria-hidden>
+        {floating.map((h) => (
+          <span
+            key={h.id}
+            onAnimationEnd={() => setFloating((prev) => prev.filter((x) => x.id !== h.id))}
+            className="absolute bottom-0 opacity-0 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]"
+            style={
+              {
+                left: `${h.left}%`,
+                width: h.size,
+                height: h.size,
+                color: accent,
+                "--eqr-drift": `${h.drift}px`,
+                animation: `eqrHeartFloat ${h.duration}ms ease-out ${h.delay}ms forwards`,
+              } as React.CSSProperties
+            }
+          >
+            <Heart className="h-full w-full fill-current" strokeWidth={1.5} />
+          </span>
+        ))}
       </div>
     </main>
   );

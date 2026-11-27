@@ -2,6 +2,9 @@ import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
 import { readChallenges, readSchedule, withKnownCategories } from "@/lib/event-extras";
+import { brandFor, readBranding, readShareFrame } from "@/lib/branding";
+import { normaliseEventType, normaliseThemeId, readModules } from "@/lib/event-presets";
+import type { Plan } from "@/lib/plans";
 import { getAdminDb } from "@/lib/supabase/server";
 import type {
   EventRow,
@@ -18,7 +21,8 @@ export const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,62}[a-z0-9])$/;
 export const MEDIA_COLUMNS =
   "id, event_id, drive_file_id, kind, mime_type, size_bytes, original_name, guest_name, guest_session_id, note, category, challenge_id, heart_count, is_guestbook, status, width, height, face_count, published_at, created_at";
 
-export function toPublicEventDto(event: EventRow): PublicEventDto {
+/** Host view: every saved schedule item and challenge, even while its module is switched off. */
+function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
   return {
     slug: event.slug,
     title: event.title,
@@ -34,16 +38,35 @@ export function toPublicEventDto(event: EventRow): PublicEventDto {
     guestbookEnabled: event.guestbook_enabled,
     schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
     challenges: readChallenges(event.challenges),
+    tableNumbers: event.table_numbers === true,
+    eventType: normaliseEventType(event.event_type),
+    themeId: normaliseThemeId(event.theme_id),
+    modules: readModules(event.modules),
+    plan,
+    brand: brandFor(event.slug, readBranding(event.branding)),
+    shareFrame: readShareFrame(event.share_frame),
   };
 }
 
-export function toHostEventDto(event: EventRow, role: HostEventDto["role"] = "owner"): HostEventDto {
+/** Guest view: a module the host switched off arrives empty, so no guest screen shows it. */
+export function toPublicEventDto(event: EventRow, plan: Plan): PublicEventDto {
+  const dto = toEventDto(event, plan);
   return {
-    ...toPublicEventDto(event),
+    ...dto,
+    schedule: dto.modules.schedule ? dto.schedule : [],
+    challenges: dto.modules.challenges ? dto.challenges : [],
+  };
+}
+
+export function toHostEventDto(event: EventRow, role: HostEventDto["role"], plan: Plan): HostEventDto {
+  return {
+    ...toEventDto(event, plan),
+    shareFrameSettings: readShareFrame(event.share_frame),
     id: event.id,
     role,
     driveFolderUrl: driveFolderUrl(event.drive_folder_id),
     driveAccount: event.drive_account,
+    heartsNamed: event.hearts_named === true,
     createdAt: event.created_at,
     updatedAt: event.updated_at,
   };
@@ -61,6 +84,7 @@ export function toMediaDto(row: MediaItemRow, guestSessionId?: string | null): M
     note: row.note,
     category: row.category,
     challengeId: row.challenge_id ?? null,
+    tableNo: row.table_no ?? null,
     heartCount: Number(row.heart_count ?? 0),
     isGuestbook: row.is_guestbook,
     status: row.status,

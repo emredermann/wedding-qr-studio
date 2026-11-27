@@ -1,4 +1,7 @@
 import type { Challenge, ScheduleItem } from "@/lib/event-extras";
+import type { BrandDto, ShareFrameDto, ShareFrameSettings } from "@/lib/branding";
+import type { EventModules, EventType, ThemeId } from "@/lib/event-presets";
+import type { Plan } from "@/lib/plans";
 
 /**
  * Domain types shared by API routes (server) and pages (client).
@@ -13,6 +16,8 @@ export const MEDIA_STATUSES = ["approved", "pending", "hidden"] as const;
 export type MediaStatus = (typeof MEDIA_STATUSES)[number];
 
 export const DEFAULT_CATEGORIES = ["Hazırlık", "Nikah", "İlk Dans", "Yemek", "After Party"] as const;
+/** Used for events created while the host's interface is in English. */
+export const DEFAULT_CATEGORIES_EN = ["Getting Ready", "Ceremony", "First Dance", "Dinner", "After Party"] as const;
 
 export interface EventRow {
   id: string;
@@ -39,6 +44,20 @@ export interface EventRow {
   schedule?: unknown;
   /** jsonb (0002 migration); read through `readChallenges`. */
   challenges?: unknown;
+  /** Hosts may see heart names (0003 migration); absent on old schemas = anonymous. */
+  hearts_named?: boolean;
+  /** One QR per table (0004 migration); absent on old schemas = single QR. */
+  table_numbers?: boolean;
+  /** Event type preset (0007 migration); absent or null = legacy event. */
+  event_type?: string | null;
+  /** Guest theme (0007 migration); absent or null = Mira minimal. */
+  theme_id?: string | null;
+  /** Module switches jsonb (0007 migration); read through `readModules`. */
+  modules?: unknown;
+  /** Brand kit jsonb (0008 migration); read through `readBranding`. */
+  branding?: unknown;
+  /** Share frame jsonb (0008 migration); read through `readShareFrame`. */
+  share_frame?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +83,8 @@ export interface MediaItemRow {
   challenge_id?: string | null;
   /** Denormalised heart total (0002 migration), maintained by toggle_media_heart(). */
   heart_count?: number;
+  /** Table the guest scanned (0004 migration); absent on old schemas. */
+  table_no?: number | null;
   published_at: string | null;
   created_at: string;
 }
@@ -97,6 +118,20 @@ export interface PublicEventDto {
   schedule: ScheduleItem[];
   /** Optional photo challenges guests can join while uploading. */
   challenges: Challenge[];
+  /** Table cards carry their own QR (?table=N) and uploads are tagged with the table. */
+  tableNumbers: boolean;
+  /** Preset that drives defaults and module order; null = event created before presets. */
+  eventType: EventType | null;
+  /** Guest theme; null = legacy look (Mira minimal). */
+  themeId: ThemeId | null;
+  /** Host module switches. On the public DTO a switched-off module also arrives empty. */
+  modules: EventModules;
+  /** The event owner's package (co-hosts act under it). */
+  plan: Plan;
+  /** Brand kit; null when not set. */
+  brand: BrandDto | null;
+  /** Frame for share/download copies. */
+  shareFrame: ShareFrameDto;
 }
 
 /** Host-facing event info (includes Drive links and stats). */
@@ -106,8 +141,54 @@ export interface HostEventDto extends PublicEventDto {
   role: "owner" | "cohost";
   driveFolderUrl: string;
   driveAccount: "app" | "host";
+  /** Whether hosts see who hearted each item. */
+  heartsNamed: boolean;
+  /** Saved frame settings (for the editor). */
+  shareFrameSettings: ShareFrameSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One guest in the host's guest list (host-only; no session IDs). */
+export interface GuestSummaryDto {
+  /** Opaque row id, only stable within one response. */
+  id: string;
+  /** Last name the guest used ("" if unknown). */
+  name: string;
+  tableNo: number | null;
+  photos: number;
+  videos: number;
+  /** Written notes + voice/video guestbook messages. */
+  messages: number;
+  /** Hearts given; null while the event keeps hearts anonymous. */
+  hearts: number | null;
+  totalBytes: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface GuestListDto {
+  guests: GuestSummaryDto[];
+  heartsNamed: boolean;
+  tableNumbers: boolean;
+}
+
+/** Live wall: hearts given since the last poll (approved items only; never who gave them). */
+export interface RecentHeartsDto {
+  /** Oldest first. */
+  hearts: Array<{ mediaId: string; at: string }>;
+  /** Pass back as `since` on the next poll (server clock, so device clocks don't matter). */
+  cursor: string;
+}
+
+/** Who hearted one item, as the host sees it (names only when allowed). */
+export interface MediaHeartsDto {
+  /** Current event setting. */
+  named: boolean;
+  /** Visible names, newest first. */
+  people: Array<{ name: string; at: string }>;
+  /** Hearts whose name the host may not see (anonymous mode, or given before names were turned on). */
+  anonymousCount: number;
 }
 
 export interface EventStatsDto {
@@ -130,6 +211,7 @@ export interface HostEventListItem {
   coupleNames: string | null;
   eventDate: string | null;
   themeColor: string;
+  eventType: EventType | null;
   mediaCount: number;
   role: "owner" | "cohost";
   createdAt: string;
@@ -146,6 +228,8 @@ export interface MediaDto {
   note: string | null;
   category: string | null;
   challengeId: string | null;
+  /** Table number from the guest's QR card, if known. */
+  tableNo: number | null;
   isGuestbook: boolean;
   status: MediaStatus;
   width: number | null;

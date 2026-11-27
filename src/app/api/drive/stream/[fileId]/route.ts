@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { handleRouteError, jsonError } from "@/lib/api/http";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { contentDisposition, parseRange } from "@/lib/http-range";
-import { authorizeMediaAccess } from "@/lib/media-access";
+import { authorizeMediaAccess, managesMediaEvent } from "@/lib/media-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,7 +11,8 @@ export const maxDuration = 60;
 /**
  * GET /api/drive/stream/:fileId
  *
- * Range-aware proxy for video/audio playback and original-quality downloads.
+ * Range-aware proxy for video/audio playback, plus original-quality
+ * downloads for the event's hosts (owner or co-host) only.
  * Bytes are piped from Drive to the client without buffering.
  */
 export async function GET(request: NextRequest, context: { params: Promise<{ fileId: string }> }) {
@@ -20,6 +21,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ fil
     const access = await authorizeMediaAccess(request, fileId);
     if (!access) return jsonError(404, "NOT_FOUND", "Dosya bulunamadı.");
     const { media, isPublic } = access;
+    const download = request.nextUrl.searchParams.get("download") === "1";
+
+    // Guests cannot download. They see photos through Google's image CDN and
+    // only need this proxy to play videos and voice notes; original-quality
+    // photos and attachment downloads are for the event's hosts.
+    if ((media.kind === "photo" || download) && !(await managesMediaEvent(media, access.event))) {
+      return jsonError(403, "DOWNLOAD_DISABLED", "İndirme yalnızca etkinlik sahibine açık.");
+    }
 
     const total = Number(media.size_bytes);
     const range = parseRange(request.headers.get("range"), total);
@@ -36,7 +45,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ fil
       return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
     }
 
-    const download = request.nextUrl.searchParams.get("download") === "1";
     const headers = new Headers({
       "Content-Type": media.mime_type,
       "Accept-Ranges": "bytes",

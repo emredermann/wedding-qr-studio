@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { useMinuteClock } from "@/components/guest/ScheduleCard";
 import { trackEvent } from "@/lib/client/analytics";
+import { useLang, useT } from "@/lib/i18n/provider";
 import { scheduleStatus } from "@/lib/event-extras";
-import { errorMessage } from "@/lib/client/api";
+import { ApiError, apiFetch, errorMessage } from "@/lib/client/api";
 import { uploadToDrive } from "@/lib/client/drive-upload";
 import { analyzePhoto } from "@/lib/faceRecognition";
 import {
@@ -32,6 +33,11 @@ interface QueueItem {
   category: string | null;
   challengeId: string | null;
   note: string;
+  /** Server id once uploaded. */
+  mediaId: string | null;
+  /** The guest moved on: this upload can no longer be deleted by them. */
+  locked: boolean;
+  deleting: boolean;
 }
 
 let faceLock: Promise<unknown> = Promise.resolve();
@@ -58,17 +64,38 @@ function detectKind(file: File): MediaKind | null {
 export function UploadPanel({
   event,
   guestName,
+  tableNo,
+  active,
   onUploaded,
+  onDeleted,
   onMessage,
+  pickedChallenge = null,
 }: {
   event: PublicEventDto;
   guestName: string;
+  /** A challenge the guest chose on the Tasks card; preselected here (nonce re-applies the same one). */
+  pickedChallenge?: { id: string; nonce: number } | null;
+  /** Table from the guest's QR card; sent with every upload. */
+  tableNo: number | null;
+  /** Whether the upload tab is on screen; leaving it locks finished uploads. */
+  active: boolean;
   onUploaded: (media: MediaDto) => void;
+  /** A finished upload was deleted by the guest (before it was locked). */
+  onDeleted: (mediaId: string) => void;
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
+  const t = useT();
+  const { locale } = useLang();
+  const percent = (fraction: number) => new Intl.NumberFormat(locale, { style: "percent" }).format(Math.round(fraction * 100) / 100);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [challengeId, setChallengeId] = useState<string | null>(null);
+  // A pick from the Tasks card preselects that challenge (adjusted during render, no effect).
+  const [appliedPick, setAppliedPick] = useState(pickedChallenge);
+  if (pickedChallenge !== appliedPick) {
+    setAppliedPick(pickedChallenge);
+    if (pickedChallenge) setChallengeId(pickedChallenge.id);
+  }
   // Program-based preselection: only until the guest picks a category themselves.
   const categoryPickedRef = useRef(false);
   const now = useMinuteClock();
@@ -82,6 +109,7 @@ export function UploadPanel({
   }, [programCategory]);
   const [note, setNote] = useState("");
   const queueRef = useRef<QueueItem[]>([]);
+  const activeRef = useRef(active);
   const startedRef = useRef<Set<string>>(new Set());
   /** Items whose bytes reached Drive; they stay "uploading" until confirmed. */
   const bytesDoneRef = useRef<Set<string>>(new Set());
@@ -89,6 +117,19 @@ export function UploadPanel({
   const galleryRef = useRef<HTMLInputElement>(null);
 
   const busy = items.some((item) => item.status === "queued" || item.status === "uploading");
+
+  // Leaving the upload tab = moving on: finished uploads can no longer be deleted.
+  const lockRef = useRef<(viaBeacon?: boolean) => void>(() => undefined);
+  useEffect(() => {
+    activeRef.current = active;
+    if (!active) lockRef.current();
+  }, [active]);
+  // Closing or leaving the page locks them too (beacon survives the unload).
+  useEffect(() => {
+    const onHide = () => lockRef.current(true);
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, []);
 
   useEffect(() => {
     if (!busy) return;
@@ -128,6 +169,7 @@ export function UploadPanel({
         note: item.note,
         category: item.category,
         challengeId: item.challengeId,
+        tableNo,
         extras,
         onProgress: (fraction) => patch(item.id, { progress: fraction }),
         onBytesUploaded: () => {
@@ -136,7 +178,10 @@ export function UploadPanel({
           pump();
         },
       });
-      patch(item.id, { status: "done", progress: 1 });
+      // Finishing in the background (guest is on another tab) counts as having moved on.
+      const lockNow = !activeRef.current;
+      patch(item.id, { status: "done", progress: 1, mediaId: media.id, locked: lockNow });
+      if (lockNow) sendLock([media.id]);
       trackEvent("upload_completed", { kind: item.kind });
       onUploaded(media);
     } catch (error) {
@@ -164,12 +209,54 @@ export function UploadPanel({
     const remaining = queueRef.current.filter((i) => i.status === "queued" || i.status === "uploading").length;
     if (remaining === 0 && queueRef.current.some((i) => i.status === "done")) {
       const failed = queueRef.current.filter((i) => i.status === "error").length;
-      if (failed === 0) onMessage(event.requireApproval ? "Yüklendi! Etkinlik sahibi onayladıktan sonra galeride görünecek." : "Tüm dosyalar yüklendi. Teşekkürler! 💛", "success");
+      if (failed === 0) onMessage(event.requireApproval ? t("Yüklendi! Etkinlik sahibi onayladıktan sonra galeride görünecek.") : t("Tüm dosyalar yüklendi. Teşekkürler! 💛"), "success");
+    }
+  }
+
+  /** Tells the server these uploads can no longer be deleted by the guest (one-way). */
+  function sendLock(ids: string[], viaBeacon = false) {
+    if (ids.length === 0) return;
+    const body = JSON.stringify({ ids });
+    if (viaBeacon && typeof navigator.sendBeacon === "function") {
+      navigator.sendBeacon("/api/media/lock", new Blob([body], { type: "application/json" }));
+      return;
+    }
+    void apiFetch("/api/media/lock", { method: "POST", json: { ids } }).catch(() => undefined);
+  }
+
+  /** The guest continued: lock every finished, still-deletable upload. */
+  function lockFinished(viaBeacon = false) {
+    const ids = queueRef.current.filter((i) => i.status === "done" && i.mediaId && !i.locked).map((i) => i.mediaId as string);
+    if (ids.length === 0) return;
+    mutate((prev) => prev.map((i) => (i.mediaId && ids.includes(i.mediaId) ? { ...i, locked: true } : i)));
+    sendLock(ids, viaBeacon);
+  }
+
+  useEffect(() => {
+    lockRef.current = lockFinished;
+  });
+
+  async function deleteUploaded(item: QueueItem) {
+    if (!item.mediaId || item.locked || item.deleting) return;
+    if (!window.confirm(t("Bu dosya silinsin mi? Bu işlem geri alınamaz."))) return;
+    patch(item.id, { deleting: true });
+    try {
+      await apiFetch(`/api/media/${item.mediaId}`, { method: "DELETE" });
+      removeItem(item.id);
+      onDeleted(item.mediaId);
+      trackEvent("upload_deleted", { kind: item.kind });
+      onMessage(t("Silindi."), "success");
+    } catch (error) {
+      const locked = error instanceof ApiError && error.code === "DELETE_LOCKED";
+      patch(item.id, { deleting: false, ...(locked ? { locked: true } : {}) });
+      onMessage(errorMessage(error), "error");
     }
   }
 
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
+    // Picking new files means the guest has moved on from the previous ones.
+    lockFinished();
     const accepted: QueueItem[] = [];
     let rejected = 0;
     for (const file of Array.from(list)) {
@@ -179,7 +266,7 @@ export function UploadPanel({
         continue;
       }
       if (file.size > MAX_FILE_SIZE_BYTES[kind]) {
-        onMessage(`${file.name} çok büyük (en fazla ${formatBytes(MAX_FILE_SIZE_BYTES[kind])}).`, "error");
+        onMessage(t("{name} çok büyük (en fazla {max}).", { name: file.name, max: formatBytes(MAX_FILE_SIZE_BYTES[kind]) }), "error");
         continue;
       }
       accepted.push({
@@ -193,9 +280,12 @@ export function UploadPanel({
         category,
         challengeId,
         note: note.trim(),
+        mediaId: null,
+        locked: false,
+        deleting: false,
       });
     }
-    if (rejected > 0) onMessage(`${rejected} dosya desteklenmiyor (yalnızca fotoğraf ve video).`, "error");
+    if (rejected > 0) onMessage(t("{n} dosya desteklenmiyor (yalnızca fotoğraf ve video).", { n: rejected }), "error");
     if (accepted.length === 0) return;
     mutate((prev) => [...accepted, ...prev]);
     setNote("");
@@ -210,6 +300,7 @@ export function UploadPanel({
   }
 
   function clearFinished() {
+    lockFinished();
     mutate((prev) => {
       for (const item of prev) if (item.status === "done" && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       return prev.filter((item) => item.status !== "done");
@@ -226,8 +317,8 @@ export function UploadPanel({
 
   if (!event.uploadsEnabled) {
     return (
-      <div className="rounded-3xl border border-stone-200 bg-white/80 p-8 text-center text-stone-600">
-        Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.
+      <div className="rounded-3xl border border-stone-200 bg-surface/80 p-8 text-center text-stone-600">
+        {t("Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.")}
       </div>
     );
   }
@@ -244,7 +335,7 @@ export function UploadPanel({
           style={{ backgroundColor: "var(--accent)" }}
         >
           <Camera className="h-8 w-8" />
-          <span className="text-sm font-semibold">Fotoğraf / Video Çek</span>
+          <span className="text-sm font-semibold">{t("Fotoğraf / Video Çek")}</span>
         </button>
         <button
           type="button"
@@ -253,7 +344,7 @@ export function UploadPanel({
           style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
         >
           <ImagePlus className="h-8 w-8" />
-          <span className="text-sm font-semibold">Galeriden Seç</span>
+          <span className="text-sm font-semibold">{t("Galeriden Seç")}</span>
         </button>
         <input
           ref={cameraRef}
@@ -279,9 +370,13 @@ export function UploadPanel({
         />
       </div>
 
+      {tableNo !== null && (
+        <p className="-mt-2 text-center text-[11px] text-stone-500">🪑 {t("Masa {n} · yüklemeleriniz bu masayla işaretlenir", { n: tableNo })}</p>
+      )}
+
       {event.categories.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">Hangi an? (isteğe bağlı)</p>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Hangi an? (isteğe bağlı)")}</p>
           <div className="flex flex-wrap gap-2">
             {[null, ...event.categories].map((cat) => (
               <button
@@ -292,11 +387,11 @@ export function UploadPanel({
                   setCategory(cat);
                 }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  category === cat ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+                  category === cat ? "border-transparent text-white" : "border-stone-300 bg-surface text-stone-700"
                 }`}
                 style={category === cat ? { backgroundColor: "var(--accent)" } : undefined}
               >
-                {cat ?? "Genel"}
+                {cat ?? t("Genel")}
               </button>
             ))}
           </div>
@@ -305,7 +400,7 @@ export function UploadPanel({
 
       {event.challenges.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">Bir göreve katıl (isteğe bağlı)</p>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Bir göreve katıl (isteğe bağlı)")}</p>
           <div className="flex flex-wrap gap-2">
             {event.challenges.map((c) => {
               const active = challengeId === c.id;
@@ -316,7 +411,7 @@ export function UploadPanel({
                   aria-pressed={active}
                   onClick={() => setChallengeId(active ? null : c.id)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    active ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+                    active ? "border-transparent text-white" : "border-stone-300 bg-surface text-stone-700"
                   }`}
                   style={active ? { backgroundColor: "var(--accent)" } : undefined}
                 >
@@ -325,34 +420,39 @@ export function UploadPanel({
               );
             })}
           </div>
-          {challengeId && <p className="mt-1.5 text-[11px] text-stone-500">Şimdi seçeceğiniz fotoğraflar bu göreve eklenecek.</p>}
+          {challengeId && <p className="mt-1.5 text-[11px] text-stone-500">{t("Şimdi seçeceğiniz fotoğraflar bu göreve eklenecek.")}</p>}
         </div>
       )}
 
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold tracking-wide text-stone-500 uppercase">Anı notu (isteğe bağlı)</span>
+        <span className="mb-2 block text-xs font-semibold tracking-wide text-stone-500 uppercase">{t("Anı notu (isteğe bağlı)")}</span>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, 500))}
           rows={2}
-          placeholder="Bu fotoğrafla ilgili kısa bir not bırakın…"
-          className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none focus:border-stone-500"
+          placeholder={t("Bu fotoğrafla ilgili kısa bir not bırakın…")}
+          className="w-full rounded-2xl border border-stone-300 bg-surface px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
         />
-        <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · seçeceğiniz dosyalara eklenir</span>
+        <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · {t("seçeceğiniz dosyalara eklenir")}</span>
       </label>
 
       {items.length > 0 && (
-        <div className="rounded-3xl border border-stone-200 bg-white p-3">
+        <div className="rounded-3xl border border-stone-200 bg-surface p-3">
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-sm font-semibold text-stone-800">
-              Yüklemeler <span className="font-normal text-stone-500">({doneCount}/{items.length})</span>
+              {t("Yüklemeler")} <span className="font-normal text-stone-500">({doneCount}/{items.length})</span>
             </p>
             {doneCount > 0 && (
               <button type="button" onClick={clearFinished} className="text-xs font-medium text-stone-500 hover:text-stone-800">
-                Tamamlananları temizle
+                {t("Tamamlananları temizle")}
               </button>
             )}
           </div>
+          {items.some((i) => i.status === "done" && !i.locked) && (
+            <p className="mb-2 px-1 text-[11px] leading-relaxed text-stone-500">
+              {t("Yanlış bir şey mi yüklediniz? Devam etmeden önce buradan silebilirsiniz; devam ettikten sonra silinemez.")}
+            </p>
+          )}
           <ul className="space-y-2">
             {items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 rounded-2xl bg-stone-50 p-2">
@@ -364,12 +464,12 @@ export function UploadPanel({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-stone-800">{item.file.name || "Kamera"}</p>
+                  <p className="truncate text-xs font-medium text-stone-800">{item.file.name || t("Kamera")}</p>
                   <p className="text-[11px] text-stone-500">
                     {formatBytes(item.file.size)}
-                    {item.status === "uploading" && ` · %${Math.round(item.progress * 100)}`}
-                    {item.status === "queued" && " · sırada"}
-                    {item.status === "done" && " · yüklendi"}
+                    {item.status === "uploading" && ` · ${percent(item.progress)}`}
+                    {item.status === "queued" && ` · ${t("sırada")}`}
+                    {item.status === "done" && ` · ${t("yüklendi")}`}
                   </p>
                   {item.status === "error" ? (
                     <p className="mt-0.5 flex items-start gap-1 text-[11px] text-rose-600">
@@ -387,13 +487,30 @@ export function UploadPanel({
                 </div>
                 <div className="shrink-0">
                   {item.status === "uploading" && <Loader2 className="h-5 w-5 animate-spin text-stone-400" />}
-                  {item.status === "done" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                  {item.status === "done" &&
+                    (item.locked ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <button
+                          type="button"
+                          onClick={() => void deleteUploaded(item)}
+                          disabled={item.deleting}
+                          aria-label={t("Yüklemeyi sil")}
+                          title={t("Yüklemeyi sil")}
+                          className="rounded-full p-1.5 text-stone-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                        >
+                          {item.deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ))}
                   {item.status === "error" && (
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => retry(item.id)} aria-label="Tekrar dene" className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
+                      <button type="button" onClick={() => retry(item.id)} aria-label={t("Tekrar dene")} className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
                         <RotateCcw className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => removeItem(item.id)} aria-label="Kaldır" className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
+                      <button type="button" onClick={() => removeItem(item.id)} aria-label={t("Kaldır")} className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -406,8 +523,8 @@ export function UploadPanel({
       )}
 
       <p className="text-center text-[11px] leading-relaxed text-stone-500">
-        Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.
-        {event.faceSearchEnabled && event.galleryPublic && " “Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır."}
+        {t("Fotoğraflarınız orijinal kalitede, sıkıştırılmadan doğrudan etkinlik sahibinin Google Drive arşivine yüklenir.")}
+        {event.faceSearchEnabled && event.galleryPublic && ` ${t("“Beni Bul” için yüz analizi yalnızca telefonunuzda yapılır.")}`}
       </p>
     </div>
   );

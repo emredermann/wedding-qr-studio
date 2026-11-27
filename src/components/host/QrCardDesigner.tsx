@@ -2,16 +2,74 @@
 
 import { Download, FileDown, ImageUp, Loader2, Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 
 import { trackEvent } from "@/lib/client/analytics";
 import { saveBlob } from "@/lib/client/download";
+import { loadScriptFonts, SCRIPT_FAMILY, SCRIPT_WEIGHT, type ScriptFont } from "@/lib/card-fonts";
+import { EVENT_PRESETS, orderedQrTemplates, presetFor, type EventType, type QrTemplateId } from "@/lib/event-presets";
 import { buildPdf, canvasToJpegBytes, PAGE_SIZES_PT, type PdfPage } from "@/lib/client/pdf";
+import { useT } from "@/lib/i18n/provider";
+import type { MsgKey } from "@/lib/i18n/translate";
+import { QrOnlyExport } from "@/components/host/QrOnlyExport";
+import { ui } from "@/components/ui/styles";
 
-type TemplateId = "klasik" | "modern" | "botanik" | "gece";
+type TemplateId = QrTemplateId;
+type CardArt = "hand" | "camera" | "flowers" | "hearts";
+/** Where the handwritten heading curves: centred over the QR, or sweeping down the right side. */
+type HeadingArc = "top" | "right";
 type FrameStyle = "yok" | "ince" | "cift" | "kose";
-type CenterMode = "harfler" | "kalp" | "foto" | "yok";
+type CenterMode = "kalp" | "foto" | "yok";
 type PaperSize = "A6" | "A5" | "A4x4";
+type BoardPaper = "A4" | "A3" | "P50x70";
+type DesignKind = "tables" | "board" | "qr";
+
+/**
+ * Entrance board sizes. A4 at 300 DPI; the larger ones are capped near
+ * 12 MP (≈250 DPI for A3, ≈150 DPI for 50×70 cm, plenty at viewing distance)
+ * so phones can still render them (iOS limits canvases to ~16.7 MP).
+ */
+const BOARD_PX: Record<BoardPaper, { width: number; height: number }> = {
+  A4: { width: 2480, height: 3508 },
+  A3: { width: 2924, height: 4134 },
+  P50x70: { width: 2953, height: 4134 },
+};
+
+/** Entrance board link. With table numbers on it tells the guest page to forget a remembered table. */
+export function boardUrl(url: string, perTable: boolean): string {
+  return perTable ? `${url}${url.includes("?") ? "&" : "?"}entry=1` : url;
+}
+
+/** Guest link for one table card (`?table=N`), or the plain link. */
+export function tableUrl(url: string, table: string | null, perTable: boolean): string {
+  if (!perTable || !table) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}table=${encodeURIComponent(table)}`;
+}
+
+/**
+ * Renders a QR code for `value` off-screen and returns a copy of its canvas.
+ * Used when every table card needs its own code (qrcode.react paints in an
+ * effect, so we give it a tick before copying).
+ */
+async function renderQrCanvas(value: string, fgColor: string, bgColor: string): Promise<HTMLCanvasElement> {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    flushSync(() => root.render(<QRCodeCanvas value={value} size={1024} level="H" fgColor={fgColor} bgColor={bgColor} marginSize={0} />));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const source = host.querySelector("canvas");
+    if (!source) throw new Error("Canvas desteklenmiyor.");
+    const copy = document.createElement("canvas");
+    copy.width = source.width;
+    copy.height = source.height;
+    copy.getContext("2d")?.drawImage(source, 0, 0);
+    return copy;
+  } finally {
+    root.unmount();
+  }
+}
 
 interface Palette {
   background: string;
@@ -20,11 +78,71 @@ interface Palette {
   qr: string;
 }
 
-const TEMPLATES: Record<TemplateId, { name: string; palette: Palette; frame: FrameStyle; serifNames: boolean; leaves: boolean }> = {
+interface TemplateDef {
+  name: MsgKey;
+  palette: Palette;
+  frame: FrameStyle;
+  serifNames: boolean;
+  leaves: boolean;
+  /** Hand-drawn layout: line illustration, curved handwritten heading, QR printed straight on paper. */
+  script?: {
+    art: CardArt;
+    font: ScriptFont;
+    heading?: HeadingArc;
+    /** Only heading, QR and signature: no description or link text. */
+    minimal?: boolean;
+    /** Signature date as 29.08.2026. */
+    numericDate?: boolean;
+    /** Suggest the event preset's heading when this template is picked (if the host has not typed their own). */
+    presetHeading?: boolean;
+  };
+  /** Swatch glyph in the template picker. */
+  glyph?: string;
+}
+
+const TEMPLATES: Record<TemplateId, TemplateDef> = {
+  ornek: {
+    name: "Anı kartı",
+    palette: { background: "#F2F0F4", text: "#1E2B5C", accent: "#C2B3DC", qr: "#1E2B5C" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "hand", font: "caveat", heading: "right", minimal: true, numericDate: true, presetHeading: true },
+    glyph: "✍️",
+  },
+  cizim: {
+    name: "El çizimi",
+    palette: { background: "#F6F3F7", text: "#1F2A5A", accent: "#B7A6D3", qr: "#1F2A5A" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "camera", font: "caveat" },
+    glyph: "📷",
+  },
+  cicek: {
+    name: "Çiçek dalı",
+    palette: { background: "#F8F5EE", text: "#3B4636", accent: "#9DB08A", qr: "#2F3B2C" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "flowers", font: "vibes" },
+    glyph: "🌿",
+  },
+  kalpler: {
+    name: "Kalpler",
+    palette: { background: "#FBF6F2", text: "#5A2E36", accent: "#D7A39E", qr: "#5A2E36" },
+    frame: "ince",
+    serifNames: false,
+    leaves: false,
+    script: { art: "hearts", font: "caveat" },
+    glyph: "♡",
+  },
   klasik: { name: "Klasik", palette: { background: "#FFFDF8", text: "#1C1917", accent: "#B45309", qr: "#1C1917" }, frame: "cift", serifNames: true, leaves: false },
   modern: { name: "Modern", palette: { background: "#FFFFFF", text: "#111827", accent: "#111827", qr: "#111827" }, frame: "ince", serifNames: false, leaves: false },
   botanik: { name: "Botanik", palette: { background: "#F7F5EE", text: "#1F2A1F", accent: "#4D6B48", qr: "#1F2A1F" }, frame: "kose", serifNames: true, leaves: true },
   gece: { name: "Gece & Altın", palette: { background: "#14120F", text: "#F5EBDD", accent: "#D4A84B", qr: "#14120F" }, frame: "cift", serifNames: true, leaves: false },
+  kurumsal: { name: "Kurumsal", palette: { background: "#F5F7FA", text: "#0F1B2D", accent: "#2F54D1", qr: "#0F1B2D" }, frame: "ince", serifNames: false, leaves: false, glyph: "▦" },
+  parti: { name: "Parti", palette: { background: "#16121F", text: "#F4F1FA", accent: "#B794F6", qr: "#16121F" }, frame: "kose", serifNames: false, leaves: false, glyph: "✦" },
 };
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -37,12 +155,13 @@ const CARD_PX = {
 } as const;
 
 interface CardOptions {
+  /** Set for hand-drawn templates. */
+  script: { art: CardArt; family: string; weight: string; heading: HeadingArc; minimal: boolean } | null;
   palette: Palette;
   frame: FrameStyle;
   serifNames: boolean;
   leaves: boolean;
   center: CenterMode;
-  initials: string;
   topText: string;
   names: string;
   dateText: string;
@@ -170,6 +289,410 @@ function drawFrame(ctx: CanvasRenderingContext2D, w: number, h: number, style: F
   }
 }
 
+/**
+ * Optional centre badge on the QR (heart or photo); none by default. The QR uses error
+ * correction level H, so ~20% of its area may be covered safely.
+ */
+function drawCenterBadge(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  o: CardOptions,
+  photo: HTMLImageElement | null,
+  ringColor: string,
+) {
+  if (o.center === "yok") return;
+  ctx.fillStyle = ringColor;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
+  ctx.fill();
+  if (o.center === "foto" && photo) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    const side = Math.min(photo.naturalWidth, photo.naturalHeight);
+    ctx.drawImage(photo, (photo.naturalWidth - side) / 2, (photo.naturalHeight - side) / 2, side, side, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+    return;
+  }
+  ctx.fillStyle = o.palette.accent === "#FFFFFF" ? "#111111" : o.palette.accent;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#FFFFFF";
+  drawHeart(ctx, cx, cy + r * 0.05, r * 1.1);
+}
+
+/** Small deterministic pseudo-random sequence (same texture on every render). */
+function seeded(seed: number) {
+  let x = seed;
+  return () => {
+    x = (x * 16807) % 2147483647;
+    return (x - 1) / 2147483646;
+  };
+}
+
+/** Soft paper: a faint vignette and a few marbled veins. Kept light so the QR still scans. */
+function drawPaper(ctx: CanvasRenderingContext2D, w: number, h: number, base: string) {
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
+  const glow = ctx.createRadialGradient(w * 0.5, h * 0.42, w * 0.1, w * 0.5, h * 0.5, h * 0.75);
+  glow.addColorStop(0, "rgba(255,255,255,0.55)");
+  glow.addColorStop(1, "rgba(120,110,130,0.05)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+  const rnd = seeded(7);
+  ctx.lineCap = "round";
+  for (let i = 0; i < 9; i += 1) {
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + rnd() * 0.3})`;
+    ctx.lineWidth = w * (0.0015 + rnd() * 0.003);
+    ctx.beginPath();
+    const y0 = h * rnd();
+    ctx.moveTo(-w * 0.1, y0);
+    ctx.bezierCurveTo(w * 0.3, y0 + h * (rnd() - 0.5) * 0.4, w * 0.6, y0 + h * (rnd() - 0.5) * 0.4, w * 1.1, y0 + h * (rnd() - 0.5) * 0.3);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 5; i += 1) {
+    ctx.strokeStyle = "rgba(90,80,100,0.05)";
+    ctx.lineWidth = w * 0.0012;
+    ctx.beginPath();
+    const x0 = w * rnd();
+    ctx.moveTo(x0, -h * 0.05);
+    ctx.bezierCurveTo(x0 + w * (rnd() - 0.5) * 0.6, h * 0.35, x0 + w * (rnd() - 0.5) * 0.6, h * 0.65, x0 + w * (rnd() - 0.5) * 0.4, h * 1.05);
+    ctx.stroke();
+  }
+}
+
+/** Line-art camera with flash sparks and a dotted strap. */
+function drawCameraArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, lensFill: string) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.12);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = s * 0.018;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const bw = s;
+  const bh = s * 0.62;
+  // body + top hump
+  roundRect(ctx, -bw / 2, -bh / 2, bw, bh, s * 0.08);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.22, -bh / 2);
+  ctx.lineTo(-bw * 0.16, -bh / 2 - s * 0.12);
+  ctx.lineTo(bw * 0.12, -bh / 2 - s * 0.12);
+  ctx.lineTo(bw * 0.18, -bh / 2);
+  ctx.stroke();
+  // shutter button and viewfinder
+  roundRect(ctx, bw * 0.26, -bh / 2 - s * 0.07, s * 0.14, s * 0.07, s * 0.02);
+  ctx.stroke();
+  roundRect(ctx, -bw * 0.42, -bh * 0.36, s * 0.16, s * 0.1, s * 0.02);
+  ctx.stroke();
+  // grip line
+  ctx.beginPath();
+  ctx.moveTo(-bw / 2, bh * 0.18);
+  ctx.lineTo(bw / 2, bh * 0.18);
+  ctx.stroke();
+  // lens
+  ctx.beginPath();
+  ctx.arc(0, s * 0.02, s * 0.27, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, s * 0.02, s * 0.19, 0, Math.PI * 2);
+  ctx.fillStyle = lensFill;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-s * 0.06, -s * 0.05, s * 0.045, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fill();
+  // dotted strap below
+  ctx.fillStyle = ink;
+  for (let i = 0; i < 14; i += 1) {
+    ctx.beginPath();
+    ctx.arc(-bw * 0.45 + (i * bw * 0.9) / 13, bh / 2 + s * 0.09, s * 0.012, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // flash sparks
+  ctx.lineWidth = s * 0.016;
+  for (const [a, len] of [[-1.15, 0.13], [-0.75, 0.17], [-0.35, 0.13]] as const) {
+    const r0 = s * 0.2;
+    const ox = bw * 0.33;
+    const oy = -bh / 2 - s * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(ox + Math.cos(a) * r0, oy + Math.sin(a) * r0);
+    ctx.lineTo(ox + Math.cos(a) * (r0 + s * len), oy + Math.sin(a) * (r0 + s * len));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Line-art hand holding a camera, reaching in from the left edge: sleeve with
+ * a dotted cuff, bracelets, fingers wrapped around the body, flash sparks.
+ */
+function drawHandCameraArt(ctx: CanvasRenderingContext2D, w: number, h: number, ink: string, lensFill: string) {
+  const s = w * 0.25;
+  const cx = w * 0.6;
+  const cy = h * 0.178;
+  drawCameraArt(ctx, cx, cy, s, ink, lensFill);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.12);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = s * 0.017;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const bw = s;
+  const bh = s * 0.62;
+  const left = -bw / 2;
+  // forearm from the card's left edge to the hand
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.75, bh * 0.85);
+  ctx.bezierCurveTo(-w * 0.5, bh * 0.78, left - s * 0.55, bh * 0.62, left - s * 0.12, bh * 0.48);
+  ctx.moveTo(-w * 0.75, bh * 1.55);
+  ctx.bezierCurveTo(-w * 0.5, bh * 1.5, left - s * 0.5, bh * 1.2, left + s * 0.02, bh * 0.66);
+  ctx.stroke();
+  // bracelets around the wrist
+  for (const dx of [0.95, 1.05, 1.13]) {
+    const x = left - s * dx;
+    ctx.beginPath();
+    ctx.moveTo(x + s * 0.05, bh * 0.66);
+    ctx.quadraticCurveTo(x - s * 0.04, bh * 0.95, x + s * 0.02, bh * 1.27);
+    ctx.stroke();
+  }
+  // dotted sleeve cuff
+  ctx.fillStyle = ink;
+  for (let i = 0; i < 18; i += 1) {
+    const t = i / 17;
+    ctx.beginPath();
+    ctx.arc(-w * 0.62 + (i % 3) * s * 0.06, bh * (0.95 + t * 0.55), s * 0.009, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // palm under the body and four fingers wrapping the bottom-left corner
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  for (let i = 0; i < 4; i += 1) {
+    const fx = left + s * (0.02 + i * 0.13);
+    const fy = bh / 2 - s * 0.04;
+    roundRect(ctx, fx, fy, s * 0.12, s * 0.2, s * 0.06);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // thumb along the left side
+  roundRect(ctx, left - s * 0.1, -bh * 0.05, s * 0.18, s * 0.11, s * 0.055);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** One outline flower (five round petals) for the sprig. */
+function drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, r * 0.5, r * 0.32, a, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Two crossing line-art sprigs with leaves and small flowers. */
+function drawFlowerArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, accent: string) {
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = accent;
+  ctx.lineCap = "round";
+  ctx.lineWidth = s * 0.014;
+  for (const dir of [-1, 1]) {
+    ctx.save();
+    ctx.translate(cx, cy + s * 0.25);
+    ctx.scale(dir, 1);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(s * 0.15, -s * 0.2, s * 0.35, -s * 0.35, s * 0.62, -s * 0.42);
+    ctx.stroke();
+    for (const [t, side] of [[0.25, 1], [0.42, -1], [0.58, 1], [0.74, -1]] as const) {
+      const px = s * 0.62 * t;
+      const py = -s * 0.42 * t - s * 0.06 * Math.sin(t * Math.PI);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(-0.6 + side * 0.9);
+      ctx.beginPath();
+      ctx.ellipse(s * 0.06, 0, s * 0.07, s * 0.028, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    drawFlower(ctx, s * 0.64, -s * 0.43, s * 0.09);
+    drawFlower(ctx, s * 0.33, -s * 0.33, s * 0.06);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/** Three outline hearts with a few sparkles. */
+function drawHeartsArt(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, ink: string, accent: string) {
+  const outline = (x: number, y: number, size: number, rot: number, fill: string | null) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    const t = size / 2;
+    ctx.moveTo(0, t * 0.75);
+    ctx.bezierCurveTo(-t * 1.15, -t * 0.05, -t * 0.55, -t * 0.95, 0, -t * 0.35);
+    ctx.bezierCurveTo(t * 0.55, -t * 0.95, t * 1.15, -t * 0.05, 0, t * 0.75);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = s * 0.016;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  outline(cx - s * 0.32, cy + s * 0.06, s * 0.32, -0.25, null);
+  outline(cx, cy - s * 0.05, s * 0.48, 0.05, accent);
+  outline(cx + s * 0.34, cy + s * 0.1, s * 0.26, 0.3, null);
+  for (const [x, y, r] of [[-0.55, -0.2, 0.05], [0.55, -0.22, 0.06], [0.2, -0.38, 0.04]] as const) {
+    const px = cx + s * x;
+    const py = cy + s * y;
+    ctx.beginPath();
+    ctx.moveTo(px - s * r, py);
+    ctx.lineTo(px + s * r, py);
+    ctx.moveTo(px, py - s * r);
+    ctx.lineTo(px, py + s * r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Text along a circle around (ox, oy), centred at `midAngle` (each glyph rotated to the curve). */
+function drawArcText(ctx: CanvasRenderingContext2D, text: string, ox: number, oy: number, radius: number, midAngle = -Math.PI / 2) {
+  const chars = [...text];
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0);
+  const span = total / radius;
+  let angle = midAngle - span / 2;
+  ctx.save();
+  ctx.textAlign = "center";
+  chars.forEach((c, i) => {
+    const half = widths[i] / 2 / radius;
+    angle += half;
+    ctx.save();
+    ctx.translate(ox + Math.cos(angle) * radius, oy + Math.sin(angle) * radius);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.fillText(c, 0, 0);
+    ctx.restore();
+    angle += half;
+  });
+  ctx.restore();
+}
+
+/** Hand-drawn layout: illustration, curved handwritten heading, QR straight on the paper, signature line. */
+function drawScriptCard(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  o: CardOptions,
+  qr: HTMLCanvasElement | null,
+  photo: HTMLImageElement | null,
+  tableNumber: string | null,
+) {
+  const script = o.script!;
+  const font = (size: number) => `${script.weight} ${size}px ${script.family}`;
+  ctx.save();
+  drawPaper(ctx, w, h, o.palette.background);
+  drawFrame(ctx, w, h, o.frame, o.palette.accent);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  const maxText = w * 0.8;
+
+  // Illustration
+  if (script.art === "hand") drawHandCameraArt(ctx, w, h, o.palette.text, o.palette.qr);
+  else if (script.art === "camera") drawCameraArt(ctx, w * 0.55, h * 0.185, w * 0.25, o.palette.text, o.palette.qr);
+  else if (script.art === "flowers") drawFlowerArt(ctx, w * 0.5, h * 0.14, w * 0.42, o.palette.text, o.palette.accent);
+  else drawHeartsArt(ctx, w * 0.5, h * 0.17, w * 0.4, o.palette.text, o.palette.accent);
+
+  // Curved handwritten heading
+  if (o.topText) {
+    ctx.fillStyle = o.palette.text;
+    let size = w * 0.085;
+    ctx.font = font(size);
+    while (ctx.measureText(o.topText).width > w * 0.78 && size > w * 0.035) {
+      size *= 0.94;
+      ctx.font = font(size);
+    }
+    if (script.heading === "right") {
+      // Sweeps from under the illustration over the QR's top-right corner and down its right side.
+      const radius = w * 0.45;
+      const maxArc = radius * 1.62;
+      while (ctx.measureText(o.topText).width > maxArc && size > w * 0.035) {
+        size *= 0.94;
+        ctx.font = font(size);
+      }
+      const span = ctx.measureText(o.topText).width / radius;
+      drawArcText(ctx, o.topText, w * 0.42, h * 0.625, radius, -1.82 + span / 2);
+    } else {
+      drawArcText(ctx, o.topText, w / 2, h * 0.345 + w * 0.95, w * 0.95);
+    }
+  }
+
+  // QR printed straight on the paper (transparent background, no box)
+  const qrSize = w * 0.46;
+  const qrX = (w - qrSize) / 2;
+  const qrY = script.heading === "right" ? h * 0.425 : h * 0.375;
+  if (qr) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+    ctx.imageSmoothingEnabled = true;
+  }
+  drawCenterBadge(ctx, qrX + qrSize / 2, qrY + qrSize / 2, qrSize * 0.11, o, photo, o.palette.background);
+
+  let y = qrY + qrSize + w * 0.075;
+  if (o.description && !script.minimal) {
+    ctx.fillStyle = o.palette.text;
+    ctx.globalAlpha = 0.72;
+    ctx.font = `400 ${w * 0.026}px ${SANS}`;
+    for (const line of wrapLines(ctx, o.description, w * 0.74, 3)) {
+      ctx.fillText(line, w / 2, y);
+      y += w * 0.038;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  if (tableNumber) {
+    ctx.fillStyle = o.palette.text;
+    const label = `${o.tableLabel} ${tableNumber}`.trim();
+    fitFont(ctx, label, script.family, script.weight, w * 0.08, maxText);
+    ctx.fillText(label, w / 2, h * 0.84);
+  }
+
+  // Signature line: names and date in handwriting
+  const signature = [o.names, o.dateText].filter(Boolean).join("   ");
+  if (signature) {
+    ctx.fillStyle = o.palette.text;
+    fitFont(ctx, signature, script.family, script.weight, w * 0.065, maxText);
+    ctx.fillText(signature, w / 2, h * (script.minimal ? 0.885 : tableNumber ? 0.905 : 0.895));
+  }
+
+  if (o.showUrl && o.url && !script.minimal) {
+    ctx.fillStyle = o.palette.text;
+    ctx.globalAlpha = 0.5;
+    const shortUrl = o.url.replace(/^https?:\/\//, "");
+    fitFont(ctx, shortUrl, SANS, "400", w * 0.02, maxText);
+    ctx.fillText(shortUrl, w / 2, h * 0.945);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 function drawCard(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -179,6 +702,10 @@ function drawCard(
   photo: HTMLImageElement | null,
   tableNumber: string | null,
 ) {
+  if (o.script) {
+    drawScriptCard(ctx, w, h, o, qr, photo, tableNumber);
+    return;
+  }
   ctx.save();
   ctx.fillStyle = o.palette.background;
   ctx.fillRect(0, 0, w, h);
@@ -234,40 +761,7 @@ function drawCard(
     ctx.imageSmoothingEnabled = true;
   }
 
-  // Center badge (QR uses level H, so ~20% of the area may be covered safely)
-  if (o.center !== "yok") {
-    const cx = qrX + qrSize / 2;
-    const cy = qrY + qrSize / 2;
-    const r = qrSize * 0.12;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
-    ctx.fill();
-    if (o.center === "foto" && photo) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.clip();
-      const side = Math.min(photo.naturalWidth, photo.naturalHeight);
-      ctx.drawImage(photo, (photo.naturalWidth - side) / 2, (photo.naturalHeight - side) / 2, side, side, cx - r, cy - r, r * 2, r * 2);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = o.palette.accent === "#FFFFFF" ? "#111111" : o.palette.accent;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#FFFFFF";
-      if (o.center === "kalp" || (o.center === "foto" && !photo)) {
-        drawHeart(ctx, cx, cy + r * 0.05, r * 1.1);
-      } else {
-        const text = o.initials.slice(0, 5) || "♥";
-        ctx.textBaseline = "middle";
-        fitFont(ctx, text, SERIF, "400", r * 0.95, r * 1.6);
-        ctx.fillText(text, cx, cy + r * 0.04);
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-  }
+  drawCenterBadge(ctx, qrX + qrSize / 2, qrY + qrSize / 2, qrSize * 0.12, o, photo, "#FFFFFF");
 
   const afterQr = boxY + qrSize + pad * 2;
   if (o.description) {
@@ -295,62 +789,103 @@ function drawCard(
   ctx.restore();
 }
 
-function initialsFrom(names: string): string {
-  const parts = names.split(/\s*(?:&|ve|\+|,)\s*/i).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0][0] ?? ""}&${parts[1][0] ?? ""}`.toLocaleUpperCase("tr-TR");
-  return (names.trim()[0] ?? "♥").toLocaleUpperCase("tr-TR");
-}
-
 export function QrCardDesigner({
   url,
   coupleNames,
   dateText,
   themeColor,
   slug,
+  tableNumbers,
+  eventDate = null,
+  eventType = null,
 }: {
   url: string;
   coupleNames: string;
   dateText: string;
   themeColor: string;
   slug: string;
+  /** Event setting: each table card gets its own QR (?table=N). */
+  tableNumbers: boolean;
+  /** ISO date (YYYY-MM-DD), for templates that sign with a numeric date. */
+  eventDate?: string | null;
+  /** Event preset: decides which templates come first and which is preselected. */
+  eventType?: EventType | null;
 }) {
-  const [template, setTemplate] = useState<TemplateId>("klasik");
-  const [palette, setPalette] = useState<Palette>({ ...TEMPLATES.klasik.palette, accent: themeColor });
-  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES.klasik.frame);
-  const [center, setCenter] = useState<CenterMode>("harfler");
-  const [initials, setInitials] = useState(() => initialsFrom(coupleNames));
-  const [topText, setTopText] = useState("Anılarımızı paylaşın");
+  const t = useT();
+  const preset = presetFor(eventType);
+  const templateOrder = orderedQrTemplates(eventType);
+  // Legacy events (no preset) keep the template they always opened with.
+  const initialTemplate: TemplateId = eventType ? templateOrder[0] : "ornek";
+  const presetHeading = t(eventType ? preset.qrHeading : "Düğün Anılarınız Burada");
+  const headingFor = (id: TemplateId, fallback: MsgKey) => (TEMPLATES[id].script?.presetHeading ? presetHeading : t(fallback));
+  const [template, setTemplate] = useState<TemplateId>(initialTemplate);
+  const [palette, setPalette] = useState<Palette>(() => ({ ...TEMPLATES[initialTemplate].palette, accent: initialTemplate === "klasik" ? themeColor : TEMPLATES[initialTemplate].palette.accent }));
+  const [frame, setFrame] = useState<FrameStyle>(TEMPLATES[initialTemplate].frame);
+  // Handwritten faces must be loaded before the canvas can use them.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void loadScriptFonts().then(() => {
+      if (!cancelled) setFontsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  // Plain QR by default; a heart or photo in the middle is optional.
+  const [center, setCenter] = useState<CenterMode>("yok");
+  const [topText, setTopText] = useState(() => headingFor(initialTemplate, "Anılarımızı paylaşın"));
   const [names, setNames] = useState(coupleNames);
-  const [date, setDate] = useState(dateText);
-  const [description, setDescription] = useState("Telefon kameranızla okutun; fotoğraf, video ve dileklerinizi uygulama indirmeden yükleyin.");
-  const [tableLabel, setTableLabel] = useState("Masa");
+  // "29.08.2026" for templates that sign with a numeric date.
+  const numericDate = eventDate && /^\d{4}-\d{2}-\d{2}$/.test(eventDate) ? eventDate.split("-").reverse().join(".") : dateText;
+  const [date, setDate] = useState(TEMPLATES[initialTemplate].script?.numericDate ? numericDate : dateText);
+  const [description, setDescription] = useState(() => t("Telefon kameranızla okutun; fotoğraf, video ve dileklerinizi uygulama indirmeden yükleyin."));
+  const [tableLabel, setTableLabel] = useState(() => t("Masa"));
   const [tableFrom, setTableFrom] = useState("");
   const [tableTo, setTableTo] = useState("");
   const [showUrl, setShowUrl] = useState(true);
   const [paper, setPaper] = useState<PaperSize>("A6");
+  const [kind, setKind] = useState<DesignKind>("tables");
+  const [boardPaper, setBoardPaper] = useState<BoardPaper>("A3");
+  const [boardTop, setBoardTop] = useState(() => headingFor(initialTemplate, "Hoş geldiniz"));
+  const [boardDescription, setBoardDescription] = useState(() =>
+    t("Bu günün fotoğraflarını, videolarını ve dileklerinizi QR kodu okutarak bizimle paylaşın."),
+  );
+  const isBoard = kind === "board";
+  const tableUrlForCard = useCallback((table: string) => tableUrl(url, table, true), [url]);
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [exporting, setExporting] = useState<"png" | "pdf" | null>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const qrRef = useRef<HTMLCanvasElement>(null);
 
   const tpl = TEMPLATES[template];
+  // Hand-drawn templates print the QR straight on the paper (no white box).
+  const qrBackground = tpl.script ? "rgba(0,0,0,0)" : "#FFFFFF";
   const options: CardOptions = useMemo(
     () => ({
+      script: tpl.script
+        ? {
+            art: tpl.script.art,
+            family: SCRIPT_FAMILY[tpl.script.font],
+            weight: SCRIPT_WEIGHT[tpl.script.font],
+            heading: tpl.script.heading ?? "top",
+            minimal: tpl.script.minimal ?? false,
+          }
+        : null,
       palette,
       frame,
       serifNames: tpl.serifNames,
       leaves: tpl.leaves,
       center,
-      initials,
-      topText,
+      topText: isBoard ? boardTop : topText,
       names,
       dateText: date,
-      description,
+      description: isBoard ? boardDescription : description,
       tableLabel,
       showUrl,
       url,
     }),
-    [palette, frame, tpl.serifNames, tpl.leaves, center, initials, topText, names, date, description, tableLabel, showUrl, url],
+    [tpl.script, palette, frame, tpl.serifNames, tpl.leaves, center, isBoard, boardTop, topText, names, date, boardDescription, description, tableLabel, showUrl, url],
   );
 
   const tables = useMemo(() => {
@@ -365,14 +900,21 @@ export function QrCardDesigner({
     const canvas = previewRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const size = paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
+    const size = isBoard ? BOARD_PX[boardPaper] : paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
     canvas.width = size.width;
     canvas.height = size.height;
-    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, tables[0] ?? null);
-  }, [options, photo, tables, paper]);
+    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, isBoard ? null : (tables[0] ?? null));
+    // fontsReady: redraw once the handwritten faces have loaded.
+  }, [options, photo, tables, paper, isBoard, boardPaper, fontsReady]);
 
+  // Texts the host has not edited follow the template's suggestions.
+  const defaultHeadings = [t("Anılarımızı paylaşın"), t("Hoş geldiniz"), t("Düğün Anılarınız Burada"), ...Object.values(EVENT_PRESETS).map((p) => t(p.qrHeading))];
   const applyTemplate = (id: TemplateId) => {
     setTemplate(id);
+    const next = TEMPLATES[id].script;
+    if (defaultHeadings.includes(topText)) setTopText(headingFor(id, "Anılarımızı paylaşın"));
+    if (defaultHeadings.includes(boardTop)) setBoardTop(headingFor(id, "Hoş geldiniz"));
+    if (date === dateText || date === numericDate) setDate(next?.numericDate ? numericDate : dateText);
     setPalette({ ...TEMPLATES[id].palette, accent: id === "klasik" ? themeColor : TEMPLATES[id].palette.accent });
     setFrame(TEMPLATES[id].frame);
   };
@@ -399,20 +941,46 @@ export function QrCardDesigner({
     img.src = objectUrl;
   };
 
-  const renderCardCanvas = (tableNumber: string | null, size: { width: number; height: number }) => {
+  const renderCardCanvas = async (tableNumber: string | null, size: { width: number; height: number }) => {
     const canvas = document.createElement("canvas");
     canvas.width = size.width;
     canvas.height = size.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas desteklenmiyor.");
-    drawCard(ctx, size.width, size.height, options, qrRef.current, photo, tableNumber);
+    // With table numbers on, every card carries its own code; otherwise one shared code.
+    await loadScriptFonts();
+    const qr = tableNumbers && tableNumber ? await renderQrCanvas(tableUrl(url, tableNumber, true), palette.qr, qrBackground) : qrRef.current;
+    drawCard(ctx, size.width, size.height, options, qr, photo, tableNumber);
     return canvas;
   };
 
+  /** Entrance board: one page, one shared QR (no table number). */
+  const exportBoard = async (format: "png" | "pdf") => {
+    setExporting(format);
+    try {
+      const px = BOARD_PX[boardPaper];
+      const canvas = await renderCardCanvas(null, px);
+      if (format === "png") {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (blob) saveBlob(blob, `giris-panosu-${slug}.png`);
+      } else {
+        const pt = PAGE_SIZES_PT[boardPaper];
+        saveBlob(
+          buildPdf([{ jpeg: await canvasToJpegBytes(canvas), pixelWidth: px.width, pixelHeight: px.height, pageWidthPt: pt.width, pageHeightPt: pt.height }]),
+          `giris-panosu-${slug}.pdf`,
+        );
+      }
+      trackEvent("qr_card_exported", { format, cards: 1 });
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const exportPng = async () => {
+    if (isBoard) return exportBoard("png");
     setExporting("png");
     try {
-      const canvas = renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
+      const canvas = await renderCardCanvas(tables[0] ?? null, paper === "A5" ? CARD_PX.A5 : CARD_PX.A6);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (blob) {
         saveBlob(blob, `masa-karti-${slug}${tables[0] ? `-${tables[0]}` : ""}.png`);
@@ -424,6 +992,7 @@ export function QrCardDesigner({
   };
 
   const exportPdf = async () => {
+    if (isBoard) return exportBoard("pdf");
     setExporting("pdf");
     try {
       const list: Array<string | null> = tables.length > 0 ? tables : [null];
@@ -438,10 +1007,11 @@ export function QrCardDesigner({
           if (!ctx) throw new Error("Canvas desteklenmiyor.");
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(0, 0, sheet.width, sheet.height);
-          list.slice(i, i + 4).forEach((table, j) => {
-            const card = renderCardCanvas(table, CARD_PX.A6);
+          const group = list.slice(i, i + 4);
+          for (let j = 0; j < group.length; j += 1) {
+            const card = await renderCardCanvas(group[j], CARD_PX.A6);
             ctx.drawImage(card, (j % 2) * CARD_PX.A6.width, Math.floor(j / 2) * CARD_PX.A6.height);
-          });
+          }
           // Cut guides
           ctx.strokeStyle = "#BBBBBB";
           ctx.lineWidth = 2;
@@ -464,7 +1034,7 @@ export function QrCardDesigner({
         const px = paper === "A5" ? CARD_PX.A5 : CARD_PX.A6;
         const pt = PAGE_SIZES_PT[paper];
         for (const table of list) {
-          const canvas = renderCardCanvas(table, px);
+          const canvas = await renderCardCanvas(table, px);
           pages.push({ jpeg: await canvasToJpegBytes(canvas), pixelWidth: px.width, pixelHeight: px.height, pageWidthPt: pt.width, pageHeightPt: pt.height });
         }
       }
@@ -475,30 +1045,79 @@ export function QrCardDesigner({
     }
   };
 
-  const field = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500";
-  const label = "mb-1 block text-xs font-semibold text-stone-600";
+  const field = ui.inputCompact;
+  const label = ui.label;
+
+  const tableRange = (
+    <div className="grid grid-cols-2 gap-3">
+      <label className="block">
+        <span className={label}>{t("Masa no (başlangıç)")}</span>
+        <input value={tableFrom} inputMode="numeric" placeholder={t("ör. 1")} onChange={(e) => setTableFrom(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+      </label>
+      <label className="block">
+        <span className={label}>{t("Bitiş (isteğe bağlı)")}</span>
+        <input value={tableTo} inputMode="numeric" placeholder={t("ör. 20")} onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+      </label>
+    </div>
+  );
 
   return (
+    <div className="space-y-5">
+      <section className="max-w-xl">
+          <div className="flex rounded-full border border-stone-200 bg-white p-1 text-sm font-medium" role="tablist">
+            {([
+              ["tables", t("Masa kartları")],
+              ["board", t("Giriş panosu")],
+              ["qr", t("Sadece QR")],
+            ] as Array<[DesignKind, string]>).map(([id, text]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={kind === id}
+                onClick={() => setKind(id)}
+                className={`flex-1 rounded-full px-3 py-2 transition ${kind === id ? "bg-stone-900 text-white" : "text-stone-600 hover:text-stone-900"}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+          {isBoard && <p className={`mt-2 ${ui.hint}`}>🚪 {t("Kapıya konacak tek bir QR. Okutan misafirin yüklemeleri ana albüme gider (masa numarası olmadan).")}</p>}
+      </section>
+      {kind === "qr" ? (
+        <QrOnlyExport
+          generalUrl={boardUrl(url, tableNumbers)}
+          tableUrlFor={tableUrlForCard}
+          tables={tables}
+          tableNumbers={tableNumbers}
+          slug={slug}
+          tableRange={tableRange}
+        />
+      ) : (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="hidden">
-        <QRCodeCanvas ref={qrRef} value={url} size={1024} level="H" fgColor={palette.qr} bgColor="#FFFFFF" marginSize={0} />
+        <QRCodeCanvas ref={qrRef} value={isBoard ? boardUrl(url, tableNumbers) : tableUrl(url, tables[0] ?? null, tableNumbers)} size={1024} level="H" fgColor={palette.qr} bgColor={qrBackground} marginSize={0} />
       </div>
 
       <div className="order-2 space-y-5 lg:order-1">
+
         <section>
-          <p className={label}>Şablon</p>
+          <p className={label}>{t("Şablon")}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {(Object.keys(TEMPLATES) as TemplateId[]).map((id) => (
+            {templateOrder.map((id, index) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => applyTemplate(id)}
-                className={`rounded-xl border p-2 text-left text-xs font-medium ${template === id ? "border-stone-900 ring-2 ring-stone-900" : "border-stone-300"}`}
+                className={`relative rounded-xl border p-2 text-left text-xs font-medium ${template === id ? "border-stone-900 ring-2 ring-stone-900" : "border-stone-300"}`}
               >
+                {eventType && index < preset.qrRecommended && (
+                  <span className="absolute -top-2 right-2 rounded-full bg-stone-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-white uppercase">{t("Önerilen")}</span>
+                )}
                 <span className="mb-1.5 flex h-8 items-center justify-center rounded-lg" style={{ backgroundColor: TEMPLATES[id].palette.background, color: TEMPLATES[id].palette.accent, border: `1px solid ${TEMPLATES[id].palette.accent}` }}>
-                  ♥
+                  {TEMPLATES[id].glyph ?? "♥"}
                 </span>
-                {TEMPLATES[id].name}
+                {t(TEMPLATES[id].name)}
               </button>
             ))}
           </div>
@@ -507,7 +1126,7 @@ export function QrCardDesigner({
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(["background", "text", "accent", "qr"] as const).map((key) => (
             <label key={key} className="block">
-              <span className={label}>{{ background: "Arka plan", text: "Yazı", accent: "Vurgu", qr: "QR rengi" }[key]}</span>
+              <span className={label}>{t(({ background: "Arka plan", text: "Yazı", accent: "Vurgu", qr: "QR rengi" } as const)[key])}</span>
               <input type="color" value={palette[key]} onChange={(e) => setPalette((p) => ({ ...p, [key]: e.target.value }))} className="h-10 w-full cursor-pointer rounded-xl border border-stone-300 bg-white p-1" />
             </label>
           ))}
@@ -515,34 +1134,27 @@ export function QrCardDesigner({
 
         <section className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={label}>Çerçeve</span>
+            <span className={label}>{t("Çerçeve")}</span>
             <select value={frame} onChange={(e) => setFrame(e.target.value as FrameStyle)} className={field}>
-              <option value="yok">Yok</option>
-              <option value="ince">İnce çizgi</option>
-              <option value="cift">Çift çizgi</option>
-              <option value="kose">Köşe süsü</option>
+              <option value="yok">{t("Yok")}</option>
+              <option value="ince">{t("İnce çizgi")}</option>
+              <option value="cift">{t("Çift çizgi")}</option>
+              <option value="kose">{t("Köşe süsü")}</option>
             </select>
           </label>
           <label className="block">
-            <span className={label}>QR ortası</span>
+            <span className={label}>{t("QR ortası")}</span>
             <select value={center} onChange={(e) => setCenter(e.target.value as CenterMode)} className={field}>
-              <option value="harfler">Baş harfler</option>
-              <option value="kalp">Kalp</option>
-              <option value="foto">Fotoğraf</option>
-              <option value="yok">Boş</option>
+              <option value="yok">{t("Boş (sade QR)")}</option>
+              <option value="kalp">{t("Kalp")}</option>
+              <option value="foto">{t("Fotoğraf")}</option>
             </select>
           </label>
-          {center === "harfler" && (
-            <label className="block">
-              <span className={label}>Baş harfler</span>
-              <input value={initials} maxLength={5} onChange={(e) => setInitials(e.target.value)} className={field} />
-            </label>
-          )}
           {center === "foto" && (
             <label className="block">
-              <span className={label}>Fotoğraf</span>
+              <span className={label}>{t("Fotoğraf")}</span>
               <span className={`${field} flex cursor-pointer items-center gap-2`}>
-                <ImageUp className="h-4 w-4" /> {photo ? "Değiştir" : "Fotoğraf seç"}
+                <ImageUp className="h-4 w-4" /> {photo ? t("Değiştir") : t("Fotoğraf seç")}
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
               </span>
             </label>
@@ -551,74 +1163,98 @@ export function QrCardDesigner({
 
         <section className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={label}>Üst başlık</span>
-            <input value={topText} maxLength={40} onChange={(e) => setTopText(e.target.value)} className={field} />
+            <span className={label}>{t("Üst başlık")}</span>
+            <input value={isBoard ? boardTop : topText} maxLength={40} onChange={(e) => (isBoard ? setBoardTop : setTopText)(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>İsimler</span>
+            <span className={label}>{t("İsimler")}</span>
             <input value={names} maxLength={60} onChange={(e) => setNames(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Tarih</span>
+            <span className={label}>{t("Tarih")}</span>
             <input value={date} maxLength={40} onChange={(e) => setDate(e.target.value)} className={field} />
           </label>
-          <label className="flex items-end gap-2 pb-2 text-sm text-stone-700">
-            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className="h-4 w-4" /> Bağlantıyı kartta göster
+          <label className="flex cursor-pointer items-end gap-2 pb-2.5 text-sm text-stone-700">
+            <input type="checkbox" checked={showUrl} onChange={(e) => setShowUrl(e.target.checked)} className={ui.checkbox} /> {t("Bağlantıyı kartta göster")}
           </label>
           <label className="block sm:col-span-2">
-            <span className={label}>Açıklama</span>
-            <textarea value={description} maxLength={160} rows={2} onChange={(e) => setDescription(e.target.value)} className={field} />
+            <span className={label}>{t("Açıklama")}</span>
+            <textarea value={isBoard ? boardDescription : description} maxLength={160} rows={2} onChange={(e) => (isBoard ? setBoardDescription : setDescription)(e.target.value)} className={field} />
           </label>
         </section>
 
-        <section className="grid grid-cols-3 gap-3">
+        <section className={isBoard ? "hidden" : "grid grid-cols-3 gap-3"}>
+          {!isBoard && (<>
+          <p className="col-span-full rounded-xl bg-stone-100 px-3 py-2 text-[11px] text-stone-600">
+            🪑 {tableNumbers ? t("Masa numaraları açık: her kartın QR kodu kendi masasını taşır. Masa no aralığını girin.") : t("Tüm kartlarda aynı QR kodu kullanılır. Masaya özel QR için Ayarlar’da “Masa numaraları”nı açın.")}
+          </p>
           <label className="block">
-            <span className={label}>Masa etiketi</span>
+            <span className={label}>{t("Masa etiketi")}</span>
             <input value={tableLabel} maxLength={16} onChange={(e) => setTableLabel(e.target.value)} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Masa no (başlangıç)</span>
-            <input value={tableFrom} inputMode="numeric" placeholder="ör. 1" onChange={(e) => setTableFrom(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+            <span className={label}>{t("Masa no (başlangıç)")}</span>
+            <input value={tableFrom} inputMode="numeric" placeholder={t("ör. 1")} onChange={(e) => setTableFrom(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
           </label>
           <label className="block">
-            <span className={label}>Bitiş (isteğe bağlı)</span>
-            <input value={tableTo} inputMode="numeric" placeholder="ör. 20" onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
+            <span className={label}>{t("Bitiş (isteğe bağlı)")}</span>
+            <input value={tableTo} inputMode="numeric" placeholder={t("ör. 20")} onChange={(e) => setTableTo(e.target.value.replace(/\D/g, "").slice(0, 3))} className={field} />
           </label>
+          </>)}
         </section>
 
         <section>
-          <p className={label}>Kâğıt boyutu</p>
+          <p className={label}>{t("Kâğıt boyutu")}</p>
+          {isBoard ? (
           <div className="flex flex-wrap gap-2">
             {([
-              ["A6", "A6 (10,5×14,8 cm)"],
-              ["A5", "A5 (14,8×21 cm)"],
-              ["A4x4", "A4'e 4 kart"],
+              ["A4", t("A4 (21×29,7 cm)")],
+              ["A3", t("A3 (29,7×42 cm)")],
+              ["P50x70", t("Poster (50×70 cm)")],
+            ] as Array<[BoardPaper, string]>).map(([id, text]) => (
+              <button key={id} type="button" onClick={() => setBoardPaper(id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${boardPaper === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`}>
+                {text}
+              </button>
+            ))}
+          </div>
+          ) : (
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["A6", t("A6 (10,5×14,8 cm)")],
+              ["A5", t("A5 (14,8×21 cm)")],
+              ["A4x4", t("A4'e 4 kart")],
             ] as Array<[PaperSize, string]>).map(([id, text]) => (
               <button key={id} type="button" onClick={() => setPaper(id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${paper === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white text-stone-700"}`}>
                 {text}
               </button>
             ))}
           </div>
+          )}
         </section>
       </div>
 
       <div className="order-1 lg:order-2">
         <div className="sticky top-4 space-y-3">
-          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label="Masa kartı önizlemesi" />
-          {tables.length > 1 && <p className="text-center text-xs text-stone-500">{tables.length} masa kartı oluşturulacak (önizleme: {tableLabel} {tables[0]})</p>}
+          <canvas ref={previewRef} className="mx-auto block w-full max-w-sm rounded-lg shadow-xl ring-1 ring-stone-200" aria-label={isBoard ? t("Giriş panosu önizlemesi") : t("Masa kartı önizlemesi")} />
+          {!isBoard && tables.length > 1 && <p className="text-center text-xs text-stone-500">{t("{n} masa kartı oluşturulacak (önizleme: {label} {first})", { n: tables.length, label: tableLabel, first: tables[0] })}</p>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={exportPng} disabled={exporting !== null} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800">
               {exporting === "png" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PNG
             </button>
             <button type="button" onClick={exportPdf} disabled={exporting !== null} className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white">
-              {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF (baskı)
+              {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} {t("PDF (baskı)")}
             </button>
           </div>
           <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-stone-500">
-            <Printer className="mt-px h-3.5 w-3.5 shrink-0" /> 300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.
+            <Printer className="mt-px h-3.5 w-3.5 shrink-0" />{" "}
+            {isBoard
+              ? t("Büyük boy baskıya hazır PDF. Matbaada “Gerçek boyut” ile basın; QR kodu bastıktan sonra telefonla test edin.")
+              : t("300 DPI baskıya hazır. Yazdırırken “Gerçek boyut / %100” seçin. QR kodu yazdırdıktan sonra telefonla test edin.")}
           </p>
         </div>
       </div>
+    </div>
+      )}
     </div>
   );
 }

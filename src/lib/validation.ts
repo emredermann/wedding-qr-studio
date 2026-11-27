@@ -2,6 +2,16 @@ import { z } from "zod";
 
 // Relative ".ts" import: this file is also loaded directly by `node --test`.
 import { challengesSchema, scheduleSchema } from "./event-extras.ts";
+import { shareFrameSchema } from "./branding.ts";
+import { EVENT_TYPES, THEME_IDS } from "./event-presets.ts";
+
+/** Optional guest modules the host can switch on and off (0007 migration). */
+export const modulesSchema = z.object({ schedule: z.boolean(), challenges: z.boolean() });
+
+/** Settings that only exist once the 0007 migration has been run. */
+export const PRESET_SETTING_COLUMNS = ["event_type", "theme_id", "modules"] as const;
+/** Settings that only exist once the 0008 migration has been run. */
+export const BRANDING_SETTING_COLUMNS = ["share_frame"] as const;
 
 export const eventSettingsSchema = z.object({
   title: z.string().trim().min(2, "En az 2 karakter").max(120),
@@ -33,8 +43,18 @@ export const eventSettingsSchema = z.object({
   galleryPublic: z.boolean(),
   faceSearchEnabled: z.boolean(),
   guestbookEnabled: z.boolean(),
+  /** Hosts may see who hearted what (0003 migration). Only sent when changed. */
+  heartsNamed: z.boolean(),
+  /** One QR per table (0004 migration). Only sent when changed. */
+  tableNumbers: z.boolean(),
   schedule: scheduleSchema,
   challenges: challengesSchema,
+  /** Preset, theme and module switches (0007 migration). Only sent when changed. */
+  eventType: z.enum(EVENT_TYPES),
+  themeId: z.enum(THEME_IDS),
+  modules: modulesSchema,
+  /** Share frame (0008 migration). Only sent when changed. */
+  shareFrame: shareFrameSchema,
 });
 
 export type EventSettingsInput = z.infer<typeof eventSettingsSchema>;
@@ -63,8 +83,14 @@ export function settingsPatchToColumns(patch: EventSettingsPatch): Record<string
     galleryPublic: "gallery_public",
     faceSearchEnabled: "face_search_enabled",
     guestbookEnabled: "guestbook_enabled",
+    heartsNamed: "hearts_named",
+    tableNumbers: "table_numbers",
     schedule: "schedule",
     challenges: "challenges",
+    eventType: "event_type",
+    themeId: "theme_id",
+    modules: "modules",
+    shareFrame: "share_frame",
   };
   const update: Record<string, unknown> = {};
   for (const [key, column] of Object.entries(columns) as Array<[keyof EventSettingsInput, string]>) {
@@ -92,6 +118,16 @@ export const createEventSchema = z.object({
     .optional()
     .or(z.literal(""))
     .transform((v) => (v ? v : null)),
+  /** Event type preset; omitted = general event. Drives theme, categories and module defaults. */
+  eventType: z.enum(EVENT_TYPES).optional(),
+  /** Guest theme; omitted = the preset's default. */
+  themeId: z.enum(THEME_IDS).optional(),
+  /** Accent colour; omitted = the theme's accent. */
+  themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** Module switches; omitted = the preset's defaults. */
+  modules: modulesSchema.optional(),
+  /** Guestbook switch; omitted = the preset's default. */
+  guestbookEnabled: z.boolean().optional(),
   /** Optional program schedule; omitted or empty = no schedule. */
   schedule: scheduleSchema.optional(),
   /** Optional photo challenges; omitted or empty = none. */

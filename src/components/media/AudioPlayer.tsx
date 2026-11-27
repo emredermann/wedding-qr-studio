@@ -8,7 +8,18 @@ import { useRef } from "react";
  * cannot seek. Seeking far past the end once makes the browser scan the file
  * and compute the real duration; playback then resumes from the start.
  */
-export function AudioPlayer({ src, autoPlay = false, className }: { src: string; autoPlay?: boolean; className?: string }) {
+export function AudioPlayer({
+  src,
+  autoPlay = false,
+  className,
+  allowDownload = false,
+}: {
+  src: string;
+  autoPlay?: boolean;
+  className?: string;
+  /** Hosts only: keep the browser's own download item in the player menu. */
+  allowDownload?: boolean;
+}) {
   const ref = useRef<HTMLAudioElement>(null);
   const fixing = useRef<{ resume: boolean } | null>(null);
 
@@ -33,6 +44,8 @@ export function AudioPlayer({ src, autoPlay = false, className }: { src: string;
       ref={ref}
       src={src}
       controls
+      controlsList={allowDownload ? undefined : "nodownload"}
+      onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()}
       preload={autoPlay ? "auto" : "none"}
       autoPlay={autoPlay}
       onLoadedMetadata={onLoadedMetadata}

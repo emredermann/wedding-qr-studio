@@ -2,17 +2,19 @@ import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonOk } from "@/lib/api/http";
 import { EXTRA_ID_PATTERN } from "@/lib/event-extras";
-import { encodeMediaCursor, MEDIA_COLUMNS, mediaCursorFilter, parseMediaCursor, toMediaDto } from "@/lib/events";
+import { encodeMediaCursor, mediaCursorFilter, parseMediaCursor, toMediaDto } from "@/lib/events";
 import { POPULAR_LIMIT } from "@/lib/hearts";
 import { requireEventAccess } from "@/lib/host-auth";
 import { getAdminDb } from "@/lib/supabase/server";
 import { MEDIA_KINDS, MEDIA_STATUSES, type MediaItemRow, type MediaKind, type MediaPage, type MediaStatus } from "@/types/domain";
+import { hasTableNoColumn, mediaColumns } from "@/lib/schema-features";
 
 export const runtime = "nodejs";
 
 /** GET /api/host/events/:eventId/media?status=&kind=&category=&guestbook=&cursor= — all media incl. pending/hidden. */
 export async function GET(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   try {
+    const columns = await mediaColumns();
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
@@ -26,12 +28,15 @@ export async function GET(request: NextRequest, context: { params: Promise<{ eve
     const cursor = parseMediaCursor(params.get("cursor"));
     const limit = Math.min(Math.max(Number(params.get("limit")) || 60, 1), 100);
     const popular = params.get("sort") === "popular";
+    const tableParam = params.get("table");
+    const table = tableParam && /^\d{1,4}$/.test(tableParam) && (await hasTableNoColumn()) ? Number(tableParam) : null;
 
-    let query = getAdminDb().from("media_items").select(MEDIA_COLUMNS).eq("event_id", owned.event.id);
+    let query = getAdminDb().from("media_items").select(columns).eq("event_id", owned.event.id);
     if (MEDIA_STATUSES.includes(status as MediaStatus)) query = query.eq("status", status as MediaStatus);
     if (MEDIA_KINDS.includes(kind as MediaKind)) query = query.eq("kind", kind as MediaKind);
     if (category) query = query.eq("category", category);
     if (challenge && EXTRA_ID_PATTERN.test(challenge)) query = query.eq("challenge_id", challenge);
+    if (table !== null) query = query.eq("table_no", table);
     if (guestbook === "1" || guestbook === "0") query = query.eq("is_guestbook", guestbook === "1");
     if (popular) {
       const { data, error } = await query

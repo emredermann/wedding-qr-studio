@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 
 import { BrandLogo } from "@/components/brand/BrandMark";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { useT } from "@/lib/i18n/provider";
 
 export function HostHeader({ children }: { children?: React.ReactNode }) {
   const router = useRouter();
+  const t = useT();
   const signOut = async () => {
     await getSupabaseBrowserClient().auth.signOut();
     router.replace("/login");
@@ -22,8 +25,9 @@ export function HostHeader({ children }: { children?: React.ReactNode }) {
         </Link>
         <div className="flex items-center gap-2">
           {children}
-          <button type="button" onClick={signOut} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100">
-            <LogOut className="h-4 w-4" /> Çıkış
+          <LanguageSwitcher />
+          <button type="button" onClick={signOut} aria-label={t("Çıkış")} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100">
+            <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">{t("Çıkış")}</span>
           </button>
         </div>
       </div>

@@ -30,6 +30,10 @@
   --color-amber-800: #4f4433;
   --color-amber-900: #3d3428;
   --color-amber-950: #231e17;
+
+  /* Card / input surface. White everywhere except inside a dark guest theme
+     (see `themeCssVars` in src/lib/event-presets.ts). */
+  --color-surface: #ffffff;
 }
 
 :root {
@@ -43,7 +47,7 @@
   --event-text: #1c1917;
   --event-surface: rgba(255, 255, 255, 0.92);
   --event-surface-text: #1c1917;
-  --event-font: Georgia, "Times New Roman", serif;
+  --event-font: var(--font-geist-sans), system-ui, sans-serif;
   --event-radius: 9999px;
 }
 
@@ -51,8 +55,12 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-display), "Instrument Serif", Georgia, "Times New Roman", serif;
+  /* One typeface across the app: Geist. `font-serif` / `font-mono` resolve to it
+     too, so display headings and code share the same family. */
+  --font-mono: var(--font-geist-sans), system-ui, sans-serif;
+  --font-serif: var(--font-geist-sans), system-ui, sans-serif;
+  /* The only exception is the Mira wordmark (a logo, not running text). */
+  --font-brand: var(--font-display), "Instrument Serif", Georgia, "Times New Roman", serif;
 }
 
 ::selection {
@@ -60,8 +68,23 @@
   color: #1c1b18;
 }
 
-/* Display serif: a touch tighter, never bold — elegance comes from size and space. */
+/* Display headings: same typeface, medium weight and slightly tighter. */
 .font-serif {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-feature-settings: "liga", "kern";
+}
+
+/* Guest themes with a display face (e.g. "Zarif"). `--font-serif` is inlined by
+   @theme, so the face is switched here; Instrument Serif has a single weight. */
+[data-eqr-heading="display"] .font-serif {
+  font-family: var(--font-display), "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* Mira wordmark and the landing page's display headings. */
+.font-brand {
   font-weight: 400;
   letter-spacing: -0.01em;
   font-feature-settings: "liga", "kern";
@@ -113,6 +136,14 @@ body {
   );
 }
 
+/* Guest media: no long-press "Save image" sheet on iOS, no drag-out. A
+   deterrent only (screenshots still work); downloads are host-only. */
+.eqr-no-save {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* iOS Safari & Android Chrome Safe-Area Inset Utilities */
 .eqr-safe-top {
   padding-top: env(safe-area-inset-top, 0px);
@@ -146,5 +177,20 @@ body {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Live wall: hearts float up from the bottom when guests leave one. */
+@keyframes eqrHeartFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--eqr-drift, 0px), -70vh, 0) scale(1.15);
+    opacity: 0;
   }
 }

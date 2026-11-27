@@ -5,8 +5,10 @@ import { trashBestEffort } from "@/lib/drive";
 import { driveForEvent } from "@/lib/drive-accounts";
 import { fetchAllRows, toHostEventDto } from "@/lib/events";
 import { requireEventAccess } from "@/lib/host-auth";
+import { planForUser, proRequired } from "@/lib/host-plan";
+import { hasBrandingColumns, hasEventPresetColumns } from "@/lib/schema-features";
 import { getAdminDb } from "@/lib/supabase/server";
-import { eventSettingsPatchSchema, settingsPatchToColumns } from "@/lib/validation";
+import { BRANDING_SETTING_COLUMNS, eventSettingsPatchSchema, PRESET_SETTING_COLUMNS, settingsPatchToColumns } from "@/lib/validation";
 import type { EventRow, EventStatsDto, HostEventDto, MediaItemRow } from "@/types/domain";
 
 export const runtime = "nodejs";
@@ -94,8 +96,8 @@ export async function GET(_request: NextRequest, context: Ctx) {
     const { eventId } = await context.params;
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
-    const stats = await computeStats(owned.event.id);
-    return jsonOk<{ event: HostEventDto; stats: EventStatsDto }>({ event: toHostEventDto(owned.event, owned.role), stats });
+    const [stats, plan] = await Promise.all([computeStats(owned.event.id), planForUser(owned.event.owner_id)]);
+    return jsonOk<{ event: HostEventDto; stats: EventStatsDto }>({ event: toHostEventDto(owned.event, owned.role, plan), stats });
   } catch (error) {
     return handleRouteError("host:event:get", error);
   }
@@ -108,17 +110,35 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     const owned = await requireEventAccess(eventId);
     if (!owned.ok) return owned.response;
 
+    const locked = await proRequired(owned.event.owner_id, "editSettings");
+    if (locked) return locked;
+
     const body = await parseJsonBody(request, eventSettingsPatchSchema, 16 * 1024);
     if (!body.ok) return body.response;
 
+    const update = settingsPatchToColumns(body.data);
+    // Before the 0007 migration the preset columns do not exist: keep every
+    // other setting working and simply skip type / theme / module changes.
+    if (PRESET_SETTING_COLUMNS.some((column) => column in update) && !(await hasEventPresetColumns())) {
+      for (const column of PRESET_SETTING_COLUMNS) delete update[column];
+    }
+    // Same for the share frame before the 0008 migration.
+    if (BRANDING_SETTING_COLUMNS.some((column) => column in update) && !(await hasBrandingColumns())) {
+      for (const column of BRANDING_SETTING_COLUMNS) delete update[column];
+    }
+    const plan = await planForUser(owned.event.owner_id);
+    if (Object.keys(update).length === 0) {
+      return jsonOk<{ event: HostEventDto }>({ event: toHostEventDto(owned.event, owned.role, plan) });
+    }
+
     const { data, error } = await getAdminDb()
       .from("events")
-      .update(settingsPatchToColumns(body.data))
+      .update(update)
       .eq("id", owned.event.id)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return jsonOk<{ event: HostEventDto }>({ event: toHostEventDto(data as EventRow, owned.role) });
+    return jsonOk<{ event: HostEventDto }>({ event: toHostEventDto(data as EventRow, owned.role, plan) });
   } catch (error) {
     return handleRouteError("host:event:update", error);
   }

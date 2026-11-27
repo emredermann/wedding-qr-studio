@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Download, Loader2, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Share2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioPlayer } from "@/components/media/AudioPlayer";
@@ -10,6 +10,7 @@ import { formatBytes } from "@/lib/media-config";
 import { FULL_IMAGE_SIZE, mediaImageSrc, streamUrl } from "@/lib/media-urls";
 import type { Challenge } from "@/lib/event-extras";
 import type { MediaDto } from "@/types/domain";
+import { useLang, useT } from "@/lib/i18n/provider";
 
 export function Lightbox({
   items,
@@ -19,6 +20,8 @@ export function Lightbox({
   onDelete,
   footer,
   challenges,
+  allowDownload = false,
+  onShare,
 }: {
   items: MediaDto[];
   index: number;
@@ -28,11 +31,16 @@ export function Lightbox({
   footer?: (item: MediaDto) => React.ReactNode;
   /** The event's photo challenges, to show which one an item joined. */
   challenges?: Challenge[];
+  /** Hosts only: show the original-quality download button. Guests cannot download. */
+  allowDownload?: boolean;
+  /** Photos only: save/share a framed copy (the original in Drive is untouched). */
+  onShare?: (item: MediaDto) => Promise<void>;
 }) {
   const item = items[index];
   const challengeTitle = item?.challengeId ? challenges?.find((c) => c.id === item.challengeId)?.title : undefined;
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const touchStart = useRef<number | null>(null);
 
   const go = useCallback(
@@ -58,6 +66,8 @@ export function Lightbox({
     };
   }, [go, onClose]);
 
+  const t = useT();
+  const { locale } = useLang();
   if (!item) return null;
 
   const handleDownload = async () => {
@@ -70,9 +80,21 @@ export function Lightbox({
     }
   };
 
+  const handleShare = async () => {
+    if (!onShare) return;
+    setSharing(true);
+    try {
+      await onShare(item);
+    } catch {
+      // Drawing failed (e.g. preview not ready yet); nothing was shared.
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (!window.confirm("Bu dosya silinsin mi?")) return;
+    if (!window.confirm(t("Bu dosya silinsin mi?"))) return;
     setDeleting(true);
     try {
       await onDelete(item);
@@ -85,7 +107,7 @@ export function Lightbox({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Medya görüntüleyici"
+      aria-label={t("Medya görüntüleyici")}
       className="fixed inset-0 z-[60] flex flex-col bg-black/95 text-white"
       onTouchStart={(e) => (touchStart.current = e.touches[0]?.clientX ?? null)}
       onTouchEnd={(e) => {
@@ -97,23 +119,31 @@ export function Lightbox({
     >
       <div className="eqr-safe-top flex items-center justify-between gap-2 px-3 py-2">
         <div className="min-w-0 text-xs text-white/70">
-          <p className="truncate font-medium text-white">{item.guestName ?? "Misafir"}</p>
+          <p className="truncate font-medium text-white">{item.guestName ?? t("Misafir")}</p>
           <p className="truncate">
-            {new Date(item.createdAt).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}
+            {new Date(item.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
             {item.category ? ` · ${item.category}` : ""}
+            {item.tableNo !== null ? ` · ${t("Masa {n}", { n: item.tableNo })}` : ""}
             {challengeTitle ? ` · ${challengeTitle}` : ""} · {formatBytes(item.sizeBytes)}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {onDelete && (
-            <button type="button" onClick={handleDelete} disabled={deleting} aria-label="Sil" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+            <button type="button" onClick={handleDelete} disabled={deleting} aria-label={t("Sil")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
               {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
             </button>
           )}
-          <button type="button" onClick={handleDownload} disabled={downloading} aria-label="Orijinal kalitede indir" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
-            {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
-          </button>
-          <button type="button" onClick={onClose} aria-label="Kapat" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+          {onShare && item.kind === "photo" && (
+            <button type="button" onClick={handleShare} disabled={sharing} aria-label={t("Çerçeveli paylaş")} title={t("Çerçeveli paylaş")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+              {sharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
+            </button>
+          )}
+          {allowDownload && (
+            <button type="button" onClick={handleDownload} disabled={downloading} aria-label={t("Orijinal kalitede indir")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+              {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+            </button>
+          )}
+          <button type="button" onClick={onClose} aria-label={t("Kapat")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -126,24 +156,36 @@ export function Lightbox({
             src={mediaImageSrc(item, FULL_IMAGE_SIZE)}
             alt={item.note ?? item.originalName}
             referrerPolicy="no-referrer"
-            className="max-h-full max-w-full object-contain"
+            draggable={allowDownload}
+            onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()}
+            className={`max-h-full max-w-full object-contain ${allowDownload ? "" : "eqr-no-save"}`}
           />
         )}
         {item.kind === "video" && (
-          <video key={item.id} src={streamUrl(item.fileId)} controls playsInline autoPlay className="max-h-full max-w-full" />
+          <video
+            key={item.id}
+            src={streamUrl(item.fileId)}
+            controls
+            playsInline
+            autoPlay
+            controlsList={allowDownload ? undefined : "nodownload"}
+            disablePictureInPicture={!allowDownload}
+            onContextMenu={allowDownload ? undefined : (e) => e.preventDefault()}
+            className="max-h-full max-w-full"
+          />
         )}
         {item.kind === "audio" && (
           <div className="w-full max-w-md rounded-2xl bg-white/10 p-6 text-center">
-            <p className="mb-4 font-serif text-lg">{item.guestName ?? "Misafir"} bir sesli mesaj bıraktı</p>
-            <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay className="w-full" />
+            <p className="mb-4 text-base font-medium">{t("{name} bir sesli mesaj bıraktı", { name: item.guestName ?? t("Misafir") })}</p>
+            <AudioPlayer key={item.id} src={streamUrl(item.fileId)} autoPlay allowDownload={allowDownload} className="w-full" />
           </div>
         )}
         {items.length > 1 && (
           <>
-            <button type="button" onClick={() => go(-1)} aria-label="Önceki" className="absolute top-1/2 left-2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 sm:flex">
+            <button type="button" onClick={() => go(-1)} aria-label={t("Önceki")} className="absolute top-1/2 left-2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 sm:flex">
               <ChevronLeft className="h-6 w-6" />
             </button>
-            <button type="button" onClick={() => go(1)} aria-label="Sonraki" className="absolute top-1/2 right-2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 sm:flex">
+            <button type="button" onClick={() => go(1)} aria-label={t("Sonraki")} className="absolute top-1/2 right-2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 sm:flex">
               <ChevronRight className="h-6 w-6" />
             </button>
           </>

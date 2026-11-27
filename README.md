@@ -13,7 +13,7 @@ Misafirler masadaki QR kodu okutur, adını yazar ve fotoğraf, video ya da sesl
 | Albüm kategorileri | Hazırlık, Nikah, İlk Dans, Masa 1… etkinlik sahibi düzenler. |
 | Moderasyon paneli | Onay modu, gizle/göster (Drive paylaşım izni de kaldırılır), sil (Drive çöp kutusu), toplu işlem, istatistikler, yüklemeleri aç/kapat. |
 | QR & masa kartı tasarlayıcı | 4 şablon, renkler, çerçeve, ortada baş harf/kalp/çift fotoğrafı, masa numarası aralığı → 300 DPI PNG ve çok sayfalı PDF (A6, A5, A4’e 4’lü). |
-| Orijinal kalitede toplu indirme | Tarayıcı içinde ZIP (sunucu RAM’i kullanılmaz, >3,5 GB’ta parçalara bölünür) + Drive klasör bağlantısı. |
+| Orijinal kalitede toplu indirme (yalnızca etkinlik sahibi) | Tarayıcı içinde ZIP (sunucu RAM’i kullanılmaz, >3,5 GB’ta parçalara bölünür) + Drive klasör bağlantısı. |
 
 ## Mimari
 

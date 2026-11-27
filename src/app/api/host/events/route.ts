@@ -1,16 +1,19 @@
 import type { NextRequest } from "next/server";
 
-import { BRAND } from "@/lib/brand";
 import { addCohost, cohostEventIds } from "@/lib/cohosts";
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { driveForNewEvent } from "@/lib/drive-accounts";
 import { slugify, toHostEventDto } from "@/lib/events";
+import { normaliseEventType, presetFor, themeFor } from "@/lib/event-presets";
+import { hasEventPresetColumns } from "@/lib/schema-features";
 import { randomSlugSuffix } from "@/lib/slug";
 import { getHostUser } from "@/lib/host-auth";
+import { planForUser, proRequired } from "@/lib/host-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { getAdminDb } from "@/lib/supabase/server";
 import { createEventSchema } from "@/lib/validation";
 import type { EventRow, HostEventDto, HostEventListItem } from "@/types/domain";
+import { getServerLang } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -21,17 +24,22 @@ export async function GET() {
     const host = await getHostUser();
     if (!host) return jsonError(401, "UNAUTHENTICATED", "Lütfen giriş yapın.");
 
-    const cohosted = await cohostEventIds(host.id);
+    const [cohosted, presets] = await Promise.all([cohostEventIds(host.id), hasEventPresetColumns()]);
     let query = getAdminDb()
       .from("events")
-      .select("id, owner_id, slug, title, couple_names, event_date, theme_color, created_at, media_items(count)");
+      // `event_type` only once the 0007 migration has run (typed as the full list; it is optional on EventRow).
+      .select(
+        (presets
+          ? "id, owner_id, slug, title, couple_names, event_date, theme_color, created_at, event_type, media_items(count)"
+          : "id, owner_id, slug, title, couple_names, event_date, theme_color, created_at, media_items(count)") as "id, owner_id, slug, title, couple_names, event_date, theme_color, created_at, event_type, media_items(count)",
+      );
     query = cohosted.length > 0 ? query.or(`owner_id.eq.${host.id},id.in.(${cohosted.join(",")})`) : query.eq("owner_id", host.id);
     const { data, error } = await query.order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
     const items: HostEventListItem[] = (
       (data ?? []) as Array<
-        Pick<EventRow, "id" | "owner_id" | "slug" | "title" | "couple_names" | "event_date" | "theme_color" | "created_at"> & {
+        Pick<EventRow, "id" | "owner_id" | "slug" | "title" | "couple_names" | "event_date" | "theme_color" | "created_at" | "event_type"> & {
           media_items: Array<{ count: number }>;
         }
       >
@@ -42,11 +50,12 @@ export async function GET() {
       coupleNames: row.couple_names,
       eventDate: row.event_date,
       themeColor: row.theme_color,
+      eventType: normaliseEventType(row.event_type),
       mediaCount: row.media_items?.[0]?.count ?? 0,
       role: row.owner_id === host.id ? "owner" : "cohost",
       createdAt: row.created_at,
     }));
-    return jsonOk({ items });
+    return jsonOk({ items, plan: await planForUser(host.id) });
   } catch (error) {
     return handleRouteError("host:events:list", error);
   }
@@ -77,12 +86,18 @@ export async function POST(request: NextRequest) {
   try {
     const host = await getHostUser();
     if (!host) return jsonError(401, "UNAUTHENTICATED", "Lütfen giriş yapın.");
+    const locked = await proRequired(host.id, "createEvent");
+    if (locked) return locked;
     const limited = await rateLimit(request, "create-event", 10, 3600, host.id);
     if (limited) return limited;
 
     const body = await parseJsonBody(request, createEventSchema, 8 * 1024);
     if (!body.ok) return body.response;
     const { title, coupleNames, eventDate, schedule, challenges, coHosts } = body.data;
+    const preset = presetFor(body.data.eventType);
+    const theme = themeFor(body.data.themeId ?? preset.defaultTheme);
+    const modules = body.data.modules ?? { schedule: preset.modules.schedule, challenges: preset.modules.challenges };
+    const lang = await getServerLang();
 
     let base = body.data.slug ?? slugify(coupleNames || title);
     if (base.length < 3) base = "etkinlik";
@@ -105,7 +120,13 @@ export async function POST(request: NextRequest) {
         drive_videos_folder_id: folders.videosId,
         drive_voice_folder_id: folders.voiceId,
         drive_account: account,
-        theme_color: BRAND.defaultEventColor,
+        theme_color: body.data.themeColor ?? theme.accent,
+        // Album categories follow the preset, in the host's interface language.
+        categories: [...(lang === "en" ? preset.categories.en : preset.categories.tr)],
+        guestbook_enabled: body.data.guestbookEnabled ?? preset.modules.guestbook,
+        // Preset columns (0007 migration) are only written once they exist, so
+        // creating events keeps working before the migration has been run.
+        ...((await hasEventPresetColumns()) ? { event_type: preset.type, theme_id: theme.id, modules } : {}),
         // Optional extras are only written when set, so creating a plain event
         // keeps working even before the 0002 migration has been run.
         ...(schedule && schedule.length > 0 ? { schedule } : {}),
@@ -130,7 +151,7 @@ export async function POST(request: NextRequest) {
       });
       if (!added.ok) coHostsNotAdded.push(username);
     }
-    return jsonOk<{ event: HostEventDto; coHostsNotAdded: string[] }>({ event: toHostEventDto(event), coHostsNotAdded }, 201);
+    return jsonOk<{ event: HostEventDto; coHostsNotAdded: string[] }>({ event: toHostEventDto(event, "owner", await planForUser(host.id)), coHostsNotAdded }, 201);
   } catch (error) {
     return handleRouteError("host:events:create", error);
   }

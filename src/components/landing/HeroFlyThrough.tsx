@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { BRAND } from "@/lib/brand";
+import { useT } from "@/lib/i18n/provider";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** Smooth ease for the zoom so it starts gently and accelerates into the letter. */
@@ -17,6 +18,7 @@ const ease = (t: number) => t * t * (3 - 2 * t);
  * Without JS, or with `prefers-reduced-motion`, it is a static full-height hero.
  */
 export function HeroFlyThrough({ children }: { children: ReactNode }) {
+  const t = useT();
   const sectionRef = useRef<HTMLElement>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
   const iRef = useRef<HTMLSpanElement>(null);
@@ -83,11 +85,12 @@ export function HeroFlyThrough({ children }: { children: ReactNode }) {
       {/* The sticky stage is its own stacking context, so it needs its own background
           for the overlay's mix-blend-difference to have something to blend with. */}
       <div className="sticky top-0 h-dvh overflow-hidden bg-stone-50">
-        <div aria-hidden className="absolute inset-0 flex items-center justify-center">
+        {/* Sized by width and height and lifted a little, so the copy along the bottom never touches it. */}
+        <div aria-hidden className="absolute inset-0 flex items-center justify-center pb-[14dvh]">
           <span
             ref={wordRef}
-            className="font-serif leading-none text-stone-900 select-none"
-            style={{ fontSize: "clamp(8rem, 36vw, 46rem)" }}
+            className="font-brand leading-none text-stone-900 select-none"
+            style={{ fontSize: "clamp(6rem, min(36vw, 52dvh), 46rem)" }}
           >
             M<span ref={iRef}>i</span>ra
           </span>
@@ -102,7 +105,7 @@ export function HeroFlyThrough({ children }: { children: ReactNode }) {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center text-xs text-stone-50 mix-blend-difference motion-reduce:hidden"
         >
-          Kaydırın
+          {t("Kaydırın")}
         </div>
         <span className="sr-only">{BRAND.name}</span>
       </div>

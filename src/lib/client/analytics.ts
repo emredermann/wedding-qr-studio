@@ -17,18 +17,23 @@ export interface AnalyticsEvents {
   guest_joined: Record<string, never>;
   upload_completed: { kind: MediaKind };
   upload_failed: { kind: MediaKind };
+  upload_deleted: { kind: MediaKind };
   face_search: { found: boolean };
   guestbook_note_sent: Record<string, never>;
   guestbook_recording_sent: { kind: "audio" | "video" };
   original_downloaded: { kind: MediaKind };
-  zip_downloaded: { scope: "gallery" | "mine" | "faces" | "host"; files: number };
+  zip_downloaded: { scope: "host"; files: number };
+  framed_copy_shared: { result: "shared" | "downloaded" };
+  highlights_exported: { slides: number };
+  photobook_exported: { pages: number };
+  report_exported: Record<string, never>;
   // Host
   host_signed_in: Record<string, never>;
   drive_connect_started: Record<string, never>;
   drive_connected: Record<string, never>;
   event_created: { drive: "app" | "host" };
   guest_link_shared: { method: "copy" | "whatsapp" };
-  qr_card_exported: { format: "png" | "pdf"; cards: number };
+  qr_card_exported: { format: "png" | "pdf" | "svg"; cards: number };
   moderation_bulk: { action: "approve" | "hide" | "delete"; items: number };
   settings_saved: Record<string, never>;
   live_wall_opened: Record<string, never>;
