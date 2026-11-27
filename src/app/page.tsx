@@ -214,15 +214,6 @@ const INCLUDED: MsgKey[] = [
   "Marka kiti, paylaşım çerçeveleri ve fotokitap",
 ];
 
-const FREE_ACCOUNT: Array<{ text: MsgKey; ok: boolean }> = [
-  { text: "Moderasyon, galeri ve tüm albümü indirme", ok: true },
-  { text: "QR kartları, oturma planı ve canlı ekran", ok: true },
-  { text: "Öne çıkanlar, fotokitap ve katılım raporu", ok: true },
-  { text: "Yeni etkinlik oluşturma", ok: false },
-  { text: "Davetiye oluşturma ve yönetme", ok: false },
-  { text: "Etkinlik ayarlarını değiştirme", ok: false },
-];
-
 const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
   {
     q: "Nasıl çalışıyor?",
@@ -327,18 +318,6 @@ function EventScreen({ occasion, t }: { occasion: Occasion; t: T }) {
       {/* Fade into the card so the phone reads as rising out of it. */}
       <span className="pointer-events-none absolute inset-x-0 bottom-0 h-16" style={{ background: `linear-gradient(to top, ${th.scale["100"]}, transparent)` }} />
     </div>
-  );
-}
-
-function PrimaryCta({ children }: { children: ReactNode }) {
-  return (
-    <Link
-      href="/login"
-      className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-7 py-3 text-sm text-stone-50 transition hover:bg-stone-700"
-    >
-      {children}
-      <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
-    </Link>
   );
 }
 
@@ -817,54 +796,33 @@ export default async function HomePage() {
           title={t("Pro ile etkinliğinizi kurun.")}
           text={t("Tüm özellikler Pro pakette. Misafir, kare ya da süre sınırı yok; dosyalarınız kendi Google Drive’ınızda.")}
         />
-        <div className="grid gap-4 md:grid-cols-[1.5fr_1fr]">
-          <div className="flex flex-col gap-8 rounded-3xl bg-stone-900 p-8 text-stone-50 sm:p-10">
-            <div>
-              <p className="inline-flex items-center gap-1.5 text-sm text-stone-400">
-                <Sparkles className="h-4 w-4" strokeWidth={1.5} /> Pro
-              </p>
-              <p className="mt-4 font-brand text-5xl leading-tight sm:text-6xl">{t("Her şey dahil")}</p>
-              <p className="mt-3 text-sm text-stone-400">{t("Etkinlik oluşturun, ayarlarını yönetin ve tüm araçları kullanın.")}</p>
-            </div>
-            <ul className="grid flex-1 content-start gap-x-8 gap-y-3 text-sm text-stone-200 sm:grid-cols-2">
-              {INCLUDED.map((i) => (
-                <li key={i} className="flex gap-3">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" strokeWidth={1.75} />
-                  {t(i)}
-                </li>
-              ))}
-            </ul>
-            <div>
-              <a
-                href={BRAND.salesContact || "/login"}
-                className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
-              >
-                {t("Pro için iletişime geçin")}
-                <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
-              </a>
-            </div>
+        <div className="flex flex-col gap-10 rounded-3xl bg-stone-900 p-8 text-stone-50 sm:p-12">
+          <div>
+            <p className="inline-flex items-center gap-1.5 text-sm text-stone-400">
+              <Sparkles className="h-4 w-4" strokeWidth={1.5} /> Pro
+            </p>
+            <p className="mt-4 font-brand text-5xl leading-tight sm:text-6xl">{t("Her şey dahil")}</p>
+            <p className="mt-3 text-sm text-stone-400">{t("Etkinlik oluşturun, ayarlarını yönetin ve tüm araçları kullanın.")}</p>
           </div>
-          <div className="flex flex-col gap-8 rounded-3xl border border-stone-200 bg-white p-8 sm:p-10">
-            <div>
-              <p className="text-sm text-stone-500">{t("Ücretsiz hesap")}</p>
-              <p className="mt-4 font-brand text-5xl leading-tight">{t("0 ₺")}</p>
-              <p className="mt-3 text-sm text-stone-600">{t("Ortak yönetici olarak davet edildiğiniz ya da daha önce kurduğunuz etkinlikler için.")}</p>
-            </div>
-            <ul className="grid flex-1 content-start gap-3 text-sm text-stone-700">
-              {FREE_ACCOUNT.map(({ text, ok }) => (
-                <li key={text} className="flex gap-3">
-                  {ok ? (
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" strokeWidth={1.75} />
-                  ) : (
-                    <Minus className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} />
-                  )}
-                  <span className={ok ? "" : "text-stone-500"}>{t(text)}</span>
-                </li>
-              ))}
-            </ul>
-            <div>
-              <PrimaryCta>{t("Giriş yapın")}</PrimaryCta>
-            </div>
+          <ul className="grid content-start gap-x-10 gap-y-3.5 text-sm text-stone-200 sm:grid-cols-2 lg:grid-cols-3">
+            {INCLUDED.map((i) => (
+              <li key={i} className="flex gap-3">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" strokeWidth={1.75} />
+                {t(i)}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/iletisim?kaynak=pro"
+              className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-7 py-3 text-sm text-stone-900 transition hover:bg-stone-200"
+            >
+              {t("Pro için iletişime geçin")}
+              <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+            <Link href="/login" className="inline-flex items-center gap-2 rounded-full border border-stone-600 px-7 py-3 text-sm text-stone-100 transition hover:border-stone-300">
+              {t("Giriş yapın")}
+            </Link>
           </div>
         </div>
       </section>
