@@ -10,12 +10,13 @@ export const PLANS = ["free", "pro"] as const;
 export type Plan = (typeof PLANS)[number];
 
 /**
- * What needs the Pro package: creating events and changing an event's
- * settings (incl. brand kit, share frame and co-hosts). Everything else —
+ * What needs the Pro package: creating events, changing an event's
+ * settings (incl. brand kit, share frame and co-hosts) and managing
+ * invitations (guests can still answer links already sent). Everything else —
  * moderation, gallery, QR cards, seating, highlights, photobook, report,
  * deleting an event — works on every package.
  */
-export const PRO_FEATURES = ["createEvent", "editSettings"] as const;
+export const PRO_FEATURES = ["createEvent", "editSettings", "invitations"] as const;
 export type ProFeature = (typeof PRO_FEATURES)[number];
 
 const FEATURES: Record<Plan, ReadonlySet<ProFeature>> = {

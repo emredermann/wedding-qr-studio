@@ -6,11 +6,14 @@ import type { ApiErrorBody } from "@/types/domain";
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string, message: string) {
+  /** Field-level problems from a 422 (e.g. { "party.1": [...] }). */
+  readonly details?: Record<string, string[]>;
+  constructor(status: number, code: string, message: string, details?: Record<string, string[]>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -43,7 +46,7 @@ export async function apiFetch<T>(url: string, init: RequestInit & { json?: unkn
   }
   if (!res.ok) {
     const err = (body as ApiErrorBody | null)?.error;
-    throw new ApiError(res.status, err?.code ?? "HTTP_ERROR", err?.message ?? `İstek başarısız (${res.status}).`);
+    throw new ApiError(res.status, err?.code ?? "HTTP_ERROR", err?.message ?? `İstek başarısız (${res.status}).`, err?.details);
   }
   return body as T;
 }

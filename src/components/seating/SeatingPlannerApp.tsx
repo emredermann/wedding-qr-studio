@@ -34,7 +34,8 @@ import { ToastRegion, useToastQueue } from "@/components/ui/Feedback";
 import { apiFetch, errorMessage } from "@/lib/client/api";
 import { useLang, useT } from "@/lib/i18n/provider";
 import { translateLoose } from "@/lib/i18n/translate";
-import { addGuests, assignGuest, metrics, removeTable, removeVenue, unassignGuest, updateTable, updateVenue } from "@/lib/seating/ops";
+import { rsvpPeople, type InvitationsDto } from "@/lib/invitations/model";
+import { addGuests, assignGuest, metrics, syncRsvpGuests, removeTable, removeVenue, unassignGuest, updateTable, updateVenue } from "@/lib/seating/ops";
 import { normalisePlan, planSchema, type SeatRef, type SeatingGuest } from "@/lib/seating/schema";
 import type { HostEventDto } from "@/types/domain";
 
@@ -68,6 +69,11 @@ export function SeatingPlannerApp({ eventId }: { eventId: string }) {
   const [exportOpen, setExportOpen] = useState(false);
   const [fitSignal, setFitSignal] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
+  const latestPlan = useRef(plan);
+  useEffect(() => {
+    latestPlan.current = plan;
+  });
+  const backHref = `/dashboard/${eventId}/davetiye`;
   const jsonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -101,6 +107,37 @@ export function SeatingPlannerApp({ eventId }: { eventId: string }) {
   const dragging = drag !== null;
   const dragGuestId = drag?.guestId ?? null;
   const { apply } = store;
+
+  // Guests who accepted an invitation join the list (and leave it when they decline).
+  const rsvpSynced = useRef(false);
+  useEffect(() => {
+    if (loadState !== "ready") {
+      rsvpSynced.current = false;
+      return;
+    }
+    if (rsvpSynced.current) return;
+    // Runs once per load (no cancel on cleanup: the sync is idempotent and a
+    // Strict Mode re-run would otherwise drop it).
+    rsvpSynced.current = true;
+    void (async () => {
+      try {
+        const res = await apiFetch<InvitationsDto>(`/api/host/events/${eventId}/invitations`);
+        if (res.invitees.length === 0) return;
+        const people = rsvpPeople(res.invitees);
+        const result = syncRsvpGuests(latestPlan.current, people);
+        apply((pl) => syncRsvpGuests(pl, people).plan);
+        if (result.added || result.removed) {
+          notify(t("Davetiye yanıtları: {added} kişi eklendi, {removed} kişi çıkarıldı.", { added: result.added, removed: result.removed }), "info");
+        }
+        if (result.unseated.length) {
+          notify(t("Yanıtı değişenler masadan kaldırıldı: {names}", { names: result.unseated.slice(0, 5).join(", ") }), "error");
+        }
+      } catch {
+        // No invitations module (migration not run) or no access: nothing to sync.
+      }
+    })();
+  }, [loadState, eventId, apply, notify, t]);
+
   useEffect(() => {
     if (!dragging || !dragGuestId) return;
     const move = (e: PointerEvent) => setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d));
@@ -249,8 +286,8 @@ export function SeatingPlannerApp({ eventId }: { eventId: string }) {
           <button type="button" onClick={store.reload} className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">
             {t("Tekrar dene")}
           </button>
-          <Link href={`/dashboard/${eventId}`} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700">
-            {t("Etkinliğe dön")}
+          <Link href={backHref} className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700">
+            {t("Davetiye & Oturma")}
           </Link>
         </div>
       </Centered>
@@ -271,8 +308,8 @@ export function SeatingPlannerApp({ eventId }: { eventId: string }) {
     <div className="flex h-dvh flex-col bg-stone-50">
       <header className="eqr-safe-top z-30 border-b border-stone-200 bg-white">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-4">
-          <Link href={`/dashboard/${eventId}`} className="inline-flex items-center gap-1 rounded-xl px-1.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800" aria-label={t("Etkinliğe dön")}>
-            <ChevronLeft className="h-4 w-4" /> <span className="hidden lg:inline">{t("Etkinliğe dön")}</span>
+          <Link href={backHref} className="inline-flex items-center gap-1 rounded-xl px-1.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800" aria-label={t("Davetiye & Oturma")}>
+            <ChevronLeft className="h-4 w-4" /> <span className="hidden lg:inline">{t("Davetiye & Oturma")}</span>
           </Link>
           <div className="min-w-0 flex-1 basis-40">
             <input

@@ -22,6 +22,12 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API_BASE = "https://www.googleapis.com/drive/v3";
 const UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3";
 export const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
+export const SPREADSHEET_MIME = "application/vnd.google-apps.spreadsheet";
+const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
+
+export function sheetUrl(spreadsheetId: string): string {
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/edit`;
+}
 
 export type DriveAccountKind = "app" | "host";
 
@@ -440,6 +446,59 @@ export function createDriveClient(creds: DriveCredentials) {
    * Opens a byte stream for a file, forwarding an optional `Range` header.
    * The caller pipes `res.body` to the client without buffering it.
    */
+  /**
+   * Creates an empty Google Sheet in `parentId` (allowed by the drive.file
+   * scope: the app may edit files it created). Header row frozen and bold.
+   */
+  async createSpreadsheet(name: string, parentId: string): Promise<string> {
+    const res = await driveRequest(creds, `${API_BASE}/files?fields=id`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ name: sanitiseDriveName(name), mimeType: SPREADSHEET_MIME, parents: [parentId] }),
+    });
+    await ensureOk(res, "createSpreadsheet");
+    const { id } = (await res.json()) as { id: string };
+    const format = await driveRequest(creds, `${SHEETS_BASE}/${encodeURIComponent(id)}:batchUpdate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({
+        requests: [
+          { updateSheetProperties: { properties: { sheetId: 0, gridProperties: { frozenRowCount: 1 } }, fields: "gridProperties.frozenRowCount" } },
+          { repeatCell: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: "userEnteredFormat.textFormat.bold" } },
+        ],
+      }),
+      retries: 1,
+    });
+    if (!format.ok) console.warn("[drive] sheet header formatting skipped", format.status);
+    return id;
+  },
+
+  /** False when the file was deleted, trashed or is no longer reachable. */
+  async fileUsable(fileId: string): Promise<boolean> {
+    const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?fields=trashed`, { retries: 1 });
+    if (res.status === 404) return false;
+    await ensureOk(res, "fileUsable");
+    const json = (await res.json()) as { trashed?: boolean };
+    return !json.trashed;
+  },
+
+  /** Replaces everything in the first sheet with `rows` (Sheets API, plain values). */
+  async writeSheet(spreadsheetId: string, rows: string[][]): Promise<void> {
+    const base = `${SHEETS_BASE}/${encodeURIComponent(spreadsheetId)}/values`;
+    const cleared = await driveRequest(creds, `${base}/${encodeURIComponent("A:Z")}:clear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: "{}",
+    });
+    await ensureOk(cleared, "writeSheet.clear");
+    const res = await driveRequest(creds, `${base}/A1?valueInputOption=RAW`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ range: "A1", majorDimension: "ROWS", values: rows }),
+    });
+    await ensureOk(res, "writeSheet.update");
+  },
+
   async openStream(fileId: string, range: string | null): Promise<Response> {
     const res = await driveRequest(creds, `${API_BASE}/files/${encodeURIComponent(fileId)}?alt=media`, {
       headers: range ? { Range: range } : {},

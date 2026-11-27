@@ -173,6 +173,7 @@ export function GuestSidebar({
                     {[g.seat ? `${tableName.get(g.seat.tableId) || t("Masa")} · ${g.seat.seat + 1}` : null, g.group, g.dietary].filter(Boolean).join(" · ") || " "}
                   </span>
                 </span>
+                {g.link && <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700" title={t("Davetiyeden geldi")}>{t("LCV")}</span>}
                 {g.rsvp === "no" && <span className="shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700">{t("Gelmiyor")}</span>}
               </div>
             </li>
