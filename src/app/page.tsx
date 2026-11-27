@@ -17,6 +17,7 @@ import {
   Sparkles,
   Timer,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -27,6 +28,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
 import { THEMES, type ThemeId } from "@/lib/event-presets";
 import { getServerT } from "@/lib/i18n/server";
+import { siteUrl, socialDefaults } from "@/lib/site";
 import type { MsgKey, Vars } from "@/lib/i18n/translate";
 
 type T = (key: MsgKey, vars?: Vars) => string;
@@ -170,7 +172,7 @@ const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
 
 const INVITE_STEPS: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Davetiyenizi tasarlayın", text: "Altı şablon, kendi renginiz ve metniniz. Program, kıyafet notu, harita ve “takvime ekle” hazır." },
-  { title: "Herkese kendi bağlantısı", text: "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı WhatsApp’tan tek dokunuşla gönderin." },
+  { title: "Herkese kendi bağlantısı", text: "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı SMS’le ya da paylaşım menüsünden tek dokunuşla gönderin." },
   { title: "Yanıtlar kendiliğinden gelsin", text: "Misafir katılımını, gelecek herkesin adını ve menü tercihini yazar; son tarihe kadar değiştirebilir." },
   { title: "Drive’da tablo, salonda masa", text: "Her yanıt Google Drive’ınızdaki tabloya yazılır ve oturma planınızın misafir listesine düşer." },
 ];
@@ -482,10 +484,57 @@ function CompareCell({ value, strong = false, t }: { value: Cell; strong?: boole
 
 /* --------------------------------------------------------------------- page */
 
+export async function generateMetadata(): Promise<Metadata> {
+  const { t, lang } = await getServerT();
+  const social = socialDefaults(lang);
+  const title = t("Mira | QR Kodla Düğün ve Etkinlik Fotoğraf Albümü, Dijital Davetiye");
+  const description = t(
+    "Misafirleriniz QR kodu okutur; düğün, nişan ve etkinlik fotoğraf ve videoları uygulama indirmeden, orijinal kalitede Google Drive’ınıza gelir. Dijital davetiye, LCV ve oturma planı da Mira’da.",
+  );
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: "/" },
+    openGraph: { ...social.openGraph, url: "/", title, description },
+    twitter: { ...social.twitter, title, description },
+  };
+}
+
+/**
+ * Structured data for Google: who we are (Organization), the site
+ * (WebSite), the product (SoftwareApplication) and the FAQ shown on the page.
+ */
+function JsonLd({ t }: { t: T }) {
+  const base = siteUrl();
+  const data = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Organization", "@id": `${base}/#organization`, name: BRAND.name, url: `${base}/`, logo: `${base}/icon.svg` },
+      { "@type": "WebSite", "@id": `${base}/#website`, url: `${base}/`, name: BRAND.name, inLanguage: "tr-TR", publisher: { "@id": `${base}/#organization` } },
+      {
+        "@type": "SoftwareApplication",
+        name: BRAND.name,
+        url: `${base}/`,
+        applicationCategory: "MultimediaApplication",
+        operatingSystem: "Web, iOS, Android",
+        description: t(BRAND.description),
+        publisher: { "@id": `${base}/#organization` },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: t(q), acceptedAnswer: { "@type": "Answer", text: t(a) } })),
+      },
+    ],
+  };
+  // "<" is escaped so no answer text can close the script tag.
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
+}
+
 export default async function HomePage() {
   const { t } = await getServerT();
   return (
     <main className="min-h-dvh bg-stone-50 text-stone-900">
+      <JsonLd t={t} />
       {/* Navigation: fixed, blends with whatever is beneath it (ivory page or ink letters). */}
       <header className="fixed inset-x-0 top-0 z-30 text-stone-50 mix-blend-difference">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-5">
@@ -511,10 +560,14 @@ export default async function HomePage() {
       {/* Hero: pinned stage; scrolling flies into the "i" of the wordmark. */}
       <HeroFlyThrough>
         <div className="mx-auto flex h-full max-w-6xl flex-col justify-end px-6 pt-24 pb-12">
-          <h1 className="sr-only">{BRAND.name}</h1>
+
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-xl">
-              <p className="text-lg leading-snug font-normal tracking-[-0.01em] sm:text-xl">{t("Her etkinliğin fotoğrafları ve videoları, tek bir QR kodla.")}</p>
+              {/* The page's single H1: what Mira does, in the words people search for. */}
+              <h1 className="text-lg leading-snug font-normal tracking-[-0.01em] sm:text-xl">
+                <span className="sr-only">{BRAND.name}: </span>
+                {t("Her etkinliğin fotoğrafları ve videoları, tek bir QR kodla.")}
+              </h1>
               <p className="mt-1.5 text-[13px] leading-relaxed font-light opacity-70">{t("Düğünden konferansa, doğum gününden festivale; misafirleriniz uygulama indirmeden paylaşır.")}</p>
               {/* The meaning of the name: one quiet, hairline-weight line. */}
               <p className="mt-4 text-[12px] leading-relaxed font-light tracking-[0.02em] opacity-55">

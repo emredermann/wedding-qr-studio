@@ -7,12 +7,16 @@ import { ContactForm } from "@/components/contact/ContactForm";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { BRAND } from "@/lib/brand";
 import { getServerT } from "@/lib/i18n/server";
+import { socialDefaults } from "@/lib/site";
 import type { MsgKey } from "@/lib/i18n/translate";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getServerT();
+  const { t, lang } = await getServerT();
   return {
     title: t("İletişim"),
+    alternates: { canonical: "/iletisim" },
+    openGraph: { ...socialDefaults(lang).openGraph, url: "/iletisim", title: `${t("İletişim")} · ${BRAND.name}` },
+    twitter: { ...socialDefaults(lang).twitter },
     description: t("{brand} hakkında detaylı bilgi almak için formu doldurun; sizinle iletişime geçelim.", { brand: BRAND.name }),
   };
 }

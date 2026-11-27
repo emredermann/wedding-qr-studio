@@ -8,6 +8,7 @@ import { InviteIllustration, SeatingIllustration } from "@/components/landing/In
 import { TemplateShowcase } from "@/components/landing/TemplateShowcase";
 import { BRAND } from "@/lib/brand";
 import { getServerT } from "@/lib/i18n/server";
+import { socialDefaults } from "@/lib/site";
 import type { MsgKey } from "@/lib/i18n/translate";
 
 /**
@@ -19,16 +20,19 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") ?? "
 const START_HREF = `${APP_URL}/login?next=${encodeURIComponent("/dashboard?yeni=davetiye")}`;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getServerT();
+  const { t, lang } = await getServerT();
   return {
     title: t("Dijital davetiye, LCV ve oturma planı"),
+    alternates: { canonical: "/davetiye" },
+    openGraph: { ...socialDefaults(lang).openGraph, url: "/davetiye", title: `${t("Dijital davetiye, LCV ve oturma planı")} · ${BRAND.name}` },
+    twitter: { ...socialDefaults(lang).twitter },
     description: t("Kişiye özel dijital davetiyeler gönderin; yanıtlar kendiliğinden gelsin, Google Drive’daki tabloya yazılsın ve oturma planınıza dökülsün."),
   };
 }
 
 const STEPS: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Davetiyenizi tasarlayın", text: "Altı şablon, kendi renginiz ve metniniz. Program, kıyafet notu, harita ve “takvime ekle” hazır." },
-  { title: "Herkese kendi bağlantısı", text: "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı WhatsApp’tan tek dokunuşla gönderin." },
+  { title: "Herkese kendi bağlantısı", text: "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı SMS’le ya da paylaşım menüsünden tek dokunuşla gönderin." },
   { title: "Yanıtlar kendiliğinden gelsin", text: "Misafir katılımını, gelecek herkesin adını ve menü tercihini yazar; son tarihe kadar değiştirebilir." },
   { title: "Drive’da tablo, salonda masa", text: "Her yanıt Google Drive’ınızdaki tabloya yazılır ve oturma planınızın misafir listesine düşer." },
 ];
@@ -38,7 +42,7 @@ const FEATURES: Array<{ icon: LucideIcon; title: MsgKey; text: MsgKey }> = [
   { icon: Mail, title: "İsim isim LCV", text: "Gelecek herkes için ad soyad alınır; liste masaya oturtmaya hazır gelir." },
   { icon: Clock, title: "Son yanıt tarihi", text: "Misafirler bu tarihe kadar yanıtını değiştirebilir; sonra form kapanır." },
   { icon: Sheet, title: "Drive’da canlı tablo", text: "Yanıtlar kendi Google Drive’ınızdaki tabloya anında yazılır; Excel olarak da indirilebilir." },
-  { icon: MessageCircle, title: "WhatsApp ile gönderim", text: "Her bağlantı hazır bir mesajla tek dokunuşta paylaşılır." },
+  { icon: MessageCircle, title: "Toplu gönderim", text: "Her bağlantı hazır bir mesajla SMS’ten ya da paylaşım menüsünden tek dokunuşta gönderilir; kime gönderildiğini takip edin." },
   { icon: Link2, title: "Genel bağlantı", text: "Listede olmayanlar için tek bağlantı; her yanıt kendi özel bağlantısına kaydedilir." },
   { icon: CalendarPlus, title: "Takvime ekle", text: "Google Takvim, Apple ve Outlook için tek dokunuş; geri sayım ve yol tarifi de var." },
   { icon: Upload, title: "Excel ve PDF’ten içe aktarma", text: "Hazır davetli listenizi yükleyin; isim, grup ve kişi sayısı kendiliğinden okunur." },

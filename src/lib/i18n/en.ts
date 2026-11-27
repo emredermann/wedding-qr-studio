@@ -1357,4 +1357,10 @@ export const EN = {
   "E-posta adresi çok uzun.": "The email address is too long.",
   "Not en fazla 2000 karakter olabilir.": "The note can be at most 2000 characters.",
   "Not geçersiz karakterler içeriyor.": "The note contains invalid characters.",
+  // ── seo
+  "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı SMS’le ya da paylaşım menüsünden tek dokunuşla gönderin.": "The invitation opens with “Dear Jane,”. You set the party limit and send the link by SMS or the share menu in one tap.",
+  "Her bağlantı hazır bir mesajla SMS’ten ya da paylaşım menüsünden tek dokunuşta gönderilir; kime gönderildiğini takip edin.": "Each link goes out with a ready-made message by SMS or the share menu in one tap; track who has been sent one.",
+  "Mira | QR Kodla Düğün ve Etkinlik Fotoğraf Albümü, Dijital Davetiye": "Mira | QR Code Wedding & Event Photo Album, Digital Invitations",
+  "Misafirleriniz QR kodu okutur; düğün, nişan ve etkinlik fotoğraf ve videoları uygulama indirmeden, orijinal kalitede Google Drive’ınıza gelir. Dijital davetiye, LCV ve oturma planı da Mira’da.": "Guests scan a QR code and wedding, engagement and event photos and videos reach your Google Drive in original quality, no app needed. Digital invitations, RSVP and seating plans too.",
+  "Toplu gönderim": "Bulk sending",
 } as const;
