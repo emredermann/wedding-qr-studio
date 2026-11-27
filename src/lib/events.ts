@@ -23,19 +23,21 @@ export const MEDIA_COLUMNS =
 
 /** Host view: every saved schedule item and challenge, even while its module is switched off. */
 function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
+  const open = albumOpen(event);
   return {
     slug: event.slug,
+    albumOpen: open,
     title: event.title,
     coupleNames: event.couple_names,
     eventDate: event.event_date,
     welcomeMessage: event.welcome_message,
     themeColor: event.theme_color,
     categories: event.categories ?? [],
-    uploadsEnabled: event.uploads_enabled,
+    uploadsEnabled: open && event.uploads_enabled,
     requireApproval: event.require_approval,
     galleryPublic: event.gallery_public,
     faceSearchEnabled: event.face_search_enabled,
-    guestbookEnabled: event.guestbook_enabled,
+    guestbookEnabled: open && event.guestbook_enabled,
     schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
     challenges: readChallenges(event.challenges),
     tableNumbers: event.table_numbers === true,
@@ -46,6 +48,14 @@ function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
     brand: brandFor(event.slug, readBranding(event.branding)),
     shareFrame: readShareFrame(event.share_frame),
   };
+}
+
+/**
+ * Invitation-only events are created without Drive folders; the photo album
+ * opens (folders created, uploads allowed) when the host turns it on.
+ */
+export function albumOpen(event: Pick<EventRow, "drive_folder_id">): boolean {
+  return Boolean(event.drive_folder_id);
 }
 
 /** Guest view: a module the host switched off arrives empty, so no guest screen shows it. */
@@ -64,7 +74,7 @@ export function toHostEventDto(event: EventRow, role: HostEventDto["role"], plan
     shareFrameSettings: readShareFrame(event.share_frame),
     id: event.id,
     role,
-    driveFolderUrl: driveFolderUrl(event.drive_folder_id),
+    driveFolderUrl: event.drive_folder_id ? driveFolderUrl(event.drive_folder_id) : null,
     driveAccount: event.drive_account,
     heartsNamed: event.hearts_named === true,
     createdAt: event.created_at,

@@ -126,6 +126,8 @@ export const createEventSchema = z.object({
   themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   /** Module switches; omitted = the preset's defaults. */
   modules: modulesSchema.optional(),
+  /** false = invitation & seating only: no Drive folders yet, the album opens later. */
+  albumEnabled: z.boolean().optional(),
   /** Guestbook switch; omitted = the preset's default. */
   guestbookEnabled: z.boolean().optional(),
   /** Optional program schedule; omitted or empty = no schedule. */

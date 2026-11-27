@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
 import { driveForEvent } from "@/lib/drive-accounts";
-import { findEventBySlug } from "@/lib/events";
+import { albumOpen, findEventBySlug } from "@/lib/events";
 import { resolveGuestSession, withGuestCookie } from "@/lib/guest-session";
 import {
   classifyMimeType,
@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
 
     const event = await findEventBySlug(eventSlug);
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
+    if (!albumOpen(event)) return jsonError(403, "ALBUM_NOT_OPEN", "Bu etkinliğin fotoğraf albümü henüz açılmadı.");
     if (isGuestbook ? !event.guestbook_enabled : !event.uploads_enabled) {
       return jsonError(403, "UPLOADS_CLOSED", "Etkinlik sahibi şu anda yüklemeleri kapattı.");
     }

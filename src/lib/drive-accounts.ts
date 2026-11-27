@@ -109,3 +109,14 @@ export async function driveForNewEvent(ownerId: string): Promise<{ drive: DriveC
       : "Etkinlik oluşturmadan önce Google Drive'ınızı bağlayın.",
   );
 }
+
+/**
+ * Which Drive an event without folders (invitation-only) will use: the owner's
+ * own when connected, else the platform Drive, else "host" (they must connect
+ * before the album or the reply sheet can be created).
+ */
+export async function hostDriveAccount(ownerId: string): Promise<DriveAccountKind> {
+  const connection = await loadDriveConnection(ownerId);
+  if (connection?.status === "active") return "host";
+  return getPlatformDrive() ? "app" : "host";
+}

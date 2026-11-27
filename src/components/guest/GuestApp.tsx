@@ -134,6 +134,23 @@ export function GuestApp({ slug }: { slug: string }) {
   const displayName = event.coupleNames || event.title;
   const dateText = formatDate(event.eventDate, locale);
 
+  // Invitation-only event: the album opens later (usually on the day).
+  if (!event.albumOpen) {
+    return (
+      <main style={accentStyle} {...themeAttrs} className="eqr-safe-top relative flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10 text-center">
+        <LanguageSwitcher className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4" />
+        <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: "var(--accent)" }}>
+          <Camera className="h-7 w-7" />
+        </span>
+        <h1 className="font-serif text-4xl leading-tight text-stone-900">{displayName}</h1>
+        {dateText && <p className="mt-2 text-sm text-stone-600">{dateText}</p>}
+        <p className="mt-5 max-w-sm text-sm leading-relaxed text-stone-700">
+          {t("Fotoğraf albümü henüz açılmadı. Etkinlik günü bu sayfadan fotoğraf ve videolarınızı paylaşabileceksiniz.")}
+        </p>
+      </main>
+    );
+  }
+
   if (!guestName || editingName) {
     return (
       <main style={accentStyle} {...themeAttrs} className="eqr-safe-top relative flex min-h-dvh flex-col items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100 px-6 py-10">
