@@ -1349,4 +1349,12 @@ export const EN = {
   "Geçerli bir e-posta adresi yazın.": "Enter a valid email address.",
   "Devam etmek için onay kutusunu işaretleyin.": "Tick the consent box to continue.",
   "İletişim formu henüz kurulmamış. Lütfen daha sonra tekrar deneyin.": "The contact form isn't set up yet. Please try again later.",
+  // ── contact validation
+  "Ad soyad en fazla 80 karakter olabilir.": "Your name can be at most 80 characters.",
+  "Ad soyad yalnızca harf içermeli.": "Your name should contain letters only.",
+  "Adınızı ve soyadınızı birlikte yazın.": "Write both your first name and surname.",
+  "E-posta adresinizi yazın.": "Enter your email address.",
+  "E-posta adresi çok uzun.": "The email address is too long.",
+  "Not en fazla 2000 karakter olabilir.": "The note can be at most 2000 characters.",
+  "Not geçersiz karakterler içeriyor.": "The note contains invalid characters.",
 } as const;

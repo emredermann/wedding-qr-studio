@@ -48,6 +48,8 @@ async function rest(pathAndQuery, init = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+/** Terminal-safe text: no control / escape characters, no bidi overrides. */
+const clean = (v) => String(v ?? "").replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, " ");
 const phone = (p) => (p ? (/^90(\d{3})(\d{3})(\d{2})(\d{2})$/.test(p) ? p.replace(/^90(\d{3})(\d{3})(\d{2})(\d{2})$/, "0$1 $2 $3 $4") : `+${p}`) : "");
 const when = (iso) => new Date(iso).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" });
 const [command = "list", ...args] = process.argv.slice(2);
@@ -58,17 +60,19 @@ if (command === "list" || command === "all") {
   const rows = await rest(`contact_requests?select=${COLUMNS}&order=created_at.desc&limit=${command === "all" ? 200 : 50}${filter}`);
   if (rows.length === 0) console.log("\nHenüz talep yok.\n");
   for (const r of rows) {
-    console.log(`\n${when(r.created_at)}  [${r.status}]  ${r.full_name}`);
-    console.log(`  ${r.email}${r.phone ? `  ·  ${phone(r.phone)}` : ""}${r.source ? `  ·  kaynak: ${r.source}` : ""}`);
-    if (r.note) console.log(`  “${r.note.replace(/\s+/g, " ").slice(0, 300)}”`);
+    console.log(`\n${when(r.created_at)}  [${clean(r.status)}]  ${clean(r.full_name)}`);
+    console.log(`  ${clean(r.email)}${r.phone ? `  ·  ${phone(r.phone)}` : ""}${r.source ? `  ·  kaynak: ${clean(r.source)}` : ""}`);
+    if (r.note) console.log(`  “${clean(r.note).replace(/\s+/g, " ").slice(0, 300)}”`);
     console.log(`  id: ${r.id}`);
   }
   console.log("");
 } else if (command === "csv") {
   const rows = await rest(`contact_requests?select=${COLUMNS}&order=created_at.desc`);
   const cell = (v) => {
-    const s = String(v ?? "");
-    return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : /^[=+\-@]/.test(s) ? `'${s}` : s;
+    // Same rule as src/lib/csv.ts: neutralise formulas first, then quote.
+    const raw = clean(v);
+    const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+    return /[";,\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = [["Tarih", "Ad Soyad", "E-posta", "Telefon", "Not", "Kaynak", "Durum"].join(";")];
   for (const r of rows) lines.push([when(r.created_at), r.full_name, r.email, phone(r.phone), r.note, r.source, r.status].map(cell).join(";"));

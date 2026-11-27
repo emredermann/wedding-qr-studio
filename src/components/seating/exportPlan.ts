@@ -1,5 +1,6 @@
 "use client";
 
+import { csvCell } from "@/lib/csv";
 import { planBounds } from "@/lib/seating/geometry";
 import { occupants } from "@/lib/seating/ops";
 import type { SeatingPlan } from "@/lib/seating/schema";
@@ -175,7 +176,6 @@ export function planFromJson(text: string): unknown {
   return data;
 }
 
-const csvCell = (v: string) => (/[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
 /** Guest list as CSV (semicolon-separated + BOM, so Excel in Turkish locale opens it correctly). */
 export function guestsCsv(plan: SeatingPlan, header: string[], rsvpLabel: (r: SeatingPlan["guests"][number]["rsvp"]) => string): Blob {
