@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Download, Loader2, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Share2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AudioPlayer } from "@/components/media/AudioPlayer";
@@ -21,6 +21,7 @@ export function Lightbox({
   footer,
   challenges,
   allowDownload = false,
+  onShare,
 }: {
   items: MediaDto[];
   index: number;
@@ -32,11 +33,14 @@ export function Lightbox({
   challenges?: Challenge[];
   /** Hosts only: show the original-quality download button. Guests cannot download. */
   allowDownload?: boolean;
+  /** Photos only: save/share a framed copy (the original in Drive is untouched). */
+  onShare?: (item: MediaDto) => Promise<void>;
 }) {
   const item = items[index];
   const challengeTitle = item?.challengeId ? challenges?.find((c) => c.id === item.challengeId)?.title : undefined;
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const touchStart = useRef<number | null>(null);
 
   const go = useCallback(
@@ -73,6 +77,18 @@ export function Lightbox({
       trackEvent("original_downloaded", { kind: item.kind });
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!onShare) return;
+    setSharing(true);
+    try {
+      await onShare(item);
+    } catch {
+      // Drawing failed (e.g. preview not ready yet); nothing was shared.
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -115,6 +131,11 @@ export function Lightbox({
           {onDelete && (
             <button type="button" onClick={handleDelete} disabled={deleting} aria-label={t("Sil")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
               {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+            </button>
+          )}
+          {onShare && item.kind === "photo" && (
+            <button type="button" onClick={handleShare} disabled={sharing} aria-label={t("Çerçeveli paylaş")} title={t("Çerçeveli paylaş")} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10">
+              {sharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
             </button>
           )}
           {allowDownload && (

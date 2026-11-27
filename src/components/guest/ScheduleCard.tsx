@@ -17,13 +17,13 @@ export function useMinuteClock(): Date {
   return now;
 }
 
-function headline(phase: ProgramPhase, schedule: ScheduleItem[], t: TFunction, lang: Lang) {
+function headline(phase: ProgramPhase, schedule: ScheduleItem[], t: TFunction, lang: Lang, label: string) {
   const find = (id: string) => schedule.find((item) => item.id === id)!;
   switch (phase.kind) {
     case "countdown":
       return {
         emoji: phase.days === 1 ? "🥳" : "⏳",
-        eyebrow: t("Program"),
+        eyebrow: label,
         title: phase.days === 1 ? t("Büyük gün yarın!") : t("Büyük güne {n} gün kaldı", { n: phase.days }),
         chip: t("{n} durak", { n: schedule.length }),
       };
@@ -49,7 +49,7 @@ function headline(phase: ProgramPhase, schedule: ScheduleItem[], t: TFunction, l
     default:
       return {
         emoji: "🗓️",
-        eyebrow: t("Program"),
+        eyebrow: label,
         title: `${itemEmoji(schedule[0])} ${schedule[0].time} ${schedule[0].title}`,
         chip: schedule.length > 1 ? `+${schedule.length - 1}` : null,
       };
@@ -65,9 +65,12 @@ export function ScheduleCard({
   schedule,
   eventDate,
   onShareMoment,
+  label,
   now: nowOverride,
 }: {
   schedule: ScheduleItem[];
+  /** Card name from the event preset ("Gecenin Akışı", "Etkinlik Akışı"); defaults to "Program". */
+  label?: string;
   eventDate: string | null;
   /** Opens the upload screen (the current item's category is preselected there). */
   onShareMoment?: () => void;
@@ -82,13 +85,13 @@ export function ScheduleCard({
   if (schedule.length === 0) return null;
 
   const phase = programPhase(schedule, eventDate, now);
-  const head = headline(phase, schedule, t, lang);
+  const head = headline(phase, schedule, t, lang, label ?? t("Program"));
   const onAir = phase.kind === "live" || phase.kind === "finale";
   const currentId = onAir ? phase.currentId : null;
   const currentIndex = currentId ? schedule.findIndex((item) => item.id === currentId) : -1;
 
   return (
-    <section className="mb-5 overflow-hidden rounded-3xl border border-stone-200 bg-white">
+    <section className="mb-5 overflow-hidden rounded-3xl border border-stone-200 bg-surface">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -100,7 +103,7 @@ export function ScheduleCard({
           {onAir && (
             <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping" style={{ backgroundColor: "var(--accent)" }} />
-              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white" style={{ backgroundColor: "var(--accent)" }} />
+              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-surface" style={{ backgroundColor: "var(--accent)" }} />
             </span>
           )}
         </span>

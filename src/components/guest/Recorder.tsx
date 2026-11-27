@@ -158,7 +158,7 @@ export function Recorder({
   const mmss = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   return (
-    <div className="rounded-3xl border border-stone-200 bg-white p-4">
+    <div className="rounded-3xl border border-stone-200 bg-surface p-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-2 text-sm font-semibold text-stone-800">
           {mode === "audio" ? <Mic className="h-4 w-4" /> : <Video className="h-4 w-4" />}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { HeartersList } from "@/components/host/HeartersList";
 import { Lightbox } from "@/components/media/Lightbox";
+import { useFramedShare } from "@/components/media/useFramedShare";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
@@ -36,6 +37,7 @@ function MediaFeed({
   onChanged: () => void;
 }) {
   const t = useT();
+  const shareFramed = useFramedShare(event);
   const [items, setItems] = useState<MediaDto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,6 +248,7 @@ function MediaFeed({
 
       {openIndex !== null && items[openIndex] && (
         <Lightbox
+          onShare={shareFramed}
           allowDownload
           items={items}
           index={openIndex}

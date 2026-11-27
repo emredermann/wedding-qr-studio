@@ -4,8 +4,11 @@ import { Expand, Heart, Shrink } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
+import { PresetIcon } from "@/components/event/PresetIcon";
+import { MEDALS, useLeaderboard } from "@/components/guest/useLeaderboard";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch } from "@/lib/client/api";
+import { themeDataAttrs, themeFor } from "@/lib/event-presets";
 import { driveImageUrl, FULL_IMAGE_SIZE, streamUrl } from "@/lib/media-urls";
 import type { GuestbookMessageDto, MediaDto, MediaPage, PublicEventDto, RecentHeartsDto } from "@/types/domain";
 import { useT } from "@/lib/i18n/provider";
@@ -87,6 +90,17 @@ export function LiveWall({ slug }: { slug: string }) {
   const [newestMessage, setNewestMessage] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [floating, setFloating] = useState<FloatingHeart[]>([]);
+  // Challenge leaders (when the event has challenges) and the rotating sponsor (Pro brand kit).
+  const board = useLeaderboard(slug, Boolean(event && event.challenges.length > 0), null, 30_000);
+  const showBrand = Boolean(event?.brand?.showOnLiveWall);
+  const sponsors = showBrand ? (event?.brand?.sponsors ?? []) : [];
+  const [sponsorIndex, setSponsorIndex] = useState(0);
+  useEffect(() => {
+    if (sponsors.length < 2) return;
+    const timer = window.setInterval(() => setSponsorIndex((i) => i + 1), 6000);
+    return () => window.clearInterval(timer);
+  }, [sponsors.length]);
+  const sponsor = sponsors.length > 0 ? sponsors[sponsorIndex % sponsors.length] : null;
   const currentIdRef = useRef<string | null>(null);
 
   const base = `/api/events/${encodeURIComponent(slug)}`;
@@ -259,7 +273,7 @@ export function LiveWall({ slug }: { slug: string }) {
   const isNew = current ? slides.freshIds.includes(current.id) : false;
 
   return (
-    <main className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
+    <main {...(event ? themeDataAttrs(themeFor(event.themeId)) : {})} className="relative h-dvh w-screen cursor-none overflow-hidden bg-black text-white select-none">
       {previous && previous.id !== current?.id && previous.kind === "photo" && (
         <img
           key={`prev-${previous.id}`}
@@ -303,7 +317,7 @@ export function LiveWall({ slug }: { slug: string }) {
 
       {!current && event && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
-          <Heart className="h-12 w-12 fill-current" style={{ color: accent }} />
+          <PresetIcon eventType={event.eventType} className={`h-12 w-12 ${event.eventType && event.eventType !== "wedding" ? "" : "fill-current"}`} style={{ color: accent }} />
           <h1 className="font-serif text-5xl">{event.coupleNames || event.title}</h1>
           <p className="text-xl text-white/70">{t("QR kodu okutun, ilk fotoğrafı siz paylaşın!")}</p>
         </div>
@@ -338,6 +352,37 @@ export function LiveWall({ slug }: { slug: string }) {
         <div className="absolute right-8 bottom-8 flex flex-col items-center gap-2 rounded-3xl bg-white p-4 text-center text-stone-900 shadow-2xl">
           <QRCodeSVG value={guestUrl} size={150} level="M" fgColor="#111111" />
           <p className="max-w-[160px] text-sm leading-tight font-semibold">{t("Okut, fotoğrafını paylaş!")}</p>
+        </div>
+      )}
+
+      {/* Brand kit (Pro): event logo top centre, sponsors rotating at the bottom centre. */}
+      {showBrand && event?.brand?.logoUrl && (
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 rounded-2xl bg-white/90 px-5 py-3 shadow-2xl">
+          <img src={event.brand.logoUrl} alt="" className="h-12 max-w-[14rem] object-contain" />
+        </div>
+      )}
+      {sponsor && (
+        <div key={sponsor.id} className="eqr-step-enter absolute bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/90 px-5 py-3 text-stone-700 shadow-2xl">
+          <span className="text-[10px] font-semibold tracking-[0.2em] text-stone-400 uppercase">{event?.brand?.sponsorsLabel || t("Sponsorlar")}</span>
+          <img src={sponsor.logoUrl} alt={sponsor.name} className="h-10 max-w-[10rem] object-contain" />
+        </div>
+      )}
+
+      {/* Challenge leaders */}
+      {board && board.top.length > 0 && (
+        <div className="absolute top-24 right-8 w-64 rounded-3xl bg-black/50 px-5 py-4 backdrop-blur-md">
+          <p className="mb-2 text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">{t("Görev liderleri")}</p>
+          <ol className="space-y-1.5">
+            {board.top.slice(0, 3).map((entry) => (
+              <li key={entry.rank} className="flex items-center gap-2 text-base">
+                <span>{MEDALS[entry.rank - 1]}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{entry.name || t("Misafir")}</span>
+                <span className="text-sm tabular-nums text-white/70">
+                  {entry.completed}/{board.totalChallenges}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 

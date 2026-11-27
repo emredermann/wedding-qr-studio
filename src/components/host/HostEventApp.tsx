@@ -1,9 +1,10 @@
 "use client";
 
-import { BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings, Users } from "lucide-react";
+import { Armchair, BookHeart, ChevronLeft, Images, LayoutDashboard, Loader2, QrCode, Settings, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AlbumToolsTab } from "@/components/host/AlbumToolsTab";
 import { GuestbookModerationTab } from "@/components/host/GuestbookModerationTab";
 import { GuestsTab } from "@/components/host/GuestsTab";
 import { HostHeader } from "@/components/host/HostHeader";
@@ -19,13 +20,14 @@ import type { MsgKey } from "@/lib/i18n/translate";
 
 const STATS_REFRESH_DEBOUNCE_MS = 1500;
 
-type Tab = "overview" | "media" | "guestbook" | "guests" | "qr" | "settings";
+type Tab = "overview" | "media" | "guestbook" | "guests" | "highlights" | "qr" | "settings";
 
 const TABS: Array<{ id: Tab; label: MsgKey; icon: typeof Images }> = [
   { id: "overview", label: "Özet", icon: LayoutDashboard },
   { id: "media", label: "Medya", icon: Images },
   { id: "guestbook", label: "Anı Defteri", icon: BookHeart },
   { id: "guests", label: "Misafirler", icon: Users },
+  { id: "highlights", label: "Öne Çıkanlar & Rapor", icon: Sparkles },
   { id: "qr", label: "QR & Masa Kartı", icon: QrCode },
   { id: "settings", label: "Ayarlar", icon: Settings },
 ];
@@ -154,6 +156,14 @@ export function HostEventApp({ eventId }: { eventId: string }) {
                 </button>
               </li>
             ))}
+            <li>
+              <Link
+                href={`/dashboard/${event.id}/seating`}
+                className="inline-flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium whitespace-nowrap text-stone-500 hover:text-stone-800"
+              >
+                <Armchair className="h-4 w-4" /> {t("Oturma Planı")}
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -161,8 +171,9 @@ export function HostEventApp({ eventId }: { eventId: string }) {
         {tab === "media" && <MediaModerationTab event={event} pendingCount={stats.pending} onMessage={onMessage} onChanged={refresh} />}
         {tab === "guestbook" && <GuestbookModerationTab event={event} onMessage={onMessage} />}
         {tab === "guests" && <GuestsTab event={event} onMessage={onMessage} />}
+        {tab === "highlights" && <AlbumToolsTab event={event} />}
         {tab === "qr" && (
-          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} eventDate={event.eventDate} />
+          <QrCardDesigner url={guestUrl} coupleNames={event.coupleNames || event.title} dateText={dateText} themeColor={event.themeColor} slug={event.slug} tableNumbers={event.tableNumbers} eventDate={event.eventDate} eventType={event.eventType} />
         )}
         {tab === "settings" && <SettingsTab key={event.updatedAt} event={event} onSaved={(ev) => setData({ ...data, event: ev })} onMessage={onMessage} />}
       </main>

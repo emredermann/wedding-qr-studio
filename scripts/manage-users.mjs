@@ -8,6 +8,7 @@
  *   npm run user -- password <kullanici-adi> <yeni-sifre>
  *   npm run user -- list
  *   npm run user -- delete   <kullanici-adi>
+ *   npm run user -- plan     <kullanici-adi> <free|pro> [YYYY-AA-GG]
  *
  * Usernames are mapped to the internal login identity
  * "<username>@<NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN or kullanici.eventqr.app>",
@@ -142,6 +143,19 @@ switch (command) {
     console.log(`\n✔ "${username}" silindi (etkinlikleri ve Drive bağlantı kaydı da veritabanından silindi; Drive'daki dosyalar durur).\n`);
     break;
   }
+  case "plan": {
+    // Package lives in app_metadata (only the service role can change it).
+    const username = requireUsername(arg1);
+    const plan = String(arg2 || "").toLowerCase();
+    if (plan !== "free" && plan !== "pro") fail("Paket \"free\" ya da \"pro\" olmalı.");
+    const until = process.argv[5];
+    if (until && !/^\d{4}-\d{2}-\d{2}$/.test(until)) fail("Bitiş tarihi YYYY-AA-GG biçiminde olmalı (ör. 2027-12-31).");
+    const user = await findByUsername(username);
+    const app_metadata = { ...(user.app_metadata || {}), plan, plan_until: plan === "pro" && until ? until : null };
+    await admin("PUT", `/users/${user.id}`, { app_metadata });
+    console.log(`\n✔ "${username}" paketi: ${plan.toUpperCase()}${plan === "pro" && until ? ` (${until} sonuna kadar)` : ""}\n  Değişiklik en geç 1 dakika içinde uygulamaya yansır.\n`);
+    break;
+  }
   case "list": {
     const users = await allUsers();
     if (users.length === 0) {
@@ -151,7 +165,10 @@ switch (command) {
     console.log("");
     for (const u of users) {
       const last = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("tr-TR") : "hiç giriş yapmadı";
-      console.log(`  ${usernameOf(u).padEnd(32)} son giriş: ${last}`);
+      const meta = u.app_metadata || {};
+      const expired = meta.plan_until && new Date(`${meta.plan_until}T23:59:59Z`) < new Date();
+      const plan = meta.plan === "pro" && !expired ? `PRO${meta.plan_until ? ` → ${meta.plan_until}` : ""}` : "free";
+      console.log(`  ${usernameOf(u).padEnd(32)} ${plan.padEnd(18)} son giriş: ${last}`);
     }
     console.log(`\n  Toplam: ${users.length}\n`);
     break;
@@ -163,5 +180,7 @@ Kullanım:
   npm run user -- password <kullanici-adi> <yeni-sifre>  Şifre değiştir
   npm run user -- list                                   Hesapları listele
   npm run user -- delete   <kullanici-adi>               Hesabı sil
+  npm run user -- plan     <kullanici-adi> pro [2027-12-31]  Pro paket ver (isteğe bağlı bitiş tarihi)
+  npm run user -- plan     <kullanici-adi> free          Ücretsiz pakete al
 `);
 }

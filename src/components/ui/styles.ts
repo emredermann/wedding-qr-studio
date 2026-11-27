@@ -17,12 +17,12 @@ export const ui = {
   hint: "text-xs leading-relaxed text-stone-500",
   /** Text input, select and textarea. */
   input:
-    "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-base outline-none focus:border-stone-500 sm:text-sm",
+    "w-full rounded-xl border border-stone-300 bg-surface px-3.5 py-2.5 text-base outline-none focus:border-stone-500 sm:text-sm",
   /** Compact input for dense editors (programme rows, card designer). */
   inputCompact:
-    "w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-base outline-none focus:border-stone-500 sm:text-sm",
+    "w-full rounded-xl border border-stone-300 bg-surface px-3 py-2 text-base outline-none focus:border-stone-500 sm:text-sm",
   /** Checkbox: fixed size, never squeezed by long labels. */
   checkbox: "h-5 w-5 shrink-0 cursor-pointer accent-stone-900",
   /** White rounded card. */
-  card: "rounded-3xl border border-stone-200 bg-white p-5",
+  card: "rounded-3xl border border-stone-200 bg-surface p-5",
 } as const;

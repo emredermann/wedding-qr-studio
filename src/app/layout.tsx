@@ -34,7 +34,16 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     applicationName: BRAND.name,
     description,
-    openGraph: { siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description },
+    keywords: [
+      t("QR fotoğraf paylaşımı"),
+      t("etkinlik fotoğraf albümü"),
+      t("düğün fotoğraf paylaşımı"),
+      t("kurumsal etkinlik fotoğrafları"),
+      t("doğum günü fotoğraf albümü"),
+      t("misafir fotoğraf ve video toplama"),
+    ],
+    openGraph: { type: "website", siteName: BRAND.name, title: `${BRAND.name} — ${t(BRAND.tagline)}`, description },
+    twitter: { card: "summary", title: BRAND.name, description },
   };
 }
 

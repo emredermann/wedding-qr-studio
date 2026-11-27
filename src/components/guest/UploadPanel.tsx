@@ -69,9 +69,12 @@ export function UploadPanel({
   onUploaded,
   onDeleted,
   onMessage,
+  pickedChallenge = null,
 }: {
   event: PublicEventDto;
   guestName: string;
+  /** A challenge the guest chose on the Tasks card; preselected here (nonce re-applies the same one). */
+  pickedChallenge?: { id: string; nonce: number } | null;
   /** Table from the guest's QR card; sent with every upload. */
   tableNo: number | null;
   /** Whether the upload tab is on screen; leaving it locks finished uploads. */
@@ -87,6 +90,12 @@ export function UploadPanel({
   const [items, setItems] = useState<QueueItem[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [challengeId, setChallengeId] = useState<string | null>(null);
+  // A pick from the Tasks card preselects that challenge (adjusted during render, no effect).
+  const [appliedPick, setAppliedPick] = useState(pickedChallenge);
+  if (pickedChallenge !== appliedPick) {
+    setAppliedPick(pickedChallenge);
+    if (pickedChallenge) setChallengeId(pickedChallenge.id);
+  }
   // Program-based preselection: only until the guest picks a category themselves.
   const categoryPickedRef = useRef(false);
   const now = useMinuteClock();
@@ -308,7 +317,7 @@ export function UploadPanel({
 
   if (!event.uploadsEnabled) {
     return (
-      <div className="rounded-3xl border border-stone-200 bg-white/80 p-8 text-center text-stone-600">
+      <div className="rounded-3xl border border-stone-200 bg-surface/80 p-8 text-center text-stone-600">
         {t("Etkinlik sahibi şu anda yeni yüklemeleri kapattı. Galeriye göz atabilirsiniz.")}
       </div>
     );
@@ -378,7 +387,7 @@ export function UploadPanel({
                   setCategory(cat);
                 }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  category === cat ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+                  category === cat ? "border-transparent text-white" : "border-stone-300 bg-surface text-stone-700"
                 }`}
                 style={category === cat ? { backgroundColor: "var(--accent)" } : undefined}
               >
@@ -402,7 +411,7 @@ export function UploadPanel({
                   aria-pressed={active}
                   onClick={() => setChallengeId(active ? null : c.id)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    active ? "border-transparent text-white" : "border-stone-300 bg-white text-stone-700"
+                    active ? "border-transparent text-white" : "border-stone-300 bg-surface text-stone-700"
                   }`}
                   style={active ? { backgroundColor: "var(--accent)" } : undefined}
                 >
@@ -422,13 +431,13 @@ export function UploadPanel({
           onChange={(e) => setNote(e.target.value.slice(0, 500))}
           rows={2}
           placeholder={t("Bu fotoğrafla ilgili kısa bir not bırakın…")}
-          className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
+          className="w-full rounded-2xl border border-stone-300 bg-surface px-4 py-3 text-base outline-none focus:border-stone-500 sm:text-sm"
         />
         <span className="mt-1 block text-right text-[11px] text-stone-400">{note.length}/500 · {t("seçeceğiniz dosyalara eklenir")}</span>
       </label>
 
       {items.length > 0 && (
-        <div className="rounded-3xl border border-stone-200 bg-white p-3">
+        <div className="rounded-3xl border border-stone-200 bg-surface p-3">
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-sm font-semibold text-stone-800">
               {t("Yüklemeler")} <span className="font-normal text-stone-500">({doneCount}/{items.length})</span>

@@ -16,11 +16,14 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest, context: { params: Promise<{ fileId: string }> }) {
   try {
     const { fileId } = await context.params;
-    const size = Math.min(Math.max(Number(request.nextUrl.searchParams.get("s")) || 600, 64), 1600);
+    // `raw=1`: same-origin bytes even for approved items, so the browser can
+    // draw them on a canvas (share frames, highlights video, photobook).
+    const raw = request.nextUrl.searchParams.get("raw") === "1";
+    const size = Math.min(Math.max(Number(request.nextUrl.searchParams.get("s")) || 600, 64), raw ? 2400 : 1600);
     const access = await authorizeMediaAccess(request, fileId);
     if (!access) return jsonError(404, "NOT_FOUND", "Dosya bulunamadı.");
 
-    if (access.isPublic) {
+    if (access.isPublic && !raw) {
       return Response.redirect(driveImageUrl(access.media.drive_file_id, size), 302);
     }
 
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ fil
       status: 200,
       headers: {
         "Content-Type": thumb.headers.get("content-type") ?? "image/jpeg",
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": raw && access.isPublic ? "private, max-age=3600" : "private, max-age=300",
         "X-Content-Type-Options": "nosniff",
       },
     });

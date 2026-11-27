@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { handleRouteError, jsonError, jsonOk } from "@/lib/api/http";
 import { findEventBySlug, toPublicEventDto } from "@/lib/events";
+import { planForUser } from "@/lib/host-plan";
 import { resolveGuestSession, withGuestCookie } from "@/lib/guest-session";
 import { rateLimit } from "@/lib/rate-limit";
 import type { PublicEventDto } from "@/types/domain";
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
     const event = await findEventBySlug(slug);
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
     const guest = resolveGuestSession(request);
-    return withGuestCookie(jsonOk<{ event: PublicEventDto }>({ event: toPublicEventDto(event) }), guest);
+    return withGuestCookie(jsonOk<{ event: PublicEventDto }>({ event: toPublicEventDto(event, await planForUser(event.owner_id)) }), guest);
   } catch (error) {
     return handleRouteError("events:get", error);
   }

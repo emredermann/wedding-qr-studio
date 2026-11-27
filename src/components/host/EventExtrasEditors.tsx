@@ -13,6 +13,7 @@ import {
   type Challenge,
   type ScheduleItem,
 } from "@/lib/event-extras";
+import { DEFAULT_EVENT_TYPE, EVENT_PRESETS } from "@/lib/event-presets";
 import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
 import { ui } from "@/components/ui/styles";
@@ -95,10 +96,13 @@ export function ScheduleEditor({
   value,
   onChange,
   categories,
+  example = "Henüz program yok. Örnek: 19:00 Nikah, 20:30 Yemek, 21:30 İlk dans.",
 }: {
   value: ScheduleItem[];
   onChange: (next: ScheduleItem[]) => void;
   categories: readonly string[];
+  /** Empty-state example from the event preset. */
+  example?: MsgKey;
 }) {
   const t = useT();
   const update = (id: string, patch: Partial<ScheduleItem>) => onChange(value.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -110,7 +114,7 @@ export function ScheduleEditor({
 
   return (
     <div className="@container space-y-2">
-      {value.length === 0 && <p className="text-xs text-stone-500">{t("Henüz program yok. Örnek: 19:00 Nikah, 20:30 Yemek, 21:30 İlk dans.")}</p>}
+      {value.length === 0 && <p className="text-xs text-stone-500">{t(example)}</p>}
       {value.length > 0 && (
         <div aria-hidden className="grid grid-cols-[2.25rem_6.5rem_1fr_auto] gap-2 px-1 text-[11px] font-semibold text-stone-500 @md:grid-cols-[2.25rem_6.5rem_1fr_12.5rem_auto]">
           <span className="text-center">{t("Simge")}</span>
@@ -172,24 +176,24 @@ export function ScheduleEditor({
   );
 }
 
-const CHALLENGE_SUGGESTIONS: MsgKey[] = [
-  "Gelinle bir selfie",
-  "Damatla bir selfie",
-  "Dans pistinden bir kare",
-  "Masandaki herkes tek karede",
-  "Günün en komik anı",
-  "En şık misafir",
-];
-
 /** Editable list of photo challenges guests can join while uploading. */
-export function ChallengesEditor({ value, onChange }: { value: Challenge[]; onChange: (next: Challenge[]) => void }) {
+export function ChallengesEditor({
+  value,
+  onChange,
+  ideas = EVENT_PRESETS[DEFAULT_EVENT_TYPE].challengeIdeas,
+}: {
+  value: Challenge[];
+  onChange: (next: Challenge[]) => void;
+  /** One-tap suggestions from the event preset. */
+  ideas?: readonly MsgKey[];
+}) {
   const t = useT();
   const add = (title = "") => {
     if (value.length >= MAX_CHALLENGES) return;
     onChange([...value, { id: newExtraId(), title }]);
   };
   const used = new Set(value.map((c) => c.title.trim().toLocaleLowerCase("tr-TR")));
-  const suggestions = CHALLENGE_SUGGESTIONS.map((key) => t(key)).filter((s) => !used.has(s.toLocaleLowerCase("tr-TR")));
+  const suggestions = ideas.map((key) => t(key)).filter((s) => !used.has(s.toLocaleLowerCase("tr-TR")));
 
   return (
     <div className="space-y-2">

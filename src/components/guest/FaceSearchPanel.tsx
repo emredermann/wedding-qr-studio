@@ -4,6 +4,7 @@ import { Camera, ImageUp, Loader2, ScanFace, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Lightbox } from "@/components/media/Lightbox";
+import { useFramedShare } from "@/components/media/useFramedShare";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { trackEvent } from "@/lib/client/analytics";
 import { apiFetch, errorMessage } from "@/lib/client/api";
@@ -21,6 +22,7 @@ export function FaceSearchPanel({
   onMessage: (text: string, variant?: "success" | "error" | "info") => void;
 }) {
   const t = useT();
+  const shareFramed = useFramedShare(event);
   const [phase, setPhase] = useState<Phase>("idle");
   const [results, setResults] = useState<MediaDto[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -113,12 +115,12 @@ export function FaceSearchPanel({
   }
 
   if (!event.faceSearchEnabled || !event.galleryPublic) {
-    return <p className="rounded-3xl bg-white/80 p-8 text-center text-stone-600">{t("Yüz arama bu etkinlikte kapalı.")}</p>;
+    return <p className="rounded-3xl bg-surface/80 p-8 text-center text-stone-600">{t("Yüz arama bu etkinlikte kapalı.")}</p>;
   }
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-stone-200 bg-white p-5 text-center">
+      <div className="rounded-3xl border border-stone-200 bg-surface p-5 text-center">
         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-white" style={{ backgroundColor: "var(--accent)" }}>
           <ScanFace className="h-7 w-7" />
         </span>
@@ -152,7 +154,7 @@ export function FaceSearchPanel({
               <button type="button" onClick={openCamera} className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white" style={{ backgroundColor: "var(--accent)" }}>
                 <Camera className="h-4 w-4" /> {t("Selfie çek")}
               </button>
-              <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm font-semibold text-stone-800">
+              <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-surface px-6 py-3 text-sm font-semibold text-stone-800">
                 <ImageUp className="h-4 w-4" /> {t("Fotoğraf yükle")}
               </button>
             </>
@@ -169,7 +171,8 @@ export function FaceSearchPanel({
       )}
 
       {openIndex !== null && (
-        <Lightbox items={results} index={openIndex} onIndexChange={setOpenIndex} onClose={() => setOpenIndex(null)} />
+        <Lightbox
+          onShare={event.shareFrame.guestShare ? shareFramed : undefined} items={results} index={openIndex} onIndexChange={setOpenIndex} onClose={() => setOpenIndex(null)} />
       )}
     </div>
   );

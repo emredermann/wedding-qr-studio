@@ -105,7 +105,14 @@ export function OverviewTab({
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
             <label className="flex items-center gap-3 text-sm text-stone-800">
-              <input type="checkbox" checked={event.uploadsEnabled} onChange={(e) => void onToggleUploads(e.target.checked)} className={ui.checkbox} />
+              <input
+                type="checkbox"
+                checked={event.uploadsEnabled}
+                disabled={event.plan !== "pro"}
+                title={event.plan !== "pro" ? t("Etkinlik ayarlarını değiştirmek için Pro paket gerekir.") : undefined}
+                onChange={(e) => void onToggleUploads(e.target.checked)}
+                className={ui.checkbox}
+              />
               {t("Misafir yüklemeleri açık")}
             </label>
             <ZipDownloadButton
