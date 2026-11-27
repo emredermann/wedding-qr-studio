@@ -153,7 +153,7 @@ export function ContactForm({ source }: { source: string }) {
           aria-describedby="contact-consent-error"
         />
         <span>
-          {t("Bilgilerimin yalnızca bu talebe dönüş yapılması amacıyla kaydedilmesine ve benimle iletişime geçilmesine onay veriyorum.")}
+          {t("Bilgilerimin, talebime dönüş yapılması amacıyla KVKK kapsamında işleneceği konusunda bilgilendirildim.")}
           {fieldError("consent")}
         </span>
       </label>

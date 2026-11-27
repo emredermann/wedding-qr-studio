@@ -1,6 +1,7 @@
 import "server-only";
 
 import { driveFolderUrl } from "@/lib/drive";
+import { FACE_SEARCH_AVAILABLE } from "@/lib/features";
 import { readChallenges, readSchedule, withKnownCategories } from "@/lib/event-extras";
 import { brandFor, readBranding, readShareFrame } from "@/lib/branding";
 import { normaliseEventType, normaliseThemeId, readModules } from "@/lib/event-presets";
@@ -36,7 +37,7 @@ function toEventDto(event: EventRow, plan: Plan): PublicEventDto {
     uploadsEnabled: open && event.uploads_enabled,
     requireApproval: event.require_approval,
     galleryPublic: event.gallery_public,
-    faceSearchEnabled: event.face_search_enabled,
+    faceSearchEnabled: FACE_SEARCH_AVAILABLE && event.face_search_enabled,
     guestbookEnabled: open && event.guestbook_enabled,
     schedule: withKnownCategories(readSchedule(event.schedule), event.categories ?? []),
     challenges: readChallenges(event.challenges),

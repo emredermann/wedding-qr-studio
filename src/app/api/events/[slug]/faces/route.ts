@@ -1,4 +1,6 @@
 import type { NextRequest } from "next/server";
+
+import { FACE_SEARCH_AVAILABLE } from "@/lib/features";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
 
     const event = await findEventBySlug(slug);
     if (!event) return jsonError(404, "EVENT_NOT_FOUND", "Etkinlik bulunamadı.");
-    if (!event.face_search_enabled) return jsonError(403, "FACE_SEARCH_DISABLED", "Yüz arama bu etkinlikte kapalı.");
+    if (!FACE_SEARCH_AVAILABLE || !event.face_search_enabled) return jsonError(403, "FACE_SEARCH_DISABLED", "Yüz arama bu etkinlikte kapalı.");
     // Private gallery: "Beni Bul" is off. Faces are still indexed on upload, so it
     // works for every photo again if the host makes the gallery public later.
     if (!event.gallery_public) return jsonError(403, "FACE_SEARCH_DISABLED", "Yüz arama bu etkinlikte kapalı.");

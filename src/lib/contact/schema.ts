@@ -66,7 +66,7 @@ export const contactSchema = z.object({
         .refine((v) => !CONTROL.test(v), "Not geçersiz karakterler içeriyor.")
         .transform((v) => (v ? v : null)),
     ),
-  consent: z.literal(true, { message: "Devam etmek için onay kutusunu işaretleyin." }),
+  consent: z.literal(true, { message: "Devam etmek için bilgilendirme kutusunu işaretleyin." }),
   /** Which page the form was on (e.g. "home", "davetiye"). */
   source: z
     .string()
