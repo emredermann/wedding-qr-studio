@@ -35,34 +35,70 @@ export function newToken(): string {
 
 // ---------------------------------------------------------------- design
 
-export const INVITE_STYLES = ["classic", "script", "modern"] as const;
-export type InviteStyle = (typeof INVITE_STYLES)[number];
+/**
+ * Invitation templates. Each has its own palette, typeface pairing and
+ * ornaments (drawn by InvitationCard); the accent colour can be changed.
+ */
+export const INVITE_TEMPLATES = ["klasik", "botanik", "kemer", "gece", "modern", "minimal"] as const;
+export type InviteTemplate = (typeof INVITE_TEMPLATES)[number];
+
+/** Typeface for the names line; "auto" = the template's own choice. */
+export const INVITE_FONTS = ["auto", "serif", "script", "display", "sans"] as const;
+export type InviteFont = (typeof INVITE_FONTS)[number];
+
+export const DATE_STYLES = ["long", "numeric"] as const;
+export type DateStyle = (typeof DATE_STYLES)[number];
+
+export interface ProgramLine {
+  time: string;
+  title: string;
+}
 
 export interface InviteDesign {
-  style: InviteStyle;
+  template: InviteTemplate;
+  font: InviteFont;
+  /** Accent colour; empty = the template's own. */
+  accent: string;
   /** Small line above the names, e.g. "Evleniyoruz". */
   headline: string;
   /** Big names line; empty = the event's couple names. */
   names: string;
+  message: string;
+  closing: string;
   /** Free text date line; empty = the event date. */
   dateText: string;
+  dateStyle: DateStyle;
   time: string;
   venue: string;
   address: string;
   mapUrl: string;
-  message: string;
-  closing: string;
-  /** Accent colour; empty = the event theme colour. */
-  accent: string;
+  /** Short programme, e.g. 17:00 Nikâh · 19:00 Yemek (max 6 lines). */
+  program: ProgramLine[];
+  dressCode: string;
+  /** Extra note (parking, children, gifts…). */
+  note: string;
+  showCountdown: boolean;
+  showCalendar: boolean;
+  /** Guests first see a sealed envelope and open it. */
+  envelope: boolean;
 }
 
 const str = (max: number) => z.string().trim().max(max).catch("");
 
 export const designSchema = z.object({
-  style: z.enum(INVITE_STYLES).catch("classic"),
+  template: z.enum(INVITE_TEMPLATES).catch("klasik"),
+  font: z.enum(INVITE_FONTS).catch("auto"),
+  accent: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .or(z.literal(""))
+    .catch(""),
   headline: str(80),
   names: str(120),
+  message: str(1200),
+  closing: str(200),
   dateText: str(80),
+  dateStyle: z.enum(DATE_STYLES).catch("long"),
   time: str(40),
   venue: str(120),
   address: str(240),
@@ -72,31 +108,47 @@ export const designSchema = z.object({
     .max(500)
     .refine((v) => v === "" || /^https:\/\/[^\s]+$/i.test(v))
     .catch(""),
-  message: str(1200),
-  closing: str(200),
-  accent: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .or(z.literal(""))
-    .catch(""),
+  program: z
+    .array(z.object({ time: str(20), title: str(80) }))
+    .max(6)
+    .catch([])
+    .transform((lines) => lines.filter((l) => l.time || l.title)),
+  dressCode: str(120),
+  note: str(400),
+  showCountdown: z.boolean().catch(true),
+  showCalendar: z.boolean().catch(true),
+  envelope: z.boolean().catch(true),
 });
 
 export const DEFAULT_DESIGN: InviteDesign = {
-  style: "classic",
+  template: "klasik",
+  font: "auto",
+  accent: "",
   headline: "",
   names: "",
+  message: "",
+  closing: "",
   dateText: "",
+  dateStyle: "long",
   time: "",
   venue: "",
   address: "",
   mapUrl: "",
-  message: "",
-  closing: "",
-  accent: "",
+  program: [],
+  dressCode: "",
+  note: "",
+  showCountdown: true,
+  showCalendar: true,
+  envelope: true,
 };
 
+/** Designs saved before templates existed used `style`. */
+const LEGACY_STYLE: Record<string, InviteTemplate> = { classic: "klasik", script: "botanik", modern: "modern" };
+
 export function readDesign(raw: unknown): InviteDesign {
-  const parsed = designSchema.safeParse(raw && typeof raw === "object" ? { ...DEFAULT_DESIGN, ...raw } : DEFAULT_DESIGN);
+  const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const legacy = typeof obj.style === "string" && !("template" in obj) ? { template: LEGACY_STYLE[obj.style] ?? "klasik" } : {};
+  const parsed = designSchema.safeParse({ ...DEFAULT_DESIGN, ...obj, ...legacy });
   return parsed.success ? parsed.data : { ...DEFAULT_DESIGN };
 }
 

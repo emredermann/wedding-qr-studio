@@ -35,6 +35,7 @@ type T = (key: MsgKey, vars?: Vars) => string;
 const NAV: Array<{ href: string; label: MsgKey }> = [
   { href: "#nasil-calisir", label: "Nasıl çalışır" },
   { href: "#etkinlikler", label: "Etkinlikler" },
+  { href: "#davetiye", label: "Davetiye" },
   { href: "#ozellikler", label: "Özellikler" },
   { href: "#karsilastirma", label: "Karşılaştırma" },
   { href: "#paketler", label: "Paketler" },
@@ -165,6 +166,13 @@ const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Kurulum yok", text: "Her şey tarayıcıda; misafirlerinizden hiçbir şey indirmeleri istenmez." },
 ];
 
+const INVITE_STEPS: Array<{ title: MsgKey; text: MsgKey }> = [
+  { title: "Davetiyenizi tasarlayın", text: "Altı şablon, kendi renginiz ve metniniz. Program, kıyafet notu, harita ve “takvime ekle” hazır." },
+  { title: "Herkese kendi bağlantısı", text: "Davetiye “Sevgili Ayşe,” diye açılır. Kişi sınırını siz belirlersiniz; bağlantıyı WhatsApp’tan tek dokunuşla gönderin." },
+  { title: "Yanıtlar kendiliğinden gelsin", text: "Misafir katılımını, gelecek herkesin adını ve menü tercihini yazar; son tarihe kadar değiştirebilir." },
+  { title: "Drive’da tablo, salonda masa", text: "Her yanıt Google Drive’ınızdaki tabloya yazılır ve oturma planınızın misafir listesine düşer." },
+];
+
 const SEATING_POINTS: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Listenizi içe aktarın", text: "Excel, CSV ya da PDF davetli listenizi yükleyin; isimler, gruplar ve menü tercihleri kendiliğinden okunur." },
   { title: "Salonu çizin", text: "Yuvarlak, dikdörtgen ve baş masalar; dans pisti, sahne, bar. Sürükleyin, döndürün, boyutlandırın." },
@@ -180,6 +188,7 @@ const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
   { label: "Orijinal çözünürlük", mira: true, apps: "Değişken", shared: "Çoğu zaman sıkıştırılır" },
   { label: "Video", mira: true, apps: true, shared: "Sınırlı" },
   { label: "QR masa kartı", mira: true, apps: false, shared: false },
+  { label: "Dijital davetiye ve LCV", mira: true, apps: "Ayrı uygulama", shared: false },
   { label: "Oturma planı", mira: true, apps: false, shared: false },
   { label: "Dosyalar kimde kalır", mira: "Sizin Drive’ınızda", apps: "Uygulamada", shared: "Platformda" },
   { label: "Ücret", mira: "Pro paket", apps: "Çoğu zaman ücretli", shared: "Ücretsiz" },
@@ -193,6 +202,7 @@ const INCLUDED: MsgKey[] = [
   "Görevler, etkinlik akışı ve temalar",
   "Kalpler, ortak yöneticiler ve masaya özel QR",
   "QR kart atölyesi (PNG · PDF)",
+  "Dijital davetiye, LCV ve Drive’da yanıt tablosu",
   "Oturma planı ve davetli listesi (Excel · PDF)",
   "Onay modu ve kategoriler",
   "Tüm albümü tek seferde indirme",
@@ -207,6 +217,7 @@ const FREE_ACCOUNT: Array<{ text: MsgKey; ok: boolean }> = [
   { text: "QR kartları, oturma planı ve canlı ekran", ok: true },
   { text: "Öne çıkanlar, fotokitap ve katılım raporu", ok: true },
   { text: "Yeni etkinlik oluşturma", ok: false },
+  { text: "Davetiye oluşturma ve yönetme", ok: false },
   { text: "Etkinlik ayarlarını değiştirme", ok: false },
 ];
 
@@ -218,6 +229,10 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
   {
     q: "Sadece düğünler için mi?",
     a: "Hayır. Düğün, nişan, kurumsal etkinlik, konferans, doğum günü, mezuniyet ya da festival… Etkinlik türünü seçtiğinizde tema, görevler ve misafir sayfası ona göre hazırlanır; hepsini dilediğiniz gibi değiştirebilirsiniz.",
+  },
+  {
+    q: "Davetiye yanıtları nereye gidiyor?",
+    a: "Her yanıt panelinize ve Google Drive’ınızdaki “Davetiye Yanıtları” tablosuna anında yazılır; katılanlar oturma planınızın misafir listesine eklenir. Misafir yanıtını son tarihe kadar aynı bağlantıdan değiştirebilir.",
   },
   { q: "Misafirlerin uygulama indirmesi gerekiyor mu?", a: "Hayır. Her şey telefonun tarayıcısında çalışır; hesap ya da şifre de yok. Yalnızca adlarını yazmaları istenir." },
   { q: "Kurulum ne kadar sürer?", a: "Birkaç dakika. Giriş yapın, etkinliğinizi oluşturun, Drive’ınızı bağlayın ve kartınızı indirin." },
@@ -245,6 +260,87 @@ function SectionHead({ title, text, dark = false }: { title: ReactNode; text?: s
     <div className="mb-14 max-w-2xl">
       <h2 className="font-brand text-5xl leading-[1.04] sm:text-6xl">{title}</h2>
       {text && <p className={`mt-5 max-w-xl leading-relaxed ${dark ? "text-stone-400" : "text-stone-600"}`}>{text}</p>}
+    </div>
+  );
+}
+
+/**
+ * Decorative collage for the invitations section: the personal invitation on
+ * a phone, the guest's reply and the Drive sheet it lands in. Built from
+ * plain markup in the landing fonts (no extra downloads).
+ */
+function InviteIllustration({ t }: { t: T }) {
+  const rows: Array<[string, string, string]> = [
+    ["Ayşe Yılmaz", t("Katılıyor"), "2"],
+    ["Yılmaz ailesi", t("Katılıyor"), "4"],
+    ["Can Demir", t("Katılmıyor"), "0"],
+    ["Deniz Kaya", t("Yanıt bekleniyor"), ""],
+  ];
+  return (
+    <div className="relative mx-auto h-[34rem] w-full max-w-[22rem] sm:max-w-[36rem]" aria-hidden>
+      {/* Drive sheet */}
+      <div className="absolute top-8 right-0 hidden w-[17.5rem] rotate-[3deg] overflow-hidden sm:block rounded-xl border border-stone-200 bg-white shadow-[0_24px_50px_-28px_rgba(0,0,0,0.4)]">
+        <div className="flex items-center gap-2 border-b border-stone-100 bg-[#eef5ee] px-3 py-2 text-[11px] font-semibold text-[#2f6b3b]">
+          <span className="grid h-4 w-4 place-items-center rounded-sm bg-[#2f8f46] text-[8px] text-white">▦</span>
+          {t("Davetiye Yanıtları")}
+        </div>
+        <table className="w-full text-left text-[10px] text-stone-700">
+          <tbody>
+            <tr className="bg-stone-50 font-semibold text-stone-500">
+              <td className="border-r border-b border-stone-100 px-2 py-1.5">{t("Davetli")}</td>
+              <td className="border-r border-b border-stone-100 px-2 py-1.5">{t("Yanıt")}</td>
+              <td className="border-b border-stone-100 px-2 py-1.5">{t("Kişi")}</td>
+            </tr>
+            {rows.map(([n, s, c]) => (
+              <tr key={n}>
+                <td className="border-r border-b border-stone-100 px-2 py-1.5">{n}</td>
+                <td className="border-r border-b border-stone-100 px-2 py-1.5">{s}</td>
+                <td className="border-b border-stone-100 px-2 py-1.5 tabular-nums">{c}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Phone with the invitation */}
+      <div className="absolute top-0 left-0 w-[15.5rem] -rotate-[4deg] rounded-[2.4rem] bg-stone-900 p-2.5 shadow-[0_40px_70px_-30px_rgba(0,0,0,0.55)]">
+        <div className="overflow-hidden rounded-[1.9rem] bg-[#ece6da] px-3 pt-8 pb-5">
+          <div className="relative rounded-[14px] bg-[#fbf8f1] px-4 pt-7 pb-6 text-center text-[#2b2620]">
+            <div className="pointer-events-none absolute inset-2 rounded-[10px] border border-[#a08452]/60" />
+            <p className="font-brand text-[11px] text-stone-500 italic">{t("Sevgili {name},", { name: "Ayşe Yılmaz" })}</p>
+            <p className="mt-3 text-[7px] font-semibold tracking-[0.3em] text-[#a08452] uppercase">{t("Evleniyoruz")}</p>
+            <p className="mt-1.5 font-brand text-[1.7rem] leading-none">Elif &amp; Kerem</p>
+            <div className="mx-auto my-3 h-px w-10 bg-[#a08452]" />
+            <p className="text-[10px] font-semibold">20 Aralık 2026</p>
+            <p className="text-[9px] text-stone-500">{t("Pazar · 19:00")}</p>
+            <p className="mt-2 text-[9px]">Bahçe Restoran</p>
+            <div className="mt-3 flex justify-center gap-1.5">
+              <span className="rounded-full border border-[#a08452] px-2 py-0.5 text-[8px] text-[#a08452]">{t("Yol tarifi")}</span>
+              <span className="rounded-full border border-[#a08452] px-2 py-0.5 text-[8px] text-[#a08452]">{t("Takvime ekle")}</span>
+            </div>
+          </div>
+          <div className="mt-3 rounded-[14px] bg-white p-3 text-center">
+            <p className="text-[10px] font-semibold text-stone-800">{t("Katılım durumunuz")}</p>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 text-[9px] font-semibold">
+              <span className="rounded-lg bg-[#a08452] py-1.5 text-white">{t("Katılıyorum")}</span>
+              <span className="rounded-lg border border-stone-300 py-1.5 text-stone-600">{t("Katılamıyorum")}</span>
+            </div>
+            <p className="mt-2 rounded-md border border-stone-200 px-2 py-1 text-left text-[9px] text-stone-700">Ayşe Yılmaz</p>
+            <p className="mt-1 rounded-md border border-stone-200 px-2 py-1 text-left text-[9px] text-stone-700">Can Yılmaz</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Reply notification */}
+      <div className="absolute right-0 bottom-10 flex w-[17rem] sm:right-4 items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3.5 shadow-[0_24px_50px_-28px_rgba(0,0,0,0.45)]">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-700">
+          <Check className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 text-xs">
+          <p className="font-semibold text-stone-900">{t("Yeni yanıt: Ayşe Yılmaz")}</p>
+          <p className="text-stone-500">{t("2 kişi katılıyor · Masa 4’e eklendi")}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -751,11 +847,38 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Invitations & RSVP */}
+      <section id="davetiye" className="scroll-mt-20 border-t border-stone-200 bg-[#f3efe7]">
+        <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+          <div className="grid items-center gap-14 lg:grid-cols-[1fr_1.05fr]">
+            <div>
+              <p className="text-xs tracking-[0.25em] text-stone-500 uppercase">{t("Yeni · Davetiye & LCV")}</p>
+              <h2 className="mt-4 font-brand text-5xl leading-[1.04] sm:text-6xl">{t("Davetiyeden masaya, tek yerde.")}</h2>
+              <p className="mt-5 max-w-xl leading-relaxed text-stone-600">
+                {t("Kişiye özel dijital davetiyenizi gönderin; yanıtlar kendiliğinden gelsin, Drive’daki tabloya yazılsın ve oturma planınıza dökülsün.")}
+              </p>
+              <ol className="mt-10 space-y-0">
+                {INVITE_STEPS.map((s, i) => (
+                  <li key={s.title} className="flex gap-5 border-t border-stone-300/70 py-5">
+                    <span className="font-brand text-3xl leading-none text-stone-400 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                    <div>
+                      <h3 className="font-brand text-2xl">{t(s.title)}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-stone-600">{t(s.text)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <InviteIllustration t={t} />
+          </div>
+        </div>
+      </section>
+
       {/* Seating planner */}
       <section id="oturma-plani" className="scroll-mt-20 border-t border-stone-200 bg-stone-100/60">
         <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 sm:py-32 lg:grid-cols-2">
           <div>
-            <p className="text-xs tracking-[0.25em] text-stone-500 uppercase">{t("Yeni · Oturma planı")}</p>
+            <p className="text-xs tracking-[0.25em] text-stone-500 uppercase">{t("Oturma planı")}</p>
             <h2 className="mt-4 font-brand text-5xl leading-[1.04] sm:text-6xl">{t("Herkes doğru masada.")}</h2>
             <p className="mt-5 max-w-xl leading-relaxed text-stone-600">
               {t("Davetli listenizden salon planına, tek bir yerde. Masaları yerleştirin, misafirleri sürükleyin; plan siz çalıştıkça kaydedilir.")}
