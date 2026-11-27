@@ -18,6 +18,7 @@ import { useT } from "@/lib/i18n/provider";
 import type { MsgKey } from "@/lib/i18n/translate";
 import { ui } from "@/components/ui/styles";
 import { ToggleRow } from "@/components/ui/ToggleRow";
+import { FACE_SEARCH_AVAILABLE } from "@/lib/features";
 
 export function SettingsTab({
   event,
@@ -138,8 +139,12 @@ export function SettingsTab({
   const toggles: Array<[keyof typeof form, MsgKey, MsgKey]> = [
     ["uploadsEnabled", "Misafir yüklemeleri açık", "Kapatırsanız misafirler sadece galeriyi görür."],
     ["requireApproval", "Yayından önce onay iste", "Yeni fotoğraf ve mesajlar siz onaylayana kadar gizli kalır."],
-    ["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini görür ve “Beni Bul” kapanır."],
-    ["faceSearchEnabled", "“Beni Bul” yüz arama", "Yalnızca galeri misafirlere açıkken kullanılır. Yüz vektörleri misafirin tarayıcısında çıkarılır; fotoğraf sunucuya gitmez."],
+    ...(FACE_SEARCH_AVAILABLE
+      ? ([
+          ["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini görür ve “Beni Bul” kapanır."],
+          ["faceSearchEnabled", "“Beni Bul” yüz arama", "Yalnızca galeri misafirlere açıkken kullanılır. Yüz vektörleri misafirin tarayıcısında çıkarılır; fotoğraf sunucuya gitmez."],
+        ] as Array<[keyof typeof form, MsgKey, MsgKey]>)
+      : ([["galleryPublic", "Galeri misafirlere açık", "Kapalıysa misafirler yalnızca kendi yüklediklerini görür."]] as Array<[keyof typeof form, MsgKey, MsgKey]>)),
     ["guestbookEnabled", "Dijital anı defteri", "Yazılı, sesli ve video mesajlar."],
   ];
 

@@ -1,4 +1,6 @@
 import type { NextRequest } from "next/server";
+
+import { FACE_SEARCH_AVAILABLE } from "@/lib/features";
 import { z } from "zod";
 
 import { handleRouteError, jsonError, jsonOk, parseJsonBody } from "@/lib/api/http";
@@ -142,7 +144,8 @@ export async function POST(request: NextRequest) {
     const safeChallenge = token.b ? null : knownChallengeId(readChallenges(event.challenges), challengeId);
     const status = event.require_approval ? "pending" : "approved";
 
-    const facesToStore = token.k === "photo" ? faces : [];
+    // Face descriptors are biometric data: stored only while "Beni Bul" is available.
+    const facesToStore = FACE_SEARCH_AVAILABLE && token.k === "photo" ? faces : [];
     const insert = await db
       .from("media_items")
       .insert({

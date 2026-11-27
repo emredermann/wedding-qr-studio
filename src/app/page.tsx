@@ -115,13 +115,13 @@ const OCCASIONS: Occasion[] = [
     icon: GraduationCap,
     theme: "minimal",
     title: "Festival & Mezuniyet",
-    text: "Yüzlerce misafir, tek QR. “Beni bul” ile herkes yer aldığı kareleri saniyeler içinde bulur.",
-    chips: ["Beni Bul", "Sınırsız misafir", "Orijinal kalite"],
+    text: "Yüzlerce misafir, tek QR. Herkesin karesi orijinal kalitede tek bir albümde toplanır.",
+    chips: ["Canlı ekran", "Sınırsız misafir", "Orijinal kalite"],
     sample: "Mezuniyet 2026",
     date: "28 · 06 · 2026",
     art: "linear-gradient(170deg, #fde7b0 0%, #f5b46a 40%, #d9774a 70%, #5f7f6e 100%)",
     lights: [[74, 18, 38, "rgba(255,248,220,0.85)"], [22, 30, 14, "rgba(255,255,255,0.55)"]],
-    module: { eyebrow: "Beni Bul", line: "14 fotoğrafta sizi bulduk", chip: "✓" },
+    module: { eyebrow: "Canlı ekran", line: "Yeni kareler salonda", chip: "128" },
   },
 ];
 
@@ -138,7 +138,7 @@ const GUEST_JOURNEY: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Adını yazar", text: "Üyelik yok. Sadece hangi karenin kimden geldiğini bilesiniz diye bir isim." },
   { title: "Bir göreve katılır", text: "“Ekiple bir grup fotoğrafı” gibi küçük görevler; tamamladıkça liderlik tablosunda yükselir." },
   { title: "Paylaşır", text: "Galeriden seçer ya da o an çeker: fotoğraf, video, sesli ya da görüntülü bir mesaj." },
-  { title: "Albümde kendini bulur", text: "Selfie ile yer aldığı kareleri bulur, sevdiklerine kalp bırakır, çerçeveli bir kopyasını paylaşır." },
+  { title: "Albümün tadını çıkarır", text: "Diğer misafirlerin karelerine göz atar, sevdiklerine kalp bırakır, çerçeveli bir kopyasını paylaşır." },
 ];
 
 const CARD_OPTIONS: Array<{ title: MsgKey; text: MsgKey; note: MsgKey }> = [
@@ -151,7 +151,6 @@ const CARD_OPTIONS: Array<{ title: MsgKey; text: MsgKey; note: MsgKey }> = [
 const FEATURES: Array<{ title: MsgKey; text: MsgKey }> = [
   { title: "Orijinal kalite", text: "Hiçbir kare sıkıştırılmaz. Tüm albümü tek dokunuşla indirin." },
   { title: "Videolar da", text: "Fotoğrafların yanında videolar da tam çözünürlükte gelir." },
-  { title: "Beni bul", text: "Bir selfie yeterli; misafir yalnızca yer aldığı kareleri görür. Eşleştirme telefonda yapılır." },
   { title: "Canlı ekran", text: "Yeni kareler ve mesajlar, salondaki ekranda usulca belirir." },
   { title: "Anı defteri", text: "Yazılı, sesli ya da görüntülü mesajlar; doğrudan tarayıcıdan." },
   { title: "Kategoriler", text: "Karşılama, sahne, parti… Misafir yüklerken seçer, albüm kendiliğinden düzenlenir." },
@@ -201,7 +200,6 @@ const COMPARISON: { label: MsgKey; mira: Cell; apps: Cell; shared: Cell }[] = [
 const INCLUDED: MsgKey[] = [
   "Sınırsız misafir, Drive’ınız kadar yer",
   "Orijinal kalitede fotoğraf ve video",
-  "Selfie ile kendini bulma",
   "Canlı ekran ve anı defteri",
   "Görevler, etkinlik akışı ve temalar",
   "Kalpler, ortak yöneticiler ve masaya özel QR",
@@ -237,10 +235,6 @@ const FAQ: Array<{ q: MsgKey; a: MsgKey }> = [
   },
   { q: "Kalite düşüyor mu?", a: "Hayır. Her dosya telefondan çıktığı haliyle, sıkıştırılmadan yüklenir; indirdiğinizde de aslını alırsınız." },
   { q: "Video yüklenebiliyor mu?", a: "Evet. Büyük videolar parça parça yüklenir; bağlantı koparsa tek dokunuşla yeniden denenebilir." },
-  {
-    q: "“Beni bul” nasıl çalışıyor, güvenli mi?",
-    a: "Misafir bir selfie çeker; eşleştirme tamamen kendi telefonunda yapılır. Selfie hiçbir yere gönderilmez, saklanmaz.",
-  },
   { q: "İstemediğim bir fotoğraf yüklenirse?", a: "Panelden tek dokunuşla gizleyebilir ya da silebilirsiniz. Onay modunu açarsanız, siz onaylamadıkça hiçbir kare görünmez." },
   {
     q: "Ücreti ne kadar?",

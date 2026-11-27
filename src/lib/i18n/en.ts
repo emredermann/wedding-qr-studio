@@ -1363,4 +1363,13 @@ export const EN = {
   "Mira | QR Kodla Düğün ve Etkinlik Fotoğraf Albümü, Dijital Davetiye": "Mira | QR Code Wedding & Event Photo Album, Digital Invitations",
   "Misafirleriniz QR kodu okutur; düğün, nişan ve etkinlik fotoğraf ve videoları uygulama indirmeden, orijinal kalitede Google Drive’ınıza gelir. Dijital davetiye, LCV ve oturma planı da Mira’da.": "Guests scan a QR code and wedding, engagement and event photos and videos reach your Google Drive in original quality, no app needed. Digital invitations, RSVP and seating plans too.",
   "Toplu gönderim": "Bulk sending",
+  // ── hide face search / contact notice
+  "Düğün, kurumsal etkinlik, doğum günü ya da festival: misafirleriniz QR kodu okutur; fotoğraf, video ve mesajlarını uygulama indirmeden orijinal kalitede sizin Google Drive’ınıza bırakır. Canlı ekran, fotoğraf görevleri, sesli anı defteri, dijital davetiye ve QR kart tasarlayıcı tek bir yerde.": "Weddings, corporate events, birthdays or festivals: guests scan a QR code and leave their photos, videos and messages in your own Google Drive in original quality, no app needed. Live screen, photo challenges, a voice guestbook, digital invitations and a QR card designer in one place.",
+  "Yüzlerce misafir, tek QR. Herkesin karesi orijinal kalitede tek bir albümde toplanır.": "Hundreds of guests, one QR. Everyone's photos gather in one album in original quality.",
+  "Yeni kareler salonda": "New photos in the hall",
+  "Albümün tadını çıkarır": "Enjoys the album",
+  "Diğer misafirlerin karelerine göz atar, sevdiklerine kalp bırakır, çerçeveli bir kopyasını paylaşır.": "Browses other guests' photos, hearts their favourites and shares a framed copy.",
+  "Bilgilerimin, talebime dönüş yapılması amacıyla KVKK kapsamında işleneceği konusunda bilgilendirildim.": "I have been informed that my details will be processed under KVKK to reply to my request.",
+  "Devam etmek için bilgilendirme kutusunu işaretleyin.": "Tick the notice box to continue.",
+  "Kapalıysa misafirler yalnızca kendi yüklediklerini görür.": "When off, guests only see their own uploads.",
 } as const;
