@@ -492,7 +492,8 @@ export async function generateMetadata(): Promise<Metadata> {
     "Misafirleriniz QR kodu okutur; düğün, nişan ve etkinlik fotoğraf ve videoları uygulama indirmeden, orijinal kalitede Google Drive’ınıza gelir. Dijital davetiye, LCV ve oturma planı da Mira’da.",
   );
   return {
-    title: { absolute: title },
+    // Search results and the browser tab show just the brand name.
+    title: { absolute: BRAND.name },
     description,
     alternates: { canonical: "/" },
     openGraph: { ...social.openGraph, url: "/", title, description },
