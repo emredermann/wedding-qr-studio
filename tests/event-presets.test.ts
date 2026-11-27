@@ -70,6 +70,15 @@ describe("presets", () => {
     assert.equal(EVENT_PRESETS.event.modules.schedule, false);
   });
 
+  it("switch challenges and the programme on by default only for weddings", () => {
+    for (const preset of Object.values(EVENT_PRESETS)) {
+      const on = preset.type === "wedding";
+      assert.equal(preset.modules.schedule, on, `${preset.type} schedule`);
+      assert.equal(preset.modules.challenges, on, `${preset.type} challenges`);
+      assert.equal(preset.modules.guestbook, true, `${preset.type} guestbook`);
+    }
+  });
+
   it("order QR templates by preset and never drop one", () => {
     for (const type of [...EVENT_TYPES, null]) {
       const order = orderedQrTemplates(type);

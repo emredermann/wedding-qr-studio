@@ -182,7 +182,10 @@ export interface EventPreset {
   qrRecommended: number;
   /** Heading for templates that suggest one (handwritten "memory card"). */
   qrHeading: MsgKey;
-  /** Modules switched on for a new event (and guestbook). */
+  /**
+   * Modules switched on for a new event (and guestbook). Only weddings start
+   * with challenges and the programme on; other types opt in.
+   */
   modules: EventModules & { guestbook: boolean };
   /** Order of the guest-page cards; the first one is the hero. */
   guestOrder: readonly GuestModule[];
@@ -234,7 +237,7 @@ export const EVENT_PRESETS: Record<EventType, EventPreset> = {
     qrTemplates: ["kurumsal", "modern", "klasik", "gece", "cizim", "parti", "ornek", "botanik", "cicek", "kalpler"],
     qrRecommended: 3,
     qrHeading: "Etkinlik Anılarınız Burada",
-    modules: { schedule: true, challenges: true, guestbook: true },
+    modules: { schedule: false, challenges: false, guestbook: true },
     guestOrder: ["challenges", "schedule"],
     scheduleLabel: "Etkinlik Akışı",
     scheduleExample: "Henüz program yok. Örnek: 09:30 Karşılama, 10:00 Açılış konuşması, 12:30 Öğle arası.",
@@ -256,7 +259,7 @@ export const EVENT_PRESETS: Record<EventType, EventPreset> = {
     qrTemplates: ["parti", "gece", "cizim", "modern", "kalpler", "kurumsal", "klasik", "ornek", "botanik", "cicek"],
     qrRecommended: 3,
     qrHeading: "Parti Anılarınız Burada",
-    modules: { schedule: false, challenges: true, guestbook: true },
+    modules: { schedule: false, challenges: false, guestbook: true },
     guestOrder: ["challenges", "schedule"],
     scheduleLabel: "Gecenin Akışı",
     scheduleExample: "Henüz program yok. Örnek: 20:00 Karşılama, 21:30 Pasta, 22:00 Dans.",
@@ -278,7 +281,7 @@ export const EVENT_PRESETS: Record<EventType, EventPreset> = {
     qrTemplates: ["modern", "kurumsal", "cizim", "parti", "klasik", "gece", "ornek", "botanik", "cicek", "kalpler"],
     qrRecommended: 4,
     qrHeading: "Etkinlik Anılarınız Burada",
-    modules: { schedule: false, challenges: true, guestbook: true },
+    modules: { schedule: false, challenges: false, guestbook: true },
     guestOrder: ["challenges", "schedule"],
     scheduleLabel: "Etkinlik Akışı",
     scheduleExample: "Henüz program yok. Örnek: 19:00 Karşılama, 20:00 Sahne, 22:00 After party.",
