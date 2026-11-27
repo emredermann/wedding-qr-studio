@@ -16,6 +16,7 @@ import {
   TOKEN_PATTERN,
   type InviteeRow,
 } from "../src/lib/invitations/model.ts";
+import { daysUntil, googleCalendarUrl, icsText } from "../src/lib/invitations/calendar.ts";
 import { addGuests, assignGuest, addTable, syncRsvpGuests } from "../src/lib/seating/ops.ts";
 import { emptyPlan, readPlan } from "../src/lib/seating/schema.ts";
 
@@ -87,9 +88,13 @@ describe("invitation replies", () => {
   });
 
   it("keeps unknown design fields out and fills defaults", () => {
-    const d = readDesign({ headline: "Evleniyoruz", style: "weird", mapUrl: "javascript:alert(1)", extra: 1 });
+    const d = readDesign({ headline: "Evleniyoruz", template: "weird", mapUrl: "javascript:alert(1)", extra: 1, program: [{ time: "19:00", title: "Yemek" }, { time: "", title: "" }] });
     assert.equal(d.headline, "Evleniyoruz");
-    assert.equal(d.style, "classic");
+    assert.equal(d.template, "klasik");
+    assert.deepEqual(d.program, [{ time: "19:00", title: "Yemek" }]);
+    assert.equal(d.envelope, true);
+    // Designs saved before templates existed keep their look.
+    assert.equal(readDesign({ style: "script" }).template, "botanik");
     assert.equal(d.mapUrl, "");
     assert.equal("extra" in d, false);
   });
@@ -102,6 +107,28 @@ describe("invitation replies", () => {
     assert.equal(rows[1][3], "Katılıyor");
     assert.equal(rows[1][9], "Masa 1");
     assert.ok(rows[1][10].startsWith("https://mira.test/d/"));
+  });
+});
+
+describe("invitation calendar", () => {
+  const input = { title: "Elif & Kerem", date: "2026-12-20", time: "Saat 21.30'da", location: "Bahçe, İstanbul", details: "Evleniyoruz" };
+
+  it("builds Google Calendar links in Turkey time, all-day without a time", () => {
+    const url = new URL(googleCalendarUrl(input)!);
+    assert.equal(url.searchParams.get("dates"), "20261220T213000/20261221T013000");
+    assert.equal(url.searchParams.get("ctz"), "Europe/Istanbul");
+    const allDay = new URL(googleCalendarUrl({ ...input, time: "" })!);
+    assert.equal(allDay.searchParams.get("dates"), "20261220/20261221");
+    assert.equal(googleCalendarUrl({ ...input, date: "" }), null);
+  });
+
+  it("writes an escaped .ics and counts days in Turkey time", () => {
+    const ics = icsText(input, "x", new Date("2026-11-01T00:00:00Z"))!;
+    assert.match(ics, /DTSTART;TZID=Europe\/Istanbul:20261220T213000/);
+    assert.match(ics, /LOCATION:Bahçe\\, İstanbul/);
+    assert.equal(daysUntil("2026-12-20", new Date("2026-12-19T22:00:00Z")), 0); // already the 20th in Istanbul
+    assert.equal(daysUntil("2026-12-20", new Date("2026-12-10T10:00:00Z")), 10);
+    assert.equal(daysUntil("2026-12-20", new Date("2026-12-21T10:00:00Z")), null);
   });
 });
 

@@ -4,7 +4,8 @@ import { CheckCircle2, Heart, Loader2, Minus, Pencil, Plus, XCircle } from "luci
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { InvitationCard } from "@/components/invitations/InvitationCard";
+import { Envelope } from "@/components/invitations/Envelope";
+import { InvitationCard, lookFor } from "@/components/invitations/InvitationCard";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ui } from "@/components/ui/styles";
 import { apiFetch, ApiError, errorMessage } from "@/lib/client/api";
@@ -32,6 +33,7 @@ export function InviteGuestApp({ token }: { token: string }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [badIndex, setBadIndex] = useState<number | null>(null);
+  const [opened, setOpened] = useState(false);
 
   const fill = (v: InviteViewDto) => {
     setView(v);
@@ -80,7 +82,9 @@ export function InviteGuestApp({ token }: { token: string }) {
     );
   }
 
-  const accent = view.design.accent || view.event.themeColor || "#7f6d51";
+  const look = lookFor(view.design);
+  const accent = look.accent;
+  const dark = look.paper === "#14213d";
   const greeting = view.kind === "personal" ? view.name : null;
   const showForm = view.canReply && (editing || !view.reply);
   const deadlineText = view.deadline
@@ -128,13 +132,18 @@ export function InviteGuestApp({ token }: { token: string }) {
   };
 
   return (
-    <main className="min-h-dvh bg-stone-100 px-4 py-8 sm:py-14" style={{ "--accent": accent } as React.CSSProperties}>
-      <div className="mx-auto mb-4 flex max-w-md justify-end">
+    <main className="min-h-dvh px-4 py-8 sm:py-14" style={{ background: look.page, "--accent": accent } as React.CSSProperties}>
+      {view.design.envelope && !view.reply && !opened && (
+        <Envelope look={look} names={view.design.names || view.event.coupleNames || view.event.title} greeting={greeting} onOpen={() => setOpened(true)} />
+      )}
+      <div className="mx-auto mb-4 flex max-w-[26rem] justify-end">
         <LanguageSwitcher />
       </div>
-      <InvitationCard design={view.design} event={view.event} greeting={greeting} />
+      <div className="motion-safe:animate-[invite-rise_700ms_ease-out]">
+        <InvitationCard design={view.design} event={view.event} greeting={greeting} />
+      </div>
 
-      <section className="mx-auto mt-6 w-full max-w-md rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-8">
+      <section className={`mx-auto mt-6 w-full max-w-[26rem] rounded-[22px] bg-white p-6 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.35)] sm:p-8 ${dark ? "" : "border border-stone-200"}`}>
         {!showForm && view.reply ? (
           <div className="text-center">
             {view.reply.status === "yes" ? (
